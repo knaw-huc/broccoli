@@ -3,6 +3,8 @@ package nl.knaw.huc.broccoli
 import `in`.vectorpro.dropwizard.swagger.SwaggerBundle
 import `in`.vectorpro.dropwizard.swagger.SwaggerBundleConfiguration
 import io.dropwizard.Application
+import io.dropwizard.configuration.EnvironmentVariableSubstitutor
+import io.dropwizard.configuration.SubstitutingSourceProvider
 import io.dropwizard.setup.Bootstrap
 import io.dropwizard.setup.Environment
 import nl.knaw.huc.broccoli.api.Constants
@@ -17,6 +19,9 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
     override fun getName(): String = APP_NAME
 
     override fun initialize(bootstrap: Bootstrap<BroccoliConfiguration?>) {
+        bootstrap.configurationSourceProvider = SubstitutingSourceProvider(
+            bootstrap.configurationSourceProvider, EnvironmentVariableSubstitutor()
+        )
         bootstrap.addBundle(getSwaggerBundle())
     }
 

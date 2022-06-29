@@ -1,0 +1,17 @@
+version: '2'
+
+services:
+  broccoli-server:
+    container_name: broccoli_server
+    environment:
+      - BR_EXTERNAL_BASE_URL=http://localhost:2022
+    ports:
+      - "2022:8080"
+    image: broccoli-server:0.1.0
+    networks:
+      - broccoli_network
+    restart: unless-stopped
+    tty: true
+
+networks:
+  broccoli_network:
