@@ -1,6 +1,7 @@
 .idea/
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
+*.iml
 buildNumber.properties
 dependency-reduced-pom.xml
 pom.xml.next
