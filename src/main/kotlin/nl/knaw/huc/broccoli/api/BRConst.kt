@@ -1,4 +1,5 @@
 package nl.knaw.huc.broccoli.api
 
-class BRConst {
+object BRConst {
+    const val APP_NAME = "Broccoli"
 }

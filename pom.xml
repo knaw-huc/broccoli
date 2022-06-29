@@ -12,7 +12,7 @@
     <name>Broccoli</name>
 
     <properties>
-        <mainClass>nl.knaw.huc.broccoli.BroccoliApplicationKt</mainClass>
+        <mainClass>nl.knaw.huc.broccoli.BroccoliApplication</mainClass>
         <!-- Timestamp settings for use in properties file -->
         <maven.build.timestamp.format>yyyy-MM-dd'T'HH:mm:ss'Z'</maven.build.timestamp.format>
 
