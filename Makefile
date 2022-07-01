@@ -1,34 +1,19 @@
+NAME := broccoli
+VER  := $(shell mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+JAR  := target/$(NAME)-$(VER).jar
+TAG  := $(NAME):$(VER)
+
 all: help
 
-TAG     := broccoli
-SOURCES := $(shell find src -type f)
-VERSION := $(shell cat .make/.version)
-TARGET  := target/broccoli-$(VERSION).jar
-
-.make:
-	mkdir -p .make
-
-.make/.version: .make pom.xml
-	mvn help:evaluate -Dexpression=project.version -q -DforceStdout > $@
-
-$(TARGET): .make/.version $(SOURCES) pom.xml
+$(JAR): $(shell find src -type f) pom.xml
 	mvn package
 
 .PHONY: build
-build: $(TARGET)
+build: $(JAR)
 
 .PHONY: run-server
-run-server: build
-	java -jar $(TARGET) server config.yml
-
-.make/.push: $(TARGET) k8s/broccoli-server/Dockerfile
-	docker build -t $(TAG):$(VERSION) --platform=linux/amd64 -f k8s/broccoli-server/Dockerfile .
-	docker tag $(TAG):$(VERSION) registry.diginfra.net/tt/$(TAG):$(VERSION)
-	docker push registry.diginfra.net/tt/$(TAG):$(VERSION)
-	@touch $@
-
-.PHONY: push
-push: .make/.push
+run-server: $(JAR)
+	java -jar $(JAR) server config.yml
 
 .PHONY: clean
 clean:
@@ -38,6 +23,18 @@ clean:
 .PHONY: version-update
 version-update:
 	mvn versions:set && mvn versions:commit
+
+.make:
+	mkdir -p .make
+
+.make/.push: .make $(JAR) k8s/broccoli-server/Dockerfile
+	docker build --tag $(TAG) --platform=linux/amd64 --file k8s/broccoli-server/Dockerfile .
+	docker tag $(TAG) registry.diginfra.net/tt/$(TAG)
+	docker push registry.diginfra.net/tt/$(TAG)
+	@touch $@
+
+.PHONY: push
+push: .make/.push
 
 .PHONY: help
 help:
