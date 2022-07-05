@@ -11,6 +11,7 @@ import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.Constants.APP_NAME
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.resources.AboutResource
+import nl.knaw.huc.broccoli.resources.HomePageResource
 import org.slf4j.LoggerFactory
 
 class BroccoliApplication : Application<BroccoliConfiguration>() {
@@ -43,6 +44,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         val appVersion = javaClass.getPackage().implementationVersion
         environment.jersey().apply {
             register(AboutResource(configuration, name, appVersion))
+            register(HomePageResource())
         }
 
         log.info(
