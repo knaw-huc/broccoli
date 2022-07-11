@@ -27,14 +27,16 @@ class SearchResource {
     }
 
     private fun buildResult(canvasId: String): AnnoTextResult {
-        val anno = loadMockAnno()
+        val allAnnos = loadMockAnnotations()
 
-        @Suppress("UNCHECKED_CAST")
-        val text = getMockedText(anno as List<Map<String, Any>>)
+        val requestedAnnos =
+            allAnnos.filter { !setOf("line", "column", "textregion").contains(getBodyValue(it)) }
+
+        val text = getMockedText(allAnnos)
 
         return AnnoTextResult(
             id = canvasId,
-            anno = anno,
+            anno = requestedAnnos,
             text = text
         )
     }
@@ -74,8 +76,8 @@ class SearchResource {
         return if (body is HashMap<*, *>) body["value"] as String else null
     }
 
-    private fun loadMockAnno(): List<Any> {
-        val mockedAnnos = ArrayList<Any>()
+    private fun loadMockAnnotations(): List<Map<String, Any>> {
+        val mockedAnnos = ArrayList<Map<String,Any>>()
         for (i in 0..3) {
             val reader = ResourceLoader.asReader("mock/anno-page-$i.json")
             val annoPage = JSON.parse(reader)
@@ -83,9 +85,9 @@ class SearchResource {
                 val items = annoPage["items"]
                 if (items is Array<*>) {
                     @Suppress("UNCHECKED_CAST")
-                    mockedAnnos.addAll(items as Array<Any>)
+                    items.forEach { if (it is Map<*,*>) mockedAnnos.add(it as Map<String, Any>) }
                 } else {
-                    log.info("AnnotationPage[\"items\"] not a list, skipping: $items.")
+                    log.info("AnnotationPage[\"items\"] not a JSON array, skipping: $items.")
                 }
             }
         }
