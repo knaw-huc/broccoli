@@ -1,6 +1,7 @@
 package nl.knaw.huc.broccoli.resources
 
 import io.swagger.v3.oas.annotations.Operation
+import nl.knaw.huc.broccoli.service.ResourceLoader
 import java.io.InputStream
 import javax.ws.rs.GET
 import javax.ws.rs.Path
@@ -26,7 +27,7 @@ class HomePageResource {
     }
 
     private fun getIndexHtml(): InputStream? {
-        return Thread.currentThread().contextClassLoader.getResourceAsStream("index.html")
+        return ResourceLoader.asStream("index.html")
     }
 
     @GET
