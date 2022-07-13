@@ -102,7 +102,7 @@ class RepublicResource {
         private const val defaultVolume = "1728"
         private const val defaultOpening = "285"
 
-        private const val pimURL = "https://images.diginfra.net/api/pim/"
+        private const val pimURL = "https://images.diginfra.net/api/pim"
         private const val imageSet = "67533019-4ca0-4b08-b87e-fd5590e7a077"
         private const val mockedManifestURL = "$pimURL/imageset/$imageSet/manifest"
         private const val canvasId = "75718d0a-5441-41fe-94c1-db773e0848e7"
