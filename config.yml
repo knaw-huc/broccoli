@@ -5,7 +5,7 @@ server:
 
 externalBaseUrl: ${BR_EXTERNAL_BASE_URL:-http://localhost:8080}
 
-
+iiifUrl: https://images.diginfra.net/api/pim
 
 logging:
   level: INFO

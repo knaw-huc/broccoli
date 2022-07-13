@@ -47,7 +47,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         environment.jersey().apply {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())
-            register(RepublicResource())
+            register(RepublicResource(configuration))
             register(RuntimeExceptionMapper())
         }
 

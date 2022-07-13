@@ -22,6 +22,11 @@ open class BroccoliConfiguration : Configuration() {
 
     @Valid
     @NotNull
+    @JsonProperty
+    var iiifUrl : String = ""
+
+    @Valid
+    @NotNull
     @JsonProperty("swagger")
     val swaggerBundleConfiguration = SwaggerBundleConfiguration().apply {
         resourcePackage = AboutResource::class.java.getPackage().name

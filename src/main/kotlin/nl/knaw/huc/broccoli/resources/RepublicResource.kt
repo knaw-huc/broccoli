@@ -5,6 +5,7 @@ import nl.knaw.huc.broccoli.api.AnnoTextResult
 import nl.knaw.huc.broccoli.api.IIIFContext
 import nl.knaw.huc.broccoli.api.Request
 import nl.knaw.huc.broccoli.api.ResourcePaths.REPUBLIC
+import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.service.ResourceLoader
 import org.eclipse.jetty.util.ajax.JSON
 import org.slf4j.LoggerFactory
@@ -14,7 +15,7 @@ import javax.ws.rs.core.Response
 
 @Path(REPUBLIC)
 @Produces(MediaType.APPLICATION_JSON)
-class RepublicResource {
+class RepublicResource(private val configuration: BroccoliConfiguration) {
     private val log = LoggerFactory.getLogger(javaClass)
 
     @GET
@@ -32,18 +33,20 @@ class RepublicResource {
     }
 
     private fun buildResult(volume: String, opening: Int): AnnoTextResult {
-        val mockedAnnotations = loadMockAnnotations()
 
+        val mockedAnnotations = loadMockAnnotations()
         return AnnoTextResult(
             request = Request(volume, opening),
             anno = mockedAnnotations.filter { !setOf("line", "column", "textregion").contains(getBodyValue(it)) },
             text = getMockedText(mockedAnnotations),
             iiif = IIIFContext(
-                manifest = mockedManifestURL,
+                manifest = manifestUrl(),
                 canvasId = mockedCanvasId
             )
         )
     }
+
+    private fun manifestUrl(): String = "${configuration.iiifUrl}/imageset/$imageSet/manifest"
 
     private fun getMockedText(annos: List<Map<String, Any>>): List<String> {
         val anno = annos[0]
@@ -104,7 +107,7 @@ class RepublicResource {
 
         private const val pimURL = "https://images.diginfra.net/api/pim"
         private const val imageSet = "67533019-4ca0-4b08-b87e-fd5590e7a077"
-        private const val mockedManifestURL = "$pimURL/imageset/$imageSet/manifest"
+//        private const val mockedManifestURL = "$pimURL/imageset/$imageSet/manifest"
         private const val canvasId = "75718d0a-5441-41fe-94c1-db773e0848e7"
         private const val mockedCanvasId = "$pimURL/iiif/$imageSet/canvas/$canvasId"
     }
