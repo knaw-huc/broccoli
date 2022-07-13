@@ -3,6 +3,7 @@ package nl.knaw.huc.broccoli
 import `in`.vectorpro.dropwizard.swagger.SwaggerBundle
 import `in`.vectorpro.dropwizard.swagger.SwaggerBundleConfiguration
 import io.dropwizard.Application
+import io.dropwizard.client.JerseyClientBuilder
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor
 import io.dropwizard.configuration.SubstitutingSourceProvider
 import io.dropwizard.setup.Bootstrap
@@ -44,10 +45,15 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         )
 
         val appVersion = javaClass.getPackage().implementationVersion
+
+        val client = JerseyClientBuilder(environment)
+            .using(configuration.jerseyClient)
+            .build(name)
+
         environment.jersey().apply {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())
-            register(RepublicResource(configuration))
+            register(RepublicResource(configuration, client))
             register(RuntimeExceptionMapper())
         }
 

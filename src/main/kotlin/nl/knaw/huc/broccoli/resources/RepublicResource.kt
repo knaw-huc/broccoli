@@ -1,5 +1,6 @@
 package nl.knaw.huc.broccoli.resources
 
+import com.jayway.jsonpath.JsonPath
 import io.swagger.v3.oas.annotations.Operation
 import nl.knaw.huc.broccoli.api.AnnoTextResult
 import nl.knaw.huc.broccoli.api.IIIFContext
@@ -10,29 +11,50 @@ import nl.knaw.huc.broccoli.service.ResourceLoader
 import org.eclipse.jetty.util.ajax.JSON
 import org.slf4j.LoggerFactory
 import javax.ws.rs.*
+import javax.ws.rs.client.Client
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.core.Response
 
 @Path(REPUBLIC)
 @Produces(MediaType.APPLICATION_JSON)
-class RepublicResource(private val configuration: BroccoliConfiguration) {
+class RepublicResource(private val configuration: BroccoliConfiguration, private val client: Client) {
     private val log = LoggerFactory.getLogger(javaClass)
 
     @GET
     @Path("v0")
     @Operation(description = "Get text, annotations and iiif details for a given volume and opening")
-    fun getByCanvasId(
-        @DefaultValue(defaultVolume) @QueryParam("volume") volume: String,
-        @DefaultValue(defaultOpening) @QueryParam("opening") opening: Int
+    fun getVolumeOpening(
+        @QueryParam("volume") _volume: String?,
+        @QueryParam("opening") _opening: Int?
     ): Response {
-        if (opening <= 0) {
-            throw BadRequestException("Query parameter 'opening' must be >= 1")
-        }
+        val volume = _volume ?: configuration.republic.defaultVolume
+        val opening = _opening ?: configuration.republic.defaultOpening
+
         log.info("volume: $volume, opening: $opening")
         return Response.ok(buildResult(volume, opening)).build()
     }
 
     private fun buildResult(volume: String, opening: Int): AnnoTextResult {
+        val imageSet = configuration.republic.volumes.find { it.name == volume }
+            ?.imageset
+            ?: throw NotFoundException("volume $volume not found in republic configuration")
+
+        val target = client
+            .target(configuration.iiifUrl)
+            .path("imageset").path(imageSet).path("manifest")
+        val manifest = target.uri.toString()
+
+        val response = target.request().get()
+
+        if (response.status != 200) {
+            throw RuntimeException("502 Bad Gateway: upstream iiif ${configuration.iiifUrl} failed")
+        }
+
+        val json = JsonPath.parse(response.readEntity(String::class.java))
+
+        val canvasIndex = opening - 1
+        val canvasId = json.read<String>("\$.sequences[0].canvases[$canvasIndex].@id")
+        log.info("id: $canvasId")
 
         val mockedAnnotations = loadMockAnnotations()
         return AnnoTextResult(
@@ -40,13 +62,11 @@ class RepublicResource(private val configuration: BroccoliConfiguration) {
             anno = mockedAnnotations.filter { !setOf("line", "column", "textregion").contains(getBodyValue(it)) },
             text = getMockedText(mockedAnnotations),
             iiif = IIIFContext(
-                manifest = manifestUrl(),
-                canvasId = mockedCanvasId
+                manifest = manifest,
+                canvasId = canvasId
             )
         )
     }
-
-    private fun manifestUrl(): String = "${configuration.iiifUrl}/imageset/$imageSet/manifest"
 
     private fun getMockedText(annos: List<Map<String, Any>>): List<String> {
         val anno = annos[0]
@@ -99,16 +119,5 @@ class RepublicResource(private val configuration: BroccoliConfiguration) {
             }
         }
         return mockedAnnos
-    }
-
-    companion object {
-        private const val defaultVolume = "1728"
-        private const val defaultOpening = "285"
-
-        private const val pimURL = "https://images.diginfra.net/api/pim"
-        private const val imageSet = "67533019-4ca0-4b08-b87e-fd5590e7a077"
-//        private const val mockedManifestURL = "$pimURL/imageset/$imageSet/manifest"
-        private const val canvasId = "75718d0a-5441-41fe-94c1-db773e0848e7"
-        private const val mockedCanvasId = "$pimURL/iiif/$imageSet/canvas/$canvasId"
     }
 }

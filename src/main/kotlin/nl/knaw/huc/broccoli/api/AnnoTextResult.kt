@@ -3,7 +3,7 @@ package nl.knaw.huc.broccoli.api
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonPropertyOrder
 
-@JsonPropertyOrder("type", "request", "anno", "text", "iiif")
+@JsonPropertyOrder("type", "request", "iiif", "anno", "text")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class AnnoTextResult(
     val type: String = "AnnoTextResult",

@@ -246,6 +246,11 @@
         </dependency>
 
         <dependency>
+            <groupId>io.dropwizard</groupId>
+            <artifactId>dropwizard-client</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>in.vectorpro.dropwizard</groupId>
             <artifactId>dropwizard-swagger</artifactId>
             <version>${dropwizard-swagger.version}</version>
