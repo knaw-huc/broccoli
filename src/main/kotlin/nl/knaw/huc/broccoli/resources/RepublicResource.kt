@@ -37,9 +37,13 @@ class RepublicResource(private val configuration: BroccoliConfiguration, private
     }
 
     private fun buildResult(volume: String, opening: Int): AnnoTextResult {
+        if (opening < 1) {
+            throw NotFoundException("Opening $opening not found, count starts at 1")
+        }
+
         val imageSet = configuration.republic.volumes.find { it.name == volume }
             ?.imageset
-            ?: throw NotFoundException("volume $volume not found in republic configuration")
+            ?: throw NotFoundException("Volume $volume not found in republic configuration")
 
         val target = client
             .target(configuration.iiifUrl)
