@@ -31,7 +31,9 @@ class RepublicResource(private val configuration: BroccoliConfiguration, private
         val opening = _opening ?: configuration.republic.defaultOpening
 
         log.info("volume: $volume, opening: $opening")
-        return Response.ok(buildResult(volume, opening)).build()
+        return Response.ok(buildResult(volume, opening))
+            .header("Access-Control-Allow-Origin", "*")
+            .build()
     }
 
     private fun buildResult(volume: String, opening: Int): AnnoTextResult {
