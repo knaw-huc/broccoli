@@ -8,7 +8,15 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder
 data class AnnoTextResult(
     val id: String,
     val anno: List<Any>,
-    val text: List<String>
+    val text: List<String>,
+    val iiif: IIIFContext
 ) {
     val type: String = "AnnoTextResult"
 }
+
+@JsonPropertyOrder("manifest", "canvasId")
+@JsonInclude(JsonInclude.Include.NON_NULL)
+data class IIIFContext(
+    val manifest: String,
+    val canvasId: String
+)

@@ -2,6 +2,7 @@ package nl.knaw.huc.broccoli.resources
 
 import io.swagger.v3.oas.annotations.Operation
 import nl.knaw.huc.broccoli.api.AnnoTextResult
+import nl.knaw.huc.broccoli.api.IIIFContext
 import nl.knaw.huc.broccoli.api.ResourcePaths.SEARCH
 import nl.knaw.huc.broccoli.service.ResourceLoader
 import org.eclipse.jetty.util.ajax.JSON
@@ -18,6 +19,9 @@ import javax.ws.rs.core.Response
 class SearchResource {
     private val log = LoggerFactory.getLogger(javaClass)
 
+    private val mockedManifestURL = "https://images.diginfra.net/api/pim/imageset/67533019-4ca0-4b08-b87e-fd5590e7a077/manifest"
+    private val mockedCanvasId = "https://images.diginfra.net/api/pim/iiif/67533019-4ca0-4b08-b87e-fd5590e7a077/canvas/75718d0a-5441-41fe-94c1-db773e0848e7"
+
     @GET
     @Path("canvas/{canvasId}")
     @Operation(description = "Get text and annotations for a given canvas id")
@@ -27,17 +31,16 @@ class SearchResource {
     }
 
     private fun buildResult(canvasId: String): AnnoTextResult {
-        val allAnnos = loadMockAnnotations()
-
-        val requestedAnnos =
-            allAnnos.filter { !setOf("line", "column", "textregion").contains(getBodyValue(it)) }
-
-        val text = getMockedText(allAnnos)
+        val mockedAnnotations = loadMockAnnotations()
 
         return AnnoTextResult(
             id = canvasId,
-            anno = requestedAnnos,
-            text = text
+            anno = mockedAnnotations.filter { !setOf("line", "column", "textregion").contains(getBodyValue(it)) },
+            text = getMockedText(mockedAnnotations),
+            iiif = IIIFContext(
+                manifest = mockedManifestURL,
+                canvasId = mockedCanvasId
+            )
         )
     }
 
