@@ -5,6 +5,8 @@ server:
 
 externalBaseUrl: ${BR_EXTERNAL_BASE_URL:-http://localhost:8080}
 
+
+
 logging:
   level: INFO
   loggers:
