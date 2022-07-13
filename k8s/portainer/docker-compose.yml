@@ -1,0 +1,23 @@
+version: '2'
+
+services:
+  broccoli_server:
+    container_name: broccoli_server
+    environment:
+      - VIRTUAL_HOST=broccoli.tt.di.huc.knaw.nl
+      - VIRTUAL_PORT=8080
+      - BR_EXTERNAL_BASE_URL=https://broccoli.tt.di.huc.knaw.nl
+    expose:
+      - 8080
+    image: registry.diginfra.net/tt/broccoli:0.1.0
+    networks:
+      - broccoli_network
+      - nginxproxynetwork
+    restart: unless-stopped
+    tty: true
+
+networks:
+  broccoli_network:
+  nginxproxynetwork:
+    external:
+      name: nginxproxynetwork
