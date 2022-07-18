@@ -38,7 +38,7 @@ class RepublicResource(private val configuration: BroccoliConfiguration, private
 
     private fun buildResult(volume: String, opening: Int): AnnoTextResult {
         if (opening < 1) {
-            throw NotFoundException("Opening $opening not found, count starts at 1")
+            throw BadRequestException("Opening count starts at 1 (but got: $opening)")
         }
 
         val imageSet = configuration.republic.volumes.find { it.name == volume }
@@ -51,6 +51,7 @@ class RepublicResource(private val configuration: BroccoliConfiguration, private
         val manifest = target.uri.toString()
 
         val response = target.request().get()
+        log.info("iiif result: $response")
 
         if (response.status != 200) {
             throw RuntimeException("502 Bad Gateway: upstream iiif ${configuration.iiifUrl} failed")
