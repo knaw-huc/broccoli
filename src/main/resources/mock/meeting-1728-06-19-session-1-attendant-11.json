@@ -2,7 +2,7 @@
   "request": {
     "volume": "1728",
     "opening": 285,
-    "body.id": "urn:example:republic:meeting-1728-06-19-session-1-attendant-11"
+    "bodyId": "urn:example:republic:meeting-1728-06-19-session-1-attendant-11"
   },
   "start":  {
     "line": 14,
