@@ -111,7 +111,7 @@ class RepublicResource(private val configuration: BroccoliConfiguration, private
 
         val reader = ResourceLoader.asReader("mock/vol_1728-opening_285.json")
         val json = JSON.parse(reader)
-        log.info("json: $json")
+        log.info("json: ${JSON.toString(json)}")
         if (json is Array<*>) {
             for (line in json) {
                 if (line is String) {
