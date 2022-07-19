@@ -44,7 +44,7 @@ class BroccoliConfiguration : Configuration() {
     @Valid
     @NotNull
     @JsonProperty
-    var jerseyClient: JerseyClientConfiguration? = JerseyClientConfiguration()
+    var jerseyClient: JerseyClientConfiguration = JerseyClientConfiguration()
 
     @Valid
     @NotNull

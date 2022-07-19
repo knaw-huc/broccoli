@@ -8,13 +8,13 @@ import io.dropwizard.configuration.EnvironmentVariableSubstitutor
 import io.dropwizard.configuration.SubstitutingSourceProvider
 import io.dropwizard.setup.Bootstrap
 import io.dropwizard.setup.Environment
-import io.dropwizard.util.Duration
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.Constants.APP_NAME
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
 import nl.knaw.huc.broccoli.resources.RepublicResource
+import org.glassfish.jersey.client.ClientProperties.CONNECT_TIMEOUT
 import org.glassfish.jersey.client.ClientProperties.READ_TIMEOUT
 import org.slf4j.LoggerFactory
 
@@ -51,8 +51,10 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             .using(configuration.jerseyClient)
             .build(name)
 
-        client.property(READ_TIMEOUT, Duration.seconds(10))
-        log.info("client.timeout (after setting): ${client.configuration.getProperty(READ_TIMEOUT)}")
+        client.property(READ_TIMEOUT, 0)
+        client.property(CONNECT_TIMEOUT, 0)
+        log.info("client.readTimeout (after setting): ${client.configuration.getProperty(READ_TIMEOUT)}")
+        log.info("client.connectTimeout (after setting): ${client.configuration.getProperty(CONNECT_TIMEOUT)}")
 
         environment.jersey().apply {
             register(AboutResource(configuration, name, appVersion))
