@@ -13,13 +13,6 @@ data class AnnoTextResult(
     val iiif: IIIFContext
 )
 
-@JsonPropertyOrder("volume", "page")
-@JsonInclude(JsonInclude.Include.NON_NULL)
-data class Request(
-    val volume: String,
-    val opening: Int
-)
-
 @JsonPropertyOrder("manifest", "canvasId")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class IIIFContext(

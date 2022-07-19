@@ -1,7 +1,9 @@
 package nl.knaw.huc.broccoli.resources
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.jayway.jsonpath.JsonPath
 import io.swagger.v3.oas.annotations.Operation
+import nl.knaw.huc.broccoli.api.AnnoTextBody
 import nl.knaw.huc.broccoli.api.AnnoTextResult
 import nl.knaw.huc.broccoli.api.IIIFContext
 import nl.knaw.huc.broccoli.api.Request
@@ -31,8 +33,20 @@ class RepublicResource(private val configuration: BroccoliConfiguration, private
         val volume = _volume ?: configuration.republic.defaultVolume
         val opening = _opening ?: configuration.republic.defaultOpening
 
-        log.info("volume: $volume, opening: $opening")
-        return Response.ok(buildResult(volume, opening))
+        log.info("volume: $volume, opening: $opening, bodyId: $_bodyId")
+
+        val builder = if (_bodyId == null) {
+            Response.ok(buildResult(volume, opening))
+        } else {
+            val bodyId = _bodyId.removePrefix("urn:example:republic:")
+            val path = "mock/$bodyId.json"
+            log.info("path: $path")
+            val reader = ResourceLoader.asStream(path)
+            log.info("reader: $reader")
+            val body: AnnoTextBody = jacksonObjectMapper().readValue(reader, AnnoTextBody::class.java)
+            Response.ok(body)
+        }
+        return builder
             .header("Access-Control-Allow-Origin", "*")
             .build()
     }
@@ -66,7 +80,7 @@ class RepublicResource(private val configuration: BroccoliConfiguration, private
 
         val mockedAnnotations = loadMockAnnotations()
         return AnnoTextResult(
-            request = Request(volume, opening),
+            request = Request(volume, opening, null),
             anno = mockedAnnotations.filter { !setOf("line", "column", "textregion").contains(getBodyValue(it)) },
             text = getMockedText(mockedAnnotations),
             iiif = IIIFContext(
