@@ -51,7 +51,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             .using(configuration.jerseyClient)
             .build(name)
 
-        client.property(READ_TIMEOUT, Duration.seconds(1))
+        client.property(READ_TIMEOUT, Duration.seconds(10))
         log.info("client.timeout (after setting): ${client.configuration.getProperty(READ_TIMEOUT)}")
 
         environment.jersey().apply {

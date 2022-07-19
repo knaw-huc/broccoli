@@ -11,6 +11,7 @@ import nl.knaw.huc.broccoli.api.ResourcePaths.REPUBLIC
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.service.ResourceLoader
 import org.eclipse.jetty.util.ajax.JSON
+import org.glassfish.jersey.client.ClientProperties
 import org.slf4j.LoggerFactory
 import javax.ws.rs.*
 import javax.ws.rs.client.Client
@@ -60,6 +61,7 @@ class RepublicResource(private val configuration: BroccoliConfiguration, private
             ?.imageset
             ?: throw NotFoundException("Volume $volume not found in republic configuration")
 
+        log.info("client.timeout (before call): ${client.configuration.getProperty(ClientProperties.READ_TIMEOUT)}")
         val target = client
             .target(configuration.iiifUrl)
             .path("imageset").path(imageSet).path("manifest")
