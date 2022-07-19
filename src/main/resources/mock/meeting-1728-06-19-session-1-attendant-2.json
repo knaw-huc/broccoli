@@ -1,0 +1,21 @@
+{
+  "request": {
+    "volume": "1728",
+    "opening": 285,
+    "body.id": "urn:example:republic:meeting-1728-06-19-session-1-attendant-2"
+  },
+  "start":  {
+    "line": 8,
+    "offset": 32,
+    "len": 7
+  },
+  "end": {
+    "line": 9,
+    "offset": 2,
+    "len": 3
+  },
+  "text": [
+    "Van Walenaer . van Blocklandt ‚ Veckho-",
+    "ven , Spierinch ‚ Raadtpenfionaris van"
+  ]
+}

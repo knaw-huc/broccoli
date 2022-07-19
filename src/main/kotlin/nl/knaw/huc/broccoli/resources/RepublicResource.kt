@@ -25,7 +25,8 @@ class RepublicResource(private val configuration: BroccoliConfiguration, private
     @Operation(description = "Get text, annotations and iiif details for a given volume and opening")
     fun getVolumeOpening(
         @QueryParam("volume") _volume: String?,
-        @QueryParam("opening") _opening: Int?
+        @QueryParam("opening") _opening: Int?,
+        @QueryParam("bodyId") _bodyId: String?
     ): Response {
         val volume = _volume ?: configuration.republic.defaultVolume
         val opening = _opening ?: configuration.republic.defaultOpening
@@ -92,7 +93,7 @@ class RepublicResource(private val configuration: BroccoliConfiguration, private
 
         val mockedText = ArrayList<String>()
 
-        val reader = ResourceLoader.asReader("mock/text-lines.json")
+        val reader = ResourceLoader.asReader("mock/vol_1728-opening_285.json")
         val json = JSON.parse(reader)
         log.info("json: $json")
         if (json is Array<*>) {

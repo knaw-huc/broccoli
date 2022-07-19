@@ -1,0 +1,26 @@
+{
+  "request": {
+    "volume": "1728",
+    "opening": 285,
+    "body.id": "urn:example:republic:meeting-1728-06-19-session-1-resolution-3"
+  },
+  "start":  {
+    "line": 40,
+    "offset": 0,
+    "len": 34
+  },
+  "end": {
+    "line": 46,
+    "offset": 26,
+    "len": 27
+  },
+  "text": [
+    "\\Ntfanoen een Miffive van den Ref-",
+    "LJ dent Rzmpf , gefchreven te Dresden",
+    "den twaalfden defer loopende maandr,",
+    "geaddreffeert aan den Griffier Fagel, hou-",
+    "WAAR of",
+    "dende advertentie.",
+    "geen refolutie is gevallen."
+  ]
+}

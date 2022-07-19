@@ -1,0 +1,20 @@
+{
+  "request": {
+    "volume": "1728",
+    "opening": 285,
+    "body.id": "urn:example:republic:meeting-1728-06-19-session-1-attendant-6"
+  },
+  "start":  {
+    "line": 5,
+    "offset": 25,
+    "len": 7
+  },
+  "end": {
+    "line": 5,
+    "offset": 32,
+    "len": 7
+  },
+  "text": [
+    "De Heeren Van Heuckelom, Coulman, met"
+  ]
+}
