@@ -69,7 +69,9 @@ class RepublicResource(private val configuration: BroccoliConfiguration, private
         log.info("iiif result: $response")
 
         if (response.status != 200) {
-            throw RuntimeException("502 Bad Gateway: upstream iiif ${configuration.iiifUrl} failed")
+            val msg = "Fetching $manifest failed: ${response.status} ${response.statusInfo}"
+            log.info("Upstream failure: $msg")
+            throw WebApplicationException(msg)
         }
 
         val json = JsonPath.parse(response.readEntity(String::class.java))
@@ -79,6 +81,7 @@ class RepublicResource(private val configuration: BroccoliConfiguration, private
         try {
             canvasId = json.read("\$.sequences[0].canvases[$canvasIndex].@id")
         } catch (e: InvalidPathException) {
+            log.info("Failed to read canvasId: $e")
             throw NotFoundException("Opening $opening not found in manifest")
         }
         log.info("id: $canvasId")
