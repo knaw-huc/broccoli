@@ -10,6 +10,7 @@ import nl.knaw.huc.broccoli.api.IIIFContext
 import nl.knaw.huc.broccoli.api.Request
 import nl.knaw.huc.broccoli.api.ResourcePaths.REPUBLIC
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
+import nl.knaw.huc.broccoli.service.IIIFStore
 import nl.knaw.huc.broccoli.service.ResourceLoader
 import org.eclipse.jetty.util.ajax.JSON
 import org.glassfish.jersey.client.ClientProperties
@@ -21,7 +22,11 @@ import javax.ws.rs.core.Response
 
 @Path(REPUBLIC)
 @Produces(MediaType.APPLICATION_JSON)
-class RepublicResource(private val configuration: BroccoliConfiguration, private val client: Client) {
+class RepublicResource(
+    private val configuration: BroccoliConfiguration,
+    private val iiifStore: IIIFStore,
+    private val client: Client
+) {
     private val log = LoggerFactory.getLogger(javaClass)
 
     @GET
@@ -65,19 +70,22 @@ class RepublicResource(private val configuration: BroccoliConfiguration, private
             .path("imageset").path(imageSet).path("manifest")
         val manifest = target.uri.toString()
 
-        val response = target.request().get()
-        log.info("iiif result: $response")
+        val data = iiifStore.getCanvasId(volume, opening)
 
-        if (response.status != 200) {
-            val msg = "Fetching $manifest failed: ${response.status} ${response.statusInfo}"
-            log.info("Upstream failure: $msg")
-            throw WebApplicationException(msg)
-        }
+//        val response = target.request().get()
+//        log.info("iiif result: $response")
+//
+//        if (response.status != 200) {
+//            val msg = "Fetching $manifest failed: ${response.status} ${response.statusInfo}"
+//            log.info("Upstream failure: $msg")
+//            throw WebApplicationException(msg)
+//        }
+//        data = response.readEntity(String::class.java)
 
-        val json = JsonPath.parse(response.readEntity(String::class.java))
+        val json = JsonPath.parse(data)
 
         val canvasIndex = opening - 1
-        val canvasId : String
+        val canvasId: String
         try {
             canvasId = json.read("\$.sequences[0].canvases[$canvasIndex].@id")
         } catch (e: InvalidPathException) {

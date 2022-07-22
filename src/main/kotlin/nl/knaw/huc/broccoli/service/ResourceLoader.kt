@@ -12,4 +12,8 @@ object ResourceLoader {
     fun asReader(path: String): Reader? {
         return asStream(path)?.let { InputStreamReader(it) }
     }
+
+    fun asText(path: String): String? {
+        return Thread.currentThread().contextClassLoader.getResource(path)?.readText()
+    }
 }

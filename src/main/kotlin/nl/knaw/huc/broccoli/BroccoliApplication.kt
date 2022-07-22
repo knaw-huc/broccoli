@@ -14,6 +14,8 @@ import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
 import nl.knaw.huc.broccoli.resources.RepublicResource
+import nl.knaw.huc.broccoli.service.IIIFStore
+import nl.knaw.huc.broccoli.service.ResourceLoader
 import org.eclipse.jetty.servlets.CrossOriginFilter
 import org.eclipse.jetty.servlets.CrossOriginFilter.*
 import org.glassfish.jersey.client.ClientProperties.CONNECT_TIMEOUT
@@ -64,7 +66,12 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         environment.jersey().apply {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())
-            register(RepublicResource(configuration, client))
+            val iiifStore = object: IIIFStore {
+                override fun getCanvasId(volume: String, opening: Int): String {
+                    return ResourceLoader.asText("mock/manifest-1728.json")!!
+                }
+            }
+            register(RepublicResource(configuration, iiifStore, client))
 //            register(RuntimeExceptionMapper())
         }
 
