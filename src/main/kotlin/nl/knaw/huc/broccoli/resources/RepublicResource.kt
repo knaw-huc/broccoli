@@ -1,6 +1,7 @@
 package nl.knaw.huc.broccoli.resources
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.jayway.jsonpath.InvalidPathException
 import com.jayway.jsonpath.JsonPath
 import io.swagger.v3.oas.annotations.Operation
 import nl.knaw.huc.broccoli.api.AnnoTextBody
@@ -74,7 +75,12 @@ class RepublicResource(private val configuration: BroccoliConfiguration, private
         val json = JsonPath.parse(response.readEntity(String::class.java))
 
         val canvasIndex = opening - 1
-        val canvasId = json.read<String>("\$.sequences[0].canvases[$canvasIndex].@id")
+        val canvasId : String
+        try {
+            canvasId = json.read("\$.sequences[0].canvases[$canvasIndex].@id")
+        } catch (e: InvalidPathException) {
+            throw NotFoundException("Opening $opening not found in manifest")
+        }
         log.info("id: $canvasId")
 
         val mockedAnnotations = loadMockAnnotations()
