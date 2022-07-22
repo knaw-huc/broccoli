@@ -36,20 +36,17 @@ class RepublicResource(private val configuration: BroccoliConfiguration, private
 
         log.info("volume: $volume, opening: $opening, bodyId: $_bodyId")
 
-        val builder = if (_bodyId == null) {
-            Response.ok(buildResult(volume, opening))
-        } else {
-            val bodyId = _bodyId.removePrefix("urn:example:republic:")
-            val path = "mock/$bodyId.json"
-            log.info("path: $path")
-            val reader = ResourceLoader.asStream(path)
-            log.info("reader: $reader")
-            val body: AnnoTextBody = jacksonObjectMapper().readValue(reader, AnnoTextBody::class.java)
-            Response.ok(body)
+        if (_bodyId == null) {
+            return Response.ok(buildResult(volume, opening)).build()
         }
-        return builder
-            .header("Access-Control-Allow-Origin", "*")
-            .build()
+
+        val bodyId = _bodyId.removePrefix("urn:example:republic:")
+        val path = "mock/$bodyId.json"
+        log.info("path: $path")
+        val reader = ResourceLoader.asStream(path)
+        log.info("reader: $reader")
+        val body: AnnoTextBody = jacksonObjectMapper().readValue(reader, AnnoTextBody::class.java)
+        return Response.ok(body).build()
     }
 
     private fun buildResult(volume: String, opening: Int): AnnoTextResult {

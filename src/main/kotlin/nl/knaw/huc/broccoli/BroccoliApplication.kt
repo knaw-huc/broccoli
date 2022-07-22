@@ -14,9 +14,14 @@ import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
 import nl.knaw.huc.broccoli.resources.RepublicResource
+import org.eclipse.jetty.servlets.CrossOriginFilter
+import org.eclipse.jetty.servlets.CrossOriginFilter.*
 import org.glassfish.jersey.client.ClientProperties.CONNECT_TIMEOUT
 import org.glassfish.jersey.client.ClientProperties.READ_TIMEOUT
 import org.slf4j.LoggerFactory
+import java.util.*
+import javax.servlet.DispatcherType
+
 
 class BroccoliApplication : Application<BroccoliConfiguration>() {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -61,6 +66,19 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             register(HomePageResource())
             register(RepublicResource(configuration, client))
 //            register(RuntimeExceptionMapper())
+        }
+
+        environment.servlets().apply {
+            // Enable CORS headers
+            val cors = addFilter("CORS", CrossOriginFilter::class.java)
+
+            // Configure CORS parameters
+            cors.setInitParameter(ALLOWED_ORIGINS_PARAM, "*")
+            cors.setInitParameter(ALLOWED_HEADERS_PARAM, "X-Requested-With,Content-Type,Accept,Origin")
+            cors.setInitParameter(ALLOWED_METHODS_PARAM, "OPTIONS,GET,PUT,POST,DELETE,HEAD")
+
+            // Add URL mapping
+            cors.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType::class.java), true, "/*")
         }
 
         log.info(
