@@ -1,8 +1,6 @@
 package nl.knaw.huc.broccoli.resources
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.jayway.jsonpath.InvalidPathException
-import com.jayway.jsonpath.JsonPath
 import io.swagger.v3.oas.annotations.Operation
 import nl.knaw.huc.broccoli.api.AnnoTextBody
 import nl.knaw.huc.broccoli.api.AnnoTextResult
@@ -50,12 +48,11 @@ class RepublicResource(
         val path = "mock/$bodyId.json"
         log.info("path: $path")
         val reader = ResourceLoader.asStream(path)
-        log.info("reader: $reader")
-        val body: AnnoTextBody = jacksonObjectMapper().readValue(reader, AnnoTextBody::class.java)
+        val body = jacksonObjectMapper().readValue(reader, AnnoTextBody::class.java)
         return Response.ok(body).build()
     }
 
-    private fun buildResult(volume: String, opening: Int): AnnoTextResult {
+    private fun buildResult(volume: String, opening: Int, bodyId: String? = null): AnnoTextResult {
         if (opening < 1) {
             throw BadRequestException("Opening count starts at 1 (but got: $opening)")
         }
@@ -70,7 +67,7 @@ class RepublicResource(
             .path("imageset").path(imageSet).path("manifest")
         val manifest = target.uri.toString()
 
-        val data = iiifStore.getCanvasId(volume, opening)
+        val canvasId = iiifStore.getCanvasId(volume, opening)
 
 //        val response = target.request().get()
 //        log.info("iiif result: $response")
@@ -82,21 +79,9 @@ class RepublicResource(
 //        }
 //        data = response.readEntity(String::class.java)
 
-        val json = JsonPath.parse(data)
-
-        val canvasIndex = opening - 1
-        val canvasId: String
-        try {
-            canvasId = json.read("\$.sequences[0].canvases[$canvasIndex].@id")
-        } catch (e: InvalidPathException) {
-            log.info("Failed to read canvasId: $e")
-            throw NotFoundException("Opening $opening not found in manifest")
-        }
-        log.info("id: $canvasId")
-
         val mockedAnnotations = loadMockAnnotations()
         return AnnoTextResult(
-            request = Request(volume, opening, null),
+            request = Request(volume, opening, bodyId),
             anno = mockedAnnotations.filter { !setOf("line", "column", "textregion").contains(getBodyValue(it)) },
             text = getMockedText(mockedAnnotations),
             iiif = IIIFContext(

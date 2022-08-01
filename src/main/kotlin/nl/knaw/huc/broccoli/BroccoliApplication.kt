@@ -1,5 +1,6 @@
 package nl.knaw.huc.broccoli
 
+import com.jayway.jsonpath.JsonPath
 import `in`.vectorpro.dropwizard.swagger.SwaggerBundle
 import `in`.vectorpro.dropwizard.swagger.SwaggerBundleConfiguration
 import io.dropwizard.Application
@@ -23,6 +24,7 @@ import org.glassfish.jersey.client.ClientProperties.READ_TIMEOUT
 import org.slf4j.LoggerFactory
 import java.util.*
 import javax.servlet.DispatcherType
+import javax.ws.rs.NotFoundException
 
 
 class BroccoliApplication : Application<BroccoliConfiguration>() {
@@ -66,9 +68,18 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         environment.jersey().apply {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())
-            val iiifStore = object: IIIFStore {
+            val iiifStore = object : IIIFStore {
                 override fun getCanvasId(volume: String, opening: Int): String {
-                    return ResourceLoader.asText("mock/manifest-1728.json")!!
+                    try {
+                        val json = JsonPath.parse(ResourceLoader.asText("mock/manifest-1728.json"))
+                        val index = opening - 1
+                        val canvasId: String = json.read("\$.sequences[0].canvases[$index].@id")
+                        log.info("id: $canvasId")
+                        return canvasId
+                    } catch (e: Exception) {
+                        log.info("Failed to read canvasId: $e")
+                        throw NotFoundException("Opening $opening not found in manifest")
+                    }
                 }
             }
             register(RepublicResource(configuration, iiifStore, client))
