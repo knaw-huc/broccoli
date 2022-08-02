@@ -10,8 +10,7 @@ internal class MockIIIFStoreTest {
 
     @Test
     fun `mock store should return mocked content`() {
-        assertThat(sut.getCanvasId("_", 285))
-            .startsWith("https://images.diginfra.net/api/pim/iiif")
+        assertThat(sut.getCanvasId("_", 285)).startsWith("https://images.diginfra.net/api/pim/iiif")
     }
 
     @Test

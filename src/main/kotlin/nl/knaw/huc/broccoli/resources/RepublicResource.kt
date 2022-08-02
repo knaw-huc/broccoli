@@ -57,13 +57,13 @@ class RepublicResource(
             throw BadRequestException("Opening count starts at 1 (but got: $opening)")
         }
 
-        val imageSet = configuration.republic.volumes.find { it.name == volume }
-            ?.imageset
+        val volumeDetails = configuration.republic.volumes.find { it.name == volume }
             ?: throw NotFoundException("Volume $volume not found in republic configuration")
 
+        val imageSet = volumeDetails.imageset
         log.info("client.timeout (before call): ${client.configuration.getProperty(ClientProperties.READ_TIMEOUT)}")
         val target = client
-            .target(configuration.iiifUrl)
+            .target(configuration.iiifUri)
             .path("imageset").path(imageSet).path("manifest")
         val manifest = target.uri.toString()
 

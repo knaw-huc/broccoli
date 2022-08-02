@@ -62,6 +62,16 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         log.info("client.readTimeout (after setting): ${client.configuration.getProperty(READ_TIMEOUT)}")
         log.info("client.connectTimeout (after setting): ${client.configuration.getProperty(CONNECT_TIMEOUT)}")
 
+        log.info("using AnnoRepo located at: ${configuration.annoUri}")
+        log.info("using IIIFRepo located at: ${configuration.iiifUri}")
+        log.info("using TextRepo located at: ${configuration.textUri}")
+
+        val naPrefix = "NL-HaNA"
+        val naArchiefNr = configuration.republic.archiefNr
+        val naInvNr = configuration.republic.volumes[0].invNr
+        val opening = "%04d".format(configuration.republic.defaultOpening)
+        log.info("sample republic id: urn:republic:${naPrefix}_${naArchiefNr}_${naInvNr}_${opening}")
+
         environment.jersey().apply {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())

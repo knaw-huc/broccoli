@@ -5,7 +5,9 @@ server:
 
 externalBaseUrl: ${BR_EXTERNAL_BASE_URL:-http://localhost:8080}
 
-iiifUrl: https://images.diginfra.net/api/pim
+annoUri: https://annorepo.republic-caf.diginfra.org
+iiifUri: https://images.diginfra.net/api/pim
+textUri: https://textrepo.republic-caf.diginfra.org/api
 
 republic:
 #  na_prefix: NL-HaNA
@@ -13,10 +15,11 @@ republic:
 #  na_inventarisnummer: 3783
 #  na_opening 0285
 #  na_format: "{$na_prefix}_{$na_archiefnummer}_{$na_inventarisnummer}_{$opening}"
+  archiefNr: 1.01.02
   volumes:
     - name: 1728
+      invNr: 3783
       imageset: 67533019-4ca0-4b08-b87e-fd5590e7a077
-#      na_invnr: 3783
   defaultVolume: 1728
   defaultOpening: 0285
 

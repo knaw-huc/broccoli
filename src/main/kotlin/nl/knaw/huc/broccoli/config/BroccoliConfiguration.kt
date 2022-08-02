@@ -10,22 +10,22 @@ import javax.validation.Valid
 import javax.validation.constraints.Min
 import javax.validation.constraints.NotNull
 
-class BroccoliConfiguration : Configuration() {
+open class BroccoliConfiguration : Configuration() {
 
     @Valid
     @NotNull
     @JsonProperty
-    var textRepoURL: String = "textrepo"
+    var textUri: String = "textrepo"
 
     @Valid
     @NotNull
     @JsonProperty
-    var annoRepoURL: String = "annorepo"
+    var annoUri: String = "annorepo"
 
     @Valid
     @NotNull
     @JsonProperty
-    var iiifUrl: String = ""
+    var iiifUri: String = "iiif"
 
     @Valid
     @NotNull
@@ -52,30 +52,40 @@ class BroccoliConfiguration : Configuration() {
     val republic: RepublicConfiguration = RepublicConfiguration()
 }
 
-class RepublicConfiguration {
+open class RepublicConfiguration {
+    @Valid
+    @NotNull
     @JsonProperty
-    val volumes: List<RepublicVolume> = ArrayList()
+    var archiefNr = ""
+
+    @JsonProperty
+    var volumes: List<RepublicVolume> = ArrayList()
 
     @Valid
     @NotNull
     @JsonProperty
-    val defaultVolume: String = ""
+    var defaultVolume: String = ""
 
     @Valid
     @NotNull
     @JsonProperty
     @Min(1)
-    val defaultOpening: Int = 1
+    var defaultOpening: Int = 1
 }
 
-class RepublicVolume {
+open class RepublicVolume {
     @Valid
     @NotNull
     @JsonProperty
-    val name: String = ""
+    var name: String = ""
 
     @Valid
     @NotNull
     @JsonProperty
-    val imageset: String = ""
+    var invNr: String = ""
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    var imageset: String = ""
 }
