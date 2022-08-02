@@ -80,6 +80,33 @@ class RepublicResource(
 //        data = response.readEntity(String::class.java)
 
         val mockedAnnotations = loadMockAnnotations()
+
+        /* curl -LSs --data '{"body.id": "urn:republic:NL-HaNA_1.01.02_3783_0285"}' $ar/annotations
+         * levert op: 1 annotatie (in .items) waar alles van opening 285 in zit. (de 'Scan')
+         *
+         * - in target met type=Text zit de text selector voor start en end markering van regels text
+         *   EN DEZE source url moet gebruikt worden (URL escaped) bij ophalen annotaties verderop
+         * - in target met type=Text maar zónder selector zit de URL naar TR met alle regels text van opening 285
+         * {
+          "source": "https://textrepo.republic-caf.diginfra.org/api/view/versions/42df1275-81cd-489c-b28c-345780c3889b/segments/index/49840/50066",
+          "type": "Text"
+          * => vervanging van getMockedText()
+        },
+         *
+         * voor de annotaties nog een call naar annorepo:
+         *   - query parameter aan broccoli call (default: overlap) of je alle annotaties voor opening wil die
+         *     OP deze opening staan, of die deze opening omvatten.
+         *   naar annorepo dan (containerName=volume-1728):
+         *      - /search/{containerName}/overlapping_with_range
+         *   OF - /search/{containerName}/within_range
+         *
+         * bijv. curl -LSs 'https://annorepo.republic-caf.diginfra.org/search/volume-1728/overlapping_with_range?target.source=https%3A%2F%2Ftextrepo.republic-caf.diginfra.org%2Fapi%2Frest%2Fversions%2F42df1275-81cd-489c-b28c-345780c3889b%2Fcontents&range.start=49840&range.end=50066&page=0'
+         * !! Resultaat is gepagineerd.
+         *
+         * wegfilteren: body.type in {"TextRegion", "Line"} (column is vervallen, nu parentType van een "Line")
+         * wel gewenst: body.type in {AttendanceList, Attendant, Resolution, Reviewed, Session}
+         */
+
         return AnnoTextResult(
             request = Request(volume, opening, bodyId),
             anno = mockedAnnotations.filter { !setOf("line", "column", "textregion").contains(getBodyValue(it)) },
