@@ -11,7 +11,8 @@ republic:
 #  na_prefix: NL-HaNA
 #  na_archiefnummer: 1.01.02
 #  na_inventarisnummer: 3783
-#  na_format: "{$na_prefix}_${archiefnr}_{$na_invnr}_{$opening}"
+#  na_opening 0285
+#  na_format: "{$na_prefix}_{$na_archiefnummer}_{$na_inventarisnummer}_{$opening}"
   volumes:
     - name: 1728
       imageset: 67533019-4ca0-4b08-b87e-fd5590e7a077
