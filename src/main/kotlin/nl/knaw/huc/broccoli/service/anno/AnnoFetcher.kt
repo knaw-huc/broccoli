@@ -1,5 +1,6 @@
 package nl.knaw.huc.broccoli.service.anno
 
+import com.jayway.jsonpath.JsonPath
 import nl.knaw.huc.broccoli.config.RepublicConfiguration
 import nl.knaw.huc.broccoli.config.RepublicVolume
 import org.slf4j.LoggerFactory
@@ -31,8 +32,23 @@ class AnnoFetcher(
         )
         log.info("code: ${response.status}")
 
-        @Suppress("UNCHECKED_CAST") val body = response.readEntity(Map::class.java) as Map<String, Any>
-        log.info("body: $body")
-        return body
+//        val body = response.readEntity(Map::class.java) as Map<String, Any>
+        val body = response.readEntity(String::class.java)
+        val json = JsonPath.parse(body)
+        val data = json.read<List<Map<String, *>>>("$.items[0].target")
+        log.info("data: $data")
+        data.filter { it["type"] == "Text" }
+            .forEach {
+                if (it["selector"] != null) {
+                    @Suppress("UNCHECKED_CAST")
+                    val selector = it["selector"] as Map<String, Any>
+                    val start = selector["start"]
+                    val end = selector["end"]
+                    log.info("Here be selector: $start..$end")
+                } else {
+                    log.info("Here be text: ${it["source"]}")
+                }
+            }
+        return mapOf("foo" to "bar")
     }
 }
