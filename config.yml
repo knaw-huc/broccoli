@@ -16,12 +16,12 @@ republic:
 #  na_opening 0285
 #  na_format: "{$na_prefix}_{$na_archiefnummer}_{$na_inventarisnummer}_{$opening}"
   archiefNr: 1.01.02
+  defaultVolume: 1728
+  defaultOpening: 0285
   volumes:
     - name: 1728
       invNr: 3783
       imageset: 67533019-4ca0-4b08-b87e-fd5590e7a077
-  defaultVolume: 1728
-  defaultOpening: 0285
 
 logging:
   level: INFO
