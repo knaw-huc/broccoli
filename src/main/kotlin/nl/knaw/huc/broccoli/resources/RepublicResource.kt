@@ -29,8 +29,8 @@ class RepublicResource(
 
     @GET
     @Path("v0")
-    @Operation(description = "Get text, annotations and iiif details for a given volume and opening")
-    fun getVolumeOpening(
+    @Operation(description = "Get mock text, annotations and iiif details for given volume, opening and bodyId (opt)")
+    fun getVolumeOpeningMocked(
         @QueryParam("volume") _volume: String?,
         @QueryParam("opening") _opening: Int?,
         @QueryParam("bodyId") _bodyId: String?
@@ -50,6 +50,17 @@ class RepublicResource(
         val reader = ResourceLoader.asStream(path)
         val body = jacksonObjectMapper().readValue(reader, AnnoTextBody::class.java)
         return Response.ok(body).build()
+    }
+
+    @GET
+    @Path("v1")
+    @Operation(description = "Get text, annotations and iiif details using AnnoRepo and TextRepo")
+    fun getVolumeOpeningFromServers(
+        @QueryParam("volume") _volume: String?,
+        @QueryParam("opening") _opening: Int?,
+        @QueryParam("bodyId") _bodyId: String?
+    ): Response {
+        TODO("implement using AnnoFetcher")
     }
 
     private fun buildResult(volume: String, opening: Int, bodyId: String? = null): AnnoTextResult {
