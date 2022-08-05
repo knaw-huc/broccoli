@@ -18,9 +18,10 @@ class AnnoFetcher(
     // replace with AnnoRepoClient later on
     private val client = ClientBuilder.newClient()
 
-    override fun getScanAnno(volume: RepublicVolume, opening: Int): Map<String, Any> {
-        val jsonParser = JsonPath.using(defaultConfiguration().addOptions(DEFAULT_PATH_LEAF_TO_NULL))
+    // choose 'null' over throwing exceptions when json paths cannot be found
+    private val jsonParser = JsonPath.using(defaultConfiguration().addOptions(DEFAULT_PATH_LEAF_TO_NULL))
 
+    override fun getScanAnno(volume: RepublicVolume, opening: Int): Map<String, Any> {
         val volumeName = "volume-${volume.name}"
         val webTarget = client.target(annoRepoURI)
             .path("search")
@@ -39,12 +40,12 @@ class AnnoFetcher(
 
         val body = response.readEntity(String::class.java)
         val json = jsonParser.parse(body)
-        val data = json.read<List<Map<String, *>>>("$.items[0].target")
+        val data = json.read<List<Map<String, *>>>("$.items[0].target[?(@.type == 'Text')]")
         log.info("data: $data")
+
         val text = ArrayList<String>()
         val annos = ArrayList<Map<String, Any>>()
-        data.filter { it["type"] == "Text" }
-            .forEach {
+        data.forEach {
                 if (it["selector"] != null) {
                     @Suppress("UNCHECKED_CAST")
                     val selector = it["selector"] as Map<String, Any>
