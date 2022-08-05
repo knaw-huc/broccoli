@@ -21,7 +21,7 @@ class AnnoFetcher(
     // choose 'null' over throwing exceptions when json paths cannot be found
     private val jsonParser = JsonPath.using(defaultConfiguration().addOptions(DEFAULT_PATH_LEAF_TO_NULL))
 
-    override fun getScanAnno(volume: RepublicVolume, opening: Int): Map<String, Any> {
+    override fun getScanAnno(volume: RepublicVolume, opening: Int): ScanPageResult {
         val volumeName = "volume-${volume.name}"
         val webTarget = client.target(annoRepoURI).path("search").path(volumeName).path("annotations")
         log.info("path: ${webTarget.uri}")
@@ -44,25 +44,21 @@ class AnnoFetcher(
         val annos = ArrayList<Map<String, Any>>()
         data.forEach {
             val sourceUrl = it["source"] as String
-            if (it["selector"] != null) {
+            if (it["selector"] == null) {
+                text.addAll(fetchTextLines(sourceUrl))
+            } else {
                 @Suppress("UNCHECKED_CAST") val selector = it["selector"] as Map<String, Any>
                 val start = selector["start"] as Int
                 val end = selector["end"] as Int
                 annos.addAll(fetchOverlappingAnnotations(volumeName, sourceUrl, start, end))
-            } else {
-                text.addAll(fetchTextLines(sourceUrl))
             }
         }
-        for ((i, anno) in annos.withIndex()) {
-            @Suppress("UNCHECKED_CAST") val b = anno["body"] as Map<String, Any>
-            log.info("anno[$i].body.id = ${b["id"]}")
-        }
-        return mapOf(
-            "anno" to annos, "text" to text
-        )
+
+        return ScanPageResult(annos, text)
     }
 
     private fun fetchTextLines(textSourceUrl: String): List<String> {
+        log.info("Fetching relevant text segments: $textSourceUrl")
         val resp = client.target(textSourceUrl).request().get()
         return resp.readEntity(object : GenericType<List<String>>() {})
     }
@@ -76,7 +72,7 @@ class AnnoFetcher(
         val requiredAnnotationsPath = "$.items[?(@.body.type =~ /^(?!.*(Line?|Page?|TextRegion?|Scan?)).*/)]"
 
         // initial request without page parameter
-        var request = client.target(annoRepoURI)
+        var webTarget = client.target(annoRepoURI)
             .path("search").path(volumeName).path("overlapping_with_range")
             .queryParam("target.source", source)
             .queryParam("range.start", start)
@@ -84,15 +80,15 @@ class AnnoFetcher(
 
         val result = ArrayList<Map<String, Any>>()
         while (result.count() < 1000) { // some arbitrary cap for now
-            log.info("Fetching overlapping annotations page: ${request.uri}")
-            val resp = request.request().get()
+            log.info("Fetching overlapping annotations page: ${webTarget.uri}")
+            val resp = webTarget.request().get()
             val annoBody = resp.readEntity(String::class.java)
             val annoJson = jsonParser.parse(annoBody)
             result.addAll(annoJson.read<List<Map<String, Any>>>(requiredAnnotationsPath))
 
             // Loop on with request for next page using provided 'next page url'.
             val nextPageUrl = annoJson.read<String>("$.next") ?: break // If '.next' is absent, we are done
-            request = client.target(nextPageUrl)
+            webTarget = client.target(nextPageUrl)
         }
 
         return result
