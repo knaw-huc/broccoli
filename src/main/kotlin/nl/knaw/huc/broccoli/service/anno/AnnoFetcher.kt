@@ -70,6 +70,8 @@ class AnnoFetcher(
                             // Can be removed when AnnoRepo supports this as part of the query
                             annoJson.read<List<Map<String, Any>>>("$.items[?(@.body.type =~ /^(?!.*(Line?|Page?|TextRegion?|Scan?)).*/)]")
                         )
+
+                        // subsequent requests for next page using provided url
                         request = client.target(annoJson.read<String>("$.next") ?: break)
                     }
                 } else {
