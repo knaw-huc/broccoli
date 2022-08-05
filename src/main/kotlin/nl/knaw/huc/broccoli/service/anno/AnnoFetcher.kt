@@ -23,10 +23,7 @@ class AnnoFetcher(
 
     override fun getScanAnno(volume: RepublicVolume, opening: Int): Map<String, Any> {
         val volumeName = "volume-${volume.name}"
-        val webTarget = client.target(annoRepoURI)
-            .path("search")
-            .path(volumeName)
-            .path("annotations")
+        val webTarget = client.target(annoRepoURI).path("search").path(volumeName).path("annotations")
         log.info("path: ${webTarget.uri}")
 
         val archNr = conf.archiefNr
@@ -46,47 +43,58 @@ class AnnoFetcher(
         val text = ArrayList<String>()
         val annos = ArrayList<Map<String, Any>>()
         data.forEach {
-                if (it["selector"] != null) {
-                    @Suppress("UNCHECKED_CAST")
-                    val selector = it["selector"] as Map<String, Any>
-                    val start = selector["start"] as Int
-                    val end = selector["end"] as Int
-
-                    // initial request
-                    var request = client.target(annoRepoURI)
-                        .path("search")
-                        .path(volumeName)
-                        .path("overlapping_with_range")
-                        .queryParam("target.source", it["source"] as String)
-                        .queryParam("range.start", start)
-                        .queryParam("range.end", end)
-                    log.info("Initial anno URI: ${request.uri}")
-
-                    while (annos.count() < 1000) { // some arbitrary cap for now
-                        val resp = request.request().get()
-                        val annoBody = resp.readEntity(String::class.java)
-                        val annoJson = jsonParser.parse(annoBody)
-                        annos.addAll(
-                            // Thanks https://regexland.com/regex-match-all-except/
-                            // Can be removed when AnnoRepo supports this as part of the query
-                            annoJson.read<List<Map<String, Any>>>("$.items[?(@.body.type =~ /^(?!.*(Line?|Page?|TextRegion?|Scan?)).*/)]")
-                        )
-
-                        // subsequent requests for next page using provided url
-                        request = client.target(annoJson.read<String>("$.next") ?: break)
-                    }
-                } else {
-                    val resp = client.target(it["source"] as String).request().get()
-                    text.addAll(resp.readEntity(object : GenericType<List<String>>() {}))
-                }
+            val sourceUrl = it["source"] as String
+            if (it["selector"] != null) {
+                @Suppress("UNCHECKED_CAST") val selector = it["selector"] as Map<String, Any>
+                val start = selector["start"] as Int
+                val end = selector["end"] as Int
+                annos.addAll(fetchOverlappingAnnotations(volumeName, sourceUrl, start, end))
+            } else {
+                text.addAll(fetchTextLines(sourceUrl))
             }
+        }
         for ((i, anno) in annos.withIndex()) {
             @Suppress("UNCHECKED_CAST") val b = anno["body"] as Map<String, Any>
             log.info("anno[$i].body.id = ${b["id"]}")
         }
         return mapOf(
-            "anno" to annos,
-            "text" to text
+            "anno" to annos, "text" to text
         )
+    }
+
+    private fun fetchTextLines(textSourceUrl: String): List<String> {
+        val resp = client.target(textSourceUrl).request().get()
+        return resp.readEntity(object : GenericType<List<String>>() {})
+    }
+
+    private fun fetchOverlappingAnnotations(
+        volumeName: String, source: String, start: Int, end: Int
+    ): List<Map<String, Any>> {
+        // Intent: only collect annotations where body.type is *NOT* one of: (Line,Page,TextRegion,Scan)
+        //        (regex credits go to: https://regexland.com/regex-match-all-except/)
+        // this can be removed when AnnoRepo supports this as part of the query language
+        val requiredAnnotationsPath = "$.items[?(@.body.type =~ /^(?!.*(Line?|Page?|TextRegion?|Scan?)).*/)]"
+
+        // initial request without page parameter
+        var request = client.target(annoRepoURI)
+            .path("search").path(volumeName).path("overlapping_with_range")
+            .queryParam("target.source", source)
+            .queryParam("range.start", start)
+            .queryParam("range.end", end)
+
+        val result = ArrayList<Map<String, Any>>()
+        while (result.count() < 1000) { // some arbitrary cap for now
+            log.info("Fetching overlapping annotations page: ${request.uri}")
+            val resp = request.request().get()
+            val annoBody = resp.readEntity(String::class.java)
+            val annoJson = jsonParser.parse(annoBody)
+            result.addAll(annoJson.read<List<Map<String, Any>>>(requiredAnnotationsPath))
+
+            // Loop on with request for next page using provided 'next page url'.
+            val nextPageUrl = annoJson.read<String>("$.next") ?: break // If '.next' is absent, we are done
+            request = client.target(nextPageUrl)
+        }
+
+        return result
     }
 }
