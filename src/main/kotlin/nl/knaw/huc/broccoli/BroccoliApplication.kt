@@ -14,6 +14,7 @@ import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
 import nl.knaw.huc.broccoli.resources.RepublicResource
+import nl.knaw.huc.broccoli.service.anno.AnnoFetcher
 import nl.knaw.huc.broccoli.service.mock.MockIIIFStore
 import org.eclipse.jetty.servlets.CrossOriginFilter
 import org.eclipse.jetty.servlets.CrossOriginFilter.*
@@ -75,7 +76,14 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         environment.jersey().apply {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())
-            register(RepublicResource(configuration, MockIIIFStore(), client))
+            register(
+                RepublicResource(
+                    configuration,
+                    AnnoFetcher(configuration.annoUri, configuration.republic),
+                    MockIIIFStore(),
+                    client
+                )
+            )
 //            register(RuntimeExceptionMapper())
         }
 

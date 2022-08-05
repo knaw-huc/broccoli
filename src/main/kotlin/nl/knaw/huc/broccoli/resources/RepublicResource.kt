@@ -10,6 +10,7 @@ import nl.knaw.huc.broccoli.api.ResourcePaths.REPUBLIC
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.service.IIIFStore
 import nl.knaw.huc.broccoli.service.ResourceLoader
+import nl.knaw.huc.broccoli.service.anno.AnnoFetcher
 import org.eclipse.jetty.util.ajax.JSON
 import org.glassfish.jersey.client.ClientProperties
 import org.slf4j.LoggerFactory
@@ -22,6 +23,7 @@ import javax.ws.rs.core.Response
 @Produces(MediaType.APPLICATION_JSON)
 class RepublicResource(
     private val configuration: BroccoliConfiguration,
+    private val annoFetcher: AnnoFetcher,
     private val iiifStore: IIIFStore,
     private val client: Client
 ) {
@@ -60,7 +62,36 @@ class RepublicResource(
         @QueryParam("opening") _opening: Int?,
         @QueryParam("bodyId") _bodyId: String?
     ): Response {
-        TODO("implement using AnnoFetcher")
+        val volume = _volume ?: configuration.republic.defaultVolume
+        val opening = _opening ?: configuration.republic.defaultOpening
+        
+        log.info("volume: $volume, opening: $opening, bodyId: $_bodyId")
+
+        val volumeDetails = configuration.republic.volumes.find { it.name == volume }
+            ?: throw NotFoundException("Volume $volume not found in republic configuration")
+        
+        if (_bodyId == null) {
+            val scan = annoFetcher.getScanAnno(volumeDetails, opening)
+            val target = client.target(configuration.iiifUri)
+                .path("imageset")
+                .path(volumeDetails.imageset)
+                .path("manifest")
+            val manifest = target.uri.toString()
+            val canvasId = iiifStore.getCanvasId(volumeDetails.name, opening)
+
+            val result = AnnoTextResult(
+                request = Request(volume, opening),
+                anno = scan.anno,
+                text = scan.text,
+                iiif = IIIFContext(
+                    manifest = manifest,
+                    canvasId = canvasId
+                )
+            )
+            return Response.ok(result).build()
+        }
+        
+        TODO("implement for specific bodyId")
     }
 
     private fun buildResult(volume: String, opening: Int, bodyId: String? = null): AnnoTextResult {

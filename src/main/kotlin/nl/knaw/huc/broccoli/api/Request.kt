@@ -8,5 +8,5 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder
 data class Request(
     val volume: String,
     val opening: Int,
-    val bodyId: String?
+    val bodyId: String? = null
 )
