@@ -22,7 +22,7 @@ class AnnoFetcher(
     private val jsonParser = JsonPath.using(defaultConfiguration().addOptions(DEFAULT_PATH_LEAF_TO_NULL))
 
     override fun getScanAnno(volume: RepublicVolume, opening: Int): ScanPageResult {
-        val volumeName = "volume-${volume.name}"
+        val volumeName = "volume-${volume.name}-3"
         val webTarget = client.target(annoRepoURI).path("search").path(volumeName).path("annotations")
         log.info("path: ${webTarget.uri}")
 
