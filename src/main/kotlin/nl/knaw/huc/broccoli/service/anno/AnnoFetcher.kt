@@ -69,7 +69,7 @@ class AnnoFetcher(
         // Intent: only collect annotations where body.type is *NOT* one of: (Line,Page,TextRegion,Scan)
         //        (regex credits go to: https://regexland.com/regex-match-all-except/)
         // this can be removed when AnnoRepo supports this as part of the query language
-        val requiredAnnotationsPath = "$.items[?(@.body.type =~ /^(?!.*(Line?|Page?|TextRegion?|Scan?)).*/)]"
+        val requiredAnnotationsPath = "$.items[?(@.body.type =~ /^(?!.*(Line?|Page?|RepublicParagraph?|TextRegion?|Scan?)).*/)]"
 
         // initial request without page parameter
         var webTarget = client.target(annoRepoURI)
