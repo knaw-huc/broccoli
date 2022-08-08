@@ -5,7 +5,10 @@ server:
 
 externalBaseUrl: ${BR_EXTERNAL_BASE_URL:-http://localhost:8080}
 
-annoUri: https://annorepo.republic-caf.diginfra.org
+annoRepo:
+  uri: https://annorepo.republic-caf.diginfra.org
+  rev: 3
+
 iiifUri: https://images.diginfra.net/api/pim
 textUri: https://textrepo.republic-caf.diginfra.org/api
 

@@ -20,7 +20,7 @@ class BroccoliConfiguration : Configuration() {
     @Valid
     @NotNull
     @JsonProperty
-    var annoUri: String = "annorepo"
+    var annoRepo : AnnoRepoConfiguration = AnnoRepoConfiguration()
 
     @Valid
     @NotNull
@@ -52,7 +52,16 @@ class BroccoliConfiguration : Configuration() {
     val republic: RepublicConfiguration = RepublicConfiguration()
 }
 
+class AnnoRepoConfiguration {
+    @Valid
+    @NotNull
+    @JsonProperty
+    var uri: String = "annorepo"
 
+    @Valid
+    @JsonProperty
+    var rev: String? = null
+}
 
 class RepublicConfiguration {
     @Valid

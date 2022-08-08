@@ -1,5 +1,6 @@
 package nl.knaw.huc.broccoli.service.anno
 
+import nl.knaw.huc.broccoli.config.AnnoRepoConfiguration
 import nl.knaw.huc.broccoli.config.RepublicConfiguration
 import nl.knaw.huc.broccoli.config.RepublicVolume
 import org.junit.jupiter.api.Test
@@ -16,11 +17,16 @@ class AnnoFetcherTest {
         )
     }
     */
-    private val conf = RepublicConfiguration().apply {
+    private val republicConfig = RepublicConfiguration().apply {
         archiefNr = "1.01.02"
     }
 
-    private val sut = AnnoFetcher("https://annorepo.republic-caf.diginfra.org", conf)
+    private val annoRepoConfig = AnnoRepoConfiguration().apply {
+        uri = "https://annorepo.republic-caf.diginfra.org"
+        rev = "3"
+    }
+
+    private val sut = AnnoFetcher(annoRepoConfig, republicConfig)
 
     @Test
     fun `Anno fetcher should call out to remote annotation repository`() {
