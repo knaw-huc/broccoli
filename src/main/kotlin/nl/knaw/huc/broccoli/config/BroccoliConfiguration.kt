@@ -10,7 +10,7 @@ import javax.validation.Valid
 import javax.validation.constraints.Min
 import javax.validation.constraints.NotNull
 
-open class BroccoliConfiguration : Configuration() {
+class BroccoliConfiguration : Configuration() {
 
     @Valid
     @NotNull
@@ -52,7 +52,9 @@ open class BroccoliConfiguration : Configuration() {
     val republic: RepublicConfiguration = RepublicConfiguration()
 }
 
-open class RepublicConfiguration {
+
+
+class RepublicConfiguration {
     @Valid
     @NotNull
     @JsonProperty
@@ -73,7 +75,7 @@ open class RepublicConfiguration {
     var defaultOpening: Int = 1
 }
 
-open class RepublicVolume {
+class RepublicVolume {
     @Valid
     @NotNull
     @JsonProperty
