@@ -29,6 +29,8 @@ class RepublicResource(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
+    private val cache = HashMap<Pair<String, Int>, AnnoTextResult>()
+
     @GET
     @Path("v0")
     @Operation(description = "Get mock text, annotations and iiif details for given volume, opening and bodyId (opt)")
@@ -64,13 +66,18 @@ class RepublicResource(
     ): Response {
         val volume = _volume ?: configuration.republic.defaultVolume
         val opening = _opening ?: configuration.republic.defaultOpening
-        
+
         log.info("volume: $volume, opening: $opening, bodyId: $_bodyId")
 
         val volumeDetails = configuration.republic.volumes.find { it.name == volume }
             ?: throw NotFoundException("Volume $volume not found in republic configuration")
-        
+
         if (_bodyId == null) {
+            val query = Pair(volume, opening)
+            if (cache.contains(query)) {
+                return Response.ok(cache[query]).build()
+            }
+
             val scan = annoFetcher.getScanAnno(volumeDetails, opening)
             val target = client.target(configuration.iiifUri)
                 .path("imageset")
@@ -88,9 +95,10 @@ class RepublicResource(
                     canvasId = canvasId
                 )
             )
+            cache[query] = result
             return Response.ok(result).build()
         }
-        
+
         TODO("implement for specific bodyId")
     }
 
