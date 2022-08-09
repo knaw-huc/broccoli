@@ -10,7 +10,7 @@ import nl.knaw.huc.broccoli.api.ResourcePaths.REPUBLIC
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.service.IIIFStore
 import nl.knaw.huc.broccoli.service.ResourceLoader
-import nl.knaw.huc.broccoli.service.anno.AnnoFetcher
+import nl.knaw.huc.broccoli.service.anno.AnnoRepo
 import org.eclipse.jetty.util.ajax.JSON
 import org.glassfish.jersey.client.ClientProperties
 import org.slf4j.LoggerFactory
@@ -23,13 +23,13 @@ import javax.ws.rs.core.Response
 @Produces(MediaType.APPLICATION_JSON)
 class RepublicResource(
     private val configuration: BroccoliConfiguration,
-    private val annoFetcher: AnnoFetcher,
+    private val annoRepo: AnnoRepo,
     private val iiifStore: IIIFStore,
     private val client: Client
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    private val cache = HashMap<Pair<String, Int>, AnnoTextResult>()
+//    private val cache = HashMap<Pair<String, Int>, AnnoTextResult>()
 
     @GET
     @Path("v0")
@@ -73,12 +73,7 @@ class RepublicResource(
             ?: throw NotFoundException("Volume $volume not found in republic configuration")
 
         if (_bodyId == null) {
-            val query = Pair(volume, opening)
-            if (cache.contains(query)) {
-                return Response.ok(cache[query]).build()
-            }
-
-            val scan = annoFetcher.getScanAnno(volumeDetails, opening)
+            val scan = annoRepo.getScanAnno(volumeDetails, opening)
             val target = client.target(configuration.iiifUri)
                 .path("imageset")
                 .path(volumeDetails.imageset)
@@ -95,11 +90,10 @@ class RepublicResource(
                     canvasId = canvasId
                 )
             )
-            cache[query] = result
             return Response.ok(result).build()
         }
 
-        val annoDetail = annoFetcher.getBodyId(volumeDetails, opening, _bodyId)
+        val annoDetail = annoRepo.getBodyId(volumeDetails, opening, _bodyId)
         val result = AnnoTextBody(
             request = Request(volume, opening, _bodyId),
             start = annoDetail.start,

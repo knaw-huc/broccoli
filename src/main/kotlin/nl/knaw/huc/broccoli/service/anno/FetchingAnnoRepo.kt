@@ -14,7 +14,7 @@ import javax.ws.rs.client.ClientBuilder
 import javax.ws.rs.client.Entity.json
 import javax.ws.rs.core.GenericType
 
-class AnnoFetcher(
+class FetchingAnnoRepo(
     private val annoRepoConfig: AnnoRepoConfiguration,
     private val republicConfig: RepublicConfiguration
 ) : AnnoRepo {
@@ -26,7 +26,7 @@ class AnnoFetcher(
     // choose 'null' over throwing exceptions when json paths cannot be found
     private val jsonParser = JsonPath.using(defaultConfiguration().addOptions(DEFAULT_PATH_LEAF_TO_NULL))
 
-    private val cachedPageStarts = HashMap<Pair<String, Int>, Int>()
+    private val pageStarts = HashMap<Pair<String, Int>, Int>()
 
     override fun getScanAnno(volume: RepublicVolume, opening: Int): ScanPageResult {
         val volumeName = buildVolumeName(volume)
@@ -58,7 +58,7 @@ class AnnoFetcher(
                 val start = selector["start"] as Int
                 val end = selector["end"] as Int
                 log.info("start: $start, end: $end")
-                cachedPageStarts[Pair(volumeName, opening)] = start
+                pageStarts[Pair(volumeName, opening)] = start
                 annos.addAll(fetchOverlappingAnnotations(volumeName, sourceUrl, start, end))
             }
         }
@@ -68,7 +68,7 @@ class AnnoFetcher(
 
     override fun getBodyId(volume: RepublicVolume, opening: Int, bodyId: String): BodyIdResult {
         val volumeName = buildVolumeName(volume)
-        val startOfPage = (cachedPageStarts[Pair(volumeName, opening)] ?: throw NotFoundException(bodyId))
+        val startOfPage = (pageStarts[Pair(volumeName, opening)] ?: throw NotFoundException(bodyId))
 
         val webTarget = client.target(annoRepoConfig.uri).path("search").path(volumeName).path("annotations")
         log.info("path: ${webTarget.uri}")

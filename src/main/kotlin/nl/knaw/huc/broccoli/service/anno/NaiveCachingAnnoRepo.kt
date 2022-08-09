@@ -2,7 +2,7 @@ package nl.knaw.huc.broccoli.service.anno
 
 import nl.knaw.huc.broccoli.config.RepublicVolume
 
-class CachingAnnoRepo(private val delegate: AnnoRepo) : AnnoRepo {
+class NaiveCachingAnnoRepo(private val delegate: AnnoRepo) : AnnoRepo {
     private val cachedScanPages = HashMap<Pair<String, Int>, ScanPageResult>()
 
     private val cachedAnnoDetails = HashMap<Triple<String,Int,String>, BodyIdResult>()

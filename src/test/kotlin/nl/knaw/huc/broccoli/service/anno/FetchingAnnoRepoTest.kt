@@ -6,7 +6,7 @@ import nl.knaw.huc.broccoli.config.RepublicVolume
 import org.junit.jupiter.api.Test
 import org.slf4j.LoggerFactory
 
-class AnnoFetcherTest {
+class FetchingAnnoRepoTest {
     private val log = LoggerFactory.getLogger(javaClass)
 
     /*
@@ -26,7 +26,7 @@ class AnnoFetcherTest {
         rev = "3"
     }
 
-    private val sut = AnnoFetcher(annoRepoConfig, republicConfig)
+    private val sut = FetchingAnnoRepo(annoRepoConfig, republicConfig)
 
     @Test
     fun `Anno fetcher should call out to remote annotation repository`() {
