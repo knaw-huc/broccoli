@@ -114,15 +114,15 @@ class AnnoFetcher(
 
                 val absoluteStart = selector["start"] as Int
                 val relativeStart = absoluteStart - startOfPage
-                val beginCharOffset = selector["beginCharOffset"] as Int
-                val start = TextMarker(relativeStart, beginCharOffset, text[0].length)
+                val beginCharOffset = selector["beginCharOffset"] as Int?
+                val start = TextMarker(relativeStart, beginCharOffset ?: 0, text[0].length)
                 log.info("start: $start")
 
                 val absoluteEnd = selector["end"] as Int
                 val relativeEnd = absoluteEnd - startOfPage
-                val endCharOffset = selector["endCharOffset"] as Int
+                val endCharOffset = selector["endCharOffset"] as Int?
                 val index = text.size - 1
-                val end = TextMarker(relativeEnd, endCharOffset, text[index].length)
+                val end = TextMarker(relativeEnd, endCharOffset ?: (text[index].length - 1), text[index].length)
                 log.info("end: $end")
 
                 return Pair(start, end)
