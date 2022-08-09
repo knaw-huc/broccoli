@@ -99,7 +99,14 @@ class RepublicResource(
             return Response.ok(result).build()
         }
 
-        TODO("implement for specific bodyId")
+        val annoDetail = annoFetcher.getBodyId(volumeDetails, opening, _bodyId)
+        val result = AnnoTextBody(
+            request = Request(volume, opening, _bodyId),
+            start = annoDetail.start,
+            end = annoDetail.end,
+            text = annoDetail.text,
+        )
+        return Response.ok(result).build()
     }
 
     private fun buildResult(volume: String, opening: Int, bodyId: String? = null): AnnoTextResult {
