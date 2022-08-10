@@ -15,8 +15,8 @@ import javax.ws.rs.client.Entity.json
 import javax.ws.rs.core.GenericType
 
 class FetchingAnnoRepo(
-    private val annoRepoConfig: AnnoRepoConfiguration,
-    private val republicConfig: RepublicConfiguration
+        private val annoRepoConfig: AnnoRepoConfiguration,
+        private val republicConfig: RepublicConfiguration
 ) : AnnoRepo {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -73,6 +73,10 @@ class FetchingAnnoRepo(
     override fun getBodyId(volume: RepublicVolume, opening: Int, bodyId: String): BodyIdResult {
         val before = System.currentTimeMillis()
         val volumeName = buildVolumeName(volume)
+        if (pageStarts[Pair(volumeName, opening)] == null) {
+            log.info("page starts for ($volumeName, opening) not yet loaded, fetching...")
+            getScanAnno(volume, opening)
+        }
         val startOfPage = (pageStarts[Pair(volumeName, opening)] ?: throw NotFoundException(bodyId))
 
         val webTarget = client.target(annoRepoConfig.uri).path("search").path(volumeName).path("annotations")
@@ -90,7 +94,7 @@ class FetchingAnnoRepo(
         log.info("text: $text")
 
         val markers = getTextMarkers(data, startOfPage, text)
-            ?: throw NotFoundException("missing start, end and offset markers")
+                ?: throw NotFoundException("missing start, end and offset markers")
         log.info("markers: $markers")
 
         val after = System.currentTimeMillis()
@@ -110,9 +114,9 @@ class FetchingAnnoRepo(
     }
 
     private fun getTextMarkers(
-        annoTargets: List<Map<String, *>>,
-        startOfPage: Int,
-        text: List<String>
+            annoTargets: List<Map<String, *>>,
+            startOfPage: Int,
+            text: List<String>
     ): Pair<TextMarker, TextMarker>? {
         annoTargets.forEach {
             if (it["selector"] != null) {
@@ -157,20 +161,20 @@ class FetchingAnnoRepo(
     }
 
     private fun fetchOverlappingAnnotations(
-        volumeName: String, source: String, start: Int, end: Int
+            volumeName: String, source: String, start: Int, end: Int
     ): List<Map<String, Any>> {
         // Intent: only collect annotations where body.type is *NOT* one of: (Line,Page,TextRegion,Scan)
         //        (regex credits go to: https://regexland.com/regex-match-all-except/)
         // this can be removed when AnnoRepo supports this as part of the query language
         val requiredAnnotationsPath =
-            "$.items[?(@.body.type =~ /^(?!.*(Line?|Page?|RepublicParagraph?|TextRegion?|Scan?)).*/)]"
+                "$.items[?(@.body.type =~ /^(?!.*(Line?|Page?|RepublicParagraph?|TextRegion?|Scan?)).*/)]"
 
         // initial request without page parameter
         var webTarget = client.target(annoRepoConfig.uri)
-            .path("search").path(volumeName).path("overlapping_with_range")
-            .queryParam("target.source", source)
-            .queryParam("range.start", start)
-            .queryParam("range.end", end)
+                .path("search").path(volumeName).path("overlapping_with_range")
+                .queryParam("target.source", source)
+                .queryParam("range.start", start)
+                .queryParam("range.end", end)
 
         val result = ArrayList<Map<String, Any>>()
         while (result.count() < 1000) { // some arbitrary cap for now
