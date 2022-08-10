@@ -20,7 +20,7 @@ class BroccoliConfiguration : Configuration() {
     @Valid
     @NotNull
     @JsonProperty
-    var annoRepo : AnnoRepoConfiguration = AnnoRepoConfiguration()
+    var annoRepo: AnnoRepoConfiguration = AnnoRepoConfiguration()
 
     @Valid
     @NotNull

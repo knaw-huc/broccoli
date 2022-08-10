@@ -9,31 +9,22 @@ import org.slf4j.LoggerFactory
 class FetchingAnnoRepoTest {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    /*
-    companion object {
-        val DW = DropwizardAppExtension(
-            BroccoliApplication::class.java,
-            ResourceHelpers.resourceFilePath("config.yml")
-        )
-    }
-    */
-    private val republicConfig = RepublicConfiguration().apply {
-        archiefNr = "1.01.02"
-    }
-
-    private val annoRepoConfig = AnnoRepoConfiguration().apply {
-        uri = "https://annorepo.republic-caf.diginfra.org"
-        rev = "3"
-    }
+    private val annoRepoConfig = AnnoRepoConfiguration()
+    private val republicConfig = RepublicConfiguration()
 
     private val sut = FetchingAnnoRepo(annoRepoConfig, republicConfig)
 
     @Test
     fun `Anno fetcher should call out to remote annotation repository`() {
-        val volume = RepublicVolume().apply {
-            name = "1728"
-            invNr = "3783"
-        }
+        annoRepoConfig.uri = "https://annorepo.republic-caf.diginfra.org"
+        annoRepoConfig.rev = "3"
+
+        republicConfig.archiefNr = "1.01.02"
+
+        val volume = RepublicVolume()
+        volume.name = "1728"
+        volume.invNr = "3783"
+
         val anno = sut.getScanAnno(volume, 285)
         log.info("anno: $anno")
     }
