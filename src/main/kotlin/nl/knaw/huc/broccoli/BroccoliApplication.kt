@@ -15,7 +15,7 @@ import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
 import nl.knaw.huc.broccoli.resources.RepublicResource
 import nl.knaw.huc.broccoli.service.anno.FetchingAnnoRepo
-import nl.knaw.huc.broccoli.service.anno.NaiveCachingAnnoRepo
+import nl.knaw.huc.broccoli.service.anno.CachingAnnoRepo
 import nl.knaw.huc.broccoli.service.mock.MockIIIFStore
 import org.eclipse.jetty.servlets.CrossOriginFilter
 import org.eclipse.jetty.servlets.CrossOriginFilter.*
@@ -74,7 +74,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         val opening = "%04d".format(configuration.republic.defaultOpening)
         log.info("sample republic id: urn:republic:${naPrefix}_${naArchiefNr}_${naInvNr}_${opening}")
 
-        val annoRepo = NaiveCachingAnnoRepo(FetchingAnnoRepo(configuration.annoRepo, configuration.republic))
+        val annoRepo = CachingAnnoRepo(FetchingAnnoRepo(configuration.annoRepo, configuration.republic))
         environment.jersey().apply {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())

@@ -29,6 +29,7 @@ class FetchingAnnoRepo(
     private val pageStarts = HashMap<Pair<String, Int>, Int>()
 
     override fun getScanAnno(volume: RepublicVolume, opening: Int): ScanPageResult {
+        val before = System.currentTimeMillis()
         val volumeName = buildVolumeName(volume)
         val webTarget = client.target(annoRepoConfig.uri).path("search").path(volumeName).path("annotations")
         log.info("path: ${webTarget.uri}")
@@ -63,10 +64,14 @@ class FetchingAnnoRepo(
             }
         }
 
+        val after = System.currentTimeMillis()
+        log.info("fetching scan page took ${after - before} ms")
+
         return ScanPageResult(annos, text)
     }
 
     override fun getBodyId(volume: RepublicVolume, opening: Int, bodyId: String): BodyIdResult {
+        val before = System.currentTimeMillis()
         val volumeName = buildVolumeName(volume)
         val startOfPage = (pageStarts[Pair(volumeName, opening)] ?: throw NotFoundException(bodyId))
 
@@ -87,6 +92,9 @@ class FetchingAnnoRepo(
         val markers = getTextMarkers(data, startOfPage, text)
             ?: throw NotFoundException("missing start, end and offset markers")
         log.info("markers: $markers")
+
+        val after = System.currentTimeMillis()
+        log.info("fetching bodyId took ${after - before} ms")
 
         return BodyIdResult(markers.first, markers.second, text)
     }
