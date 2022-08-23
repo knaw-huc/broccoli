@@ -13,10 +13,11 @@ import javax.ws.rs.NotFoundException
 import javax.ws.rs.client.ClientBuilder
 import javax.ws.rs.client.Entity.json
 import javax.ws.rs.core.GenericType
+import javax.ws.rs.core.HttpHeaders
 
 class FetchingAnnoRepo(
-        private val annoRepoConfig: AnnoRepoConfiguration,
-        private val republicConfig: RepublicConfiguration
+    private val annoRepoConfig: AnnoRepoConfiguration,
+    private val republicConfig: RepublicConfiguration
 ) : AnnoRepo {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -31,7 +32,7 @@ class FetchingAnnoRepo(
     override fun getScanAnno(volume: RepublicVolume, opening: Int): ScanPageResult {
         val before = System.currentTimeMillis()
         val volumeName = buildVolumeName(volume)
-        val webTarget = client.target(annoRepoConfig.uri).path("search").path(volumeName).path("annotations")
+        val webTarget = client.target(annoRepoConfig.uri).path("services").path(volumeName).path("search")
         log.info("path: ${webTarget.uri}")
 
         val archNr = republicConfig.archiefNr
@@ -40,7 +41,14 @@ class FetchingAnnoRepo(
         val bodyId = "urn:republic:NL-HaNA_${archNr}_${invNr}_${scanNr}"
         log.info("constructed bodyId: $bodyId")
 
-        val response = webTarget.request().post(json(mapOf("body.id" to bodyId)))
+        val queryResponse = webTarget.request().post(json(mapOf("body.id" to bodyId)))
+        log.info("code: ${queryResponse.status}")
+
+        val resultLocation = queryResponse.getHeaderString(HttpHeaders.LOCATION)
+        log.info("query created: $resultLocation")
+
+        val queryTarget = client.target(resultLocation)
+        val response = queryTarget.request().get()
         log.info("code: ${response.status}")
 
         val body = response.readEntity(String::class.java)
@@ -94,7 +102,7 @@ class FetchingAnnoRepo(
         log.info("text: $text")
 
         val markers = getTextMarkers(data, startOfPage, text)
-                ?: throw NotFoundException("missing start, end and offset markers")
+            ?: throw NotFoundException("missing start, end and offset markers")
         log.info("markers: $markers")
 
         val after = System.currentTimeMillis()
@@ -114,9 +122,9 @@ class FetchingAnnoRepo(
     }
 
     private fun getTextMarkers(
-            annoTargets: List<Map<String, *>>,
-            startOfPage: Int,
-            text: List<String>
+        annoTargets: List<Map<String, *>>,
+        startOfPage: Int,
+        text: List<String>
     ): Pair<TextMarker, TextMarker>? {
         annoTargets.forEach {
             if (it["selector"] != null) {
@@ -161,20 +169,20 @@ class FetchingAnnoRepo(
     }
 
     private fun fetchOverlappingAnnotations(
-            volumeName: String, source: String, start: Int, end: Int
+        volumeName: String, source: String, start: Int, end: Int
     ): List<Map<String, Any>> {
         // Intent: only collect annotations where body.type is *NOT* one of: (Line,Page,TextRegion,Scan)
         //        (regex credits go to: https://regexland.com/regex-match-all-except/)
         // this can be removed when AnnoRepo supports this as part of the query language
         val requiredAnnotationsPath =
-                "$.items[?(@.body.type =~ /^(?!.*(Line?|Page?|RepublicParagraph?|TextRegion?|Scan?)).*/)]"
+            "$.items[?(@.body.type =~ /^(?!.*(Line?|Page?|RepublicParagraph?|TextRegion?|Scan?)).*/)]"
 
         // initial request without page parameter
         var webTarget = client.target(annoRepoConfig.uri)
-                .path("search").path(volumeName).path("overlapping_with_range")
-                .queryParam("target.source", source)
-                .queryParam("range.start", start)
-                .queryParam("range.end", end)
+            .path("search").path(volumeName).path("overlapping_with_range")
+            .queryParam("target.source", source)
+            .queryParam("range.start", start)
+            .queryParam("range.end", end)
 
         val result = ArrayList<Map<String, Any>>()
         while (result.count() < 1000) { // some arbitrary cap for now
