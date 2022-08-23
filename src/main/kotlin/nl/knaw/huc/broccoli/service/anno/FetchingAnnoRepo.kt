@@ -3,10 +3,17 @@ package nl.knaw.huc.broccoli.service.anno
 import com.jayway.jsonpath.Configuration.defaultConfiguration
 import com.jayway.jsonpath.JsonPath
 import com.jayway.jsonpath.Option.DEFAULT_PATH_LEAF_TO_NULL
+import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
+import nl.knaw.huc.broccoli.api.Constants.AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE
+import nl.knaw.huc.broccoli.api.Constants.AR_SEARCH
+import nl.knaw.huc.broccoli.api.Constants.AR_SERVICES
+import nl.knaw.huc.broccoli.api.Constants.isNotIn
+import nl.knaw.huc.broccoli.api.Constants.overlap
 import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.config.AnnoRepoConfiguration
 import nl.knaw.huc.broccoli.config.RepublicConfiguration
 import nl.knaw.huc.broccoli.config.RepublicVolume
+import org.eclipse.jetty.http.HttpStatus
 import org.slf4j.LoggerFactory
 import javax.ws.rs.NotAcceptableException
 import javax.ws.rs.NotFoundException
@@ -32,7 +39,7 @@ class FetchingAnnoRepo(
     override fun getScanAnno(volume: RepublicVolume, opening: Int): ScanPageResult {
         val before = System.currentTimeMillis()
         val volumeName = buildVolumeName(volume)
-        val webTarget = client.target(annoRepoConfig.uri).path("services").path(volumeName).path("search")
+        val webTarget = client.target(annoRepoConfig.uri).path(AR_SERVICES).path(volumeName).path(AR_SEARCH)
         log.info("path: ${webTarget.uri}")
 
         val archNr = republicConfig.archiefNr
@@ -87,7 +94,7 @@ class FetchingAnnoRepo(
         }
         val startOfPage = (pageStarts[Pair(volumeName, opening)] ?: throw NotFoundException(bodyId))
 
-        val webTarget = client.target(annoRepoConfig.uri).path("services").path(volumeName).path("search")
+        val webTarget = client.target(annoRepoConfig.uri).path(AR_SERVICES).path(volumeName).path(AR_SEARCH)
         log.info("path: ${webTarget.uri}")
 
         val queryResponse = webTarget.request().post(json(mapOf("body.id" to bodyId)))
@@ -172,39 +179,53 @@ class FetchingAnnoRepo(
 
     private fun fetchTextLines(textSourceUrl: String): List<String> {
         log.info("Fetching relevant text segments: $textSourceUrl")
+        val startTime = System.currentTimeMillis()
         val resp = client.target(textSourceUrl).request().get()
-        return resp.readEntity(object : GenericType<List<String>>() {})
+        val result = resp.readEntity(object : GenericType<List<String>>() {})
+        log.info("fetching took ${System.currentTimeMillis() - startTime} ms")
+        return result
     }
 
     private fun fetchOverlappingAnnotations(
         volumeName: String, source: String, start: Int, end: Int
     ): List<Map<String, Any>> {
-        // Intent: only collect annotations where body.type is *NOT* one of: (Line,Page,TextRegion,Scan)
-        //        (regex credits go to: https://regexland.com/regex-match-all-except/)
-        // this can be removed when AnnoRepo supports this as part of the query language
-        val requiredAnnotationsPath =
-            "$.items[?(@.body.type =~ /^(?!.*(Line?|Page?|RepublicParagraph?|TextRegion?|Scan?)).*/)]"
-
+        val startTime = System.currentTimeMillis()
         // initial request without page parameter
-        var webTarget = client.target(annoRepoConfig.uri)
-            .path("search").path(volumeName).path("overlapping_with_range")
-            .queryParam("target.source", source)
-            .queryParam("range.start", start)
-            .queryParam("range.end", end)
+        var webTarget = client.target(annoRepoConfig.uri).path(AR_SERVICES).path(volumeName).path(AR_SEARCH)
+        log.info("webTarget: $webTarget")
 
+        val queryResponse = webTarget.request()
+            .post(
+                json(
+                    mapOf(
+                        AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to overlap(source, start, end),
+                        AR_BODY_TYPE to isNotIn("Line", "Page", "RepublicParagraph", "TextRegion", "Scan")
+                    )
+                )
+            )
+        log.info("code: ${queryResponse.status}")
+        if (queryResponse.status == HttpStatus.BAD_REQUEST_400) {
+            log.info("BAD REQUEST: ${queryResponse.readEntity(String::class.java)}")
+        }
+
+        val resultLocation = queryResponse.getHeaderString(HttpHeaders.LOCATION)
+        log.info("query created: $resultLocation")
+
+        webTarget = client.target(resultLocation)
         val result = ArrayList<Map<String, Any>>()
         while (result.count() < 1000) { // some arbitrary cap for now
             log.info("Fetching overlapping annotations page: ${webTarget.uri}")
             val resp = webTarget.request().get()
             val annoBody = resp.readEntity(String::class.java)
             val annoJson = jsonParser.parse(annoBody)
-            result.addAll(annoJson.read<List<Map<String, Any>>>(requiredAnnotationsPath))
+            result.addAll(annoJson.read<List<Map<String, Any>>>("$.items"))
 
             // Loop on with request for next page using provided 'next page url'.
             val nextPageUrl = annoJson.read<String>("$.next") ?: break // If '.next' is absent, we are done
             webTarget = client.target(nextPageUrl)
         }
 
+        log.info("fetching overlapping annotations took: ${System.currentTimeMillis() - startTime} ms")
         return result
     }
 }
