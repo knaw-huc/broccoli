@@ -87,9 +87,17 @@ class FetchingAnnoRepo(
         }
         val startOfPage = (pageStarts[Pair(volumeName, opening)] ?: throw NotFoundException(bodyId))
 
-        val webTarget = client.target(annoRepoConfig.uri).path("search").path(volumeName).path("annotations")
+        val webTarget = client.target(annoRepoConfig.uri).path("services").path(volumeName).path("search")
         log.info("path: ${webTarget.uri}")
-        val response = webTarget.request().post(json(mapOf("body.id" to bodyId)))
+
+        val queryResponse = webTarget.request().post(json(mapOf("body.id" to bodyId)))
+        log.info("code: ${queryResponse.status}")
+
+        val resultLocation = queryResponse.getHeaderString(HttpHeaders.LOCATION)
+        log.info("query created: $resultLocation")
+
+        val queryTarget = client.target(resultLocation)
+        val response = queryTarget.request().get()
         log.info("code: ${response.status}")
 
         val body = response.readEntity(String::class.java)
