@@ -33,7 +33,10 @@ class RepublicResource(
 
     @GET
     @Path("v0")
-    @Operation(description = "Get mock text, annotations and iiif details for given volume, opening and bodyId (opt)")
+    @Operation(
+        deprecated = true,
+        description = "Get mock text, annotations and iiif details for given volume, opening and bodyId (opt)"
+    )
     fun getVolumeOpeningMocked(
         @QueryParam("volume") _volume: String?,
         @QueryParam("opening") _opening: Int?,
