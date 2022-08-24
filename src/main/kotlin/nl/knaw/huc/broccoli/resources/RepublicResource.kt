@@ -67,6 +67,30 @@ class RepublicResource(
         @QueryParam("opening") _opening: Int?,
         @QueryParam("bodyId") _bodyId: String?
     ): Response {
+        /* Voor ophalen van volume + resolutionId:
+           1. ophalen annotatie behorende bij de resolution;
+           2. bij target[].type = Text mét selector (type urn:republic:TextAnchorSelector) halen:
+              - source (target.source)
+              - start (selector.start)
+              - end (selector.end)
+           3. overlappende annotaties ophalen voor (source,start,end) van type Scan:
+              {
+  ":overlapsWithTextAnchorRange": {
+    "source": "https://textrepo.republic-caf.diginfra.org/api/rest/versions/42df1275-81cd-489c-b28c-345780c3889b/contents",
+    "start": 49931,
+    "end": 50629
+  },
+  "body.type": {
+    ":isIn": [
+      "Scan"
+    ]
+  }
+}
+           4. in Location header zit link naar eerste pagina resultaten en "{hits: <aantal>}"
+           5. gepagineerd resultaten ophalen en daaruit body.id extraheren (... | jq -r .items[].body.id)
+         */
+
+
         val volume = _volume ?: configuration.republic.defaultVolume
         val opening = _opening ?: configuration.republic.defaultOpening
 
