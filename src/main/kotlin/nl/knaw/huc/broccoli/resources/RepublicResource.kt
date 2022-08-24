@@ -90,6 +90,17 @@ class RepublicResource(
            5. gepagineerd resultaten ophalen en daaruit body.id extraheren (... | jq -r .items[].body.id)
            6. Uit scanpage body.id (urn:republic:....nlhana...._0285) deconstrueren -> "opening"
            7. voor "iiif" deel van het antwoord: analoog aan eerder kan dan het canvasId bepaald worden.
+             {
+  "iiif": {
+    "manifest": "http://site.met.manifest",
+    "canvasId": "https://images.diginfra..../canvas283",
+    "openings": [
+      "0283",
+      "0284",
+      "0285"
+    ]
+  }
+}
            8. voor "anno" deel: alleen de resolutie annotatie (uit 1)
            9. voor "text" deel: de tekst regels van deze resolutie
          */
