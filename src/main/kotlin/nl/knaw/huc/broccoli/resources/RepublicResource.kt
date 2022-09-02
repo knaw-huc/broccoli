@@ -145,6 +145,30 @@ class RepublicResource(
         return Response.ok(result).build()
     }
 
+    @GET
+    @Path("v2/{volumeId}/resolution/{resolutionId}")
+    @Operation(description = "Get text, annotations and iiif details for a given resolution")
+    fun getResolution(
+        @PathParam("volumeId") volumeId: String,
+        @PathParam("resolutionId") resolutionId: String
+    ): Response {
+        log.info("getResolution: volumeId=[$volumeId], resolutionId=[$resolutionId]")
+        val volumeDetails = configuration.republic.volumes.find { it.name == volumeId }
+            ?: throw NotFoundException("Volume $volumeId not found in republic configuration")
+
+        val anno = annoRepo.getResolution(volumeDetails, resolutionId)
+        return Response.ok(
+            mapOf(
+                "request" to mapOf(
+                    "volumeId" to volumeId,
+                    "resolutionId" to resolutionId
+                ),
+                "iiif" to mapOf(
+                )
+            )
+        ).build()
+    }
+
     private fun buildResult(volume: String, opening: Int, bodyId: String? = null): AnnoTextResult {
         if (opening < 1) {
             throw BadRequestException("Opening count starts at 1 (but got: $opening)")

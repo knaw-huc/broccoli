@@ -7,6 +7,8 @@ interface AnnoRepo {
     fun getScanAnno(volume: RepublicVolume, opening: Int): ScanPageResult
 
     fun getBodyId(volume: RepublicVolume, opening: Int, bodyId: String): BodyIdResult
+
+    fun getResolution(volume: RepublicVolume, resolutionId: String): BodyIdResult
 }
 
 data class ScanPageResult(

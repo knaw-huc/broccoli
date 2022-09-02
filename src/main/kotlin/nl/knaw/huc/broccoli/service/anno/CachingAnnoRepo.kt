@@ -9,6 +9,7 @@ class CachingAnnoRepo(private val delegate: AnnoRepo, capacity: Int = 10) : Anno
 
     private val cachedScanPages = LRUCache<Pair<String, Int>, ScanPageResult>(capacity)
     private val cachedAnnoDetails = LRUCache<Triple<String, Int, String>, BodyIdResult>(capacity)
+    private val cachedResolutions = LRUCache<Pair<String, String>, BodyIdResult>(capacity)
 
     override fun getScanAnno(volume: RepublicVolume, opening: Int): ScanPageResult {
         val key = Pair(volume.name, opening)
@@ -35,6 +36,20 @@ class CachingAnnoRepo(private val delegate: AnnoRepo, capacity: Int = 10) : Anno
         log.info("cache miss for [$key]")
         val value = delegate.getBodyId(volume, opening, bodyId)
         cachedAnnoDetails.put(key, value)
+        return value
+    }
+
+    override fun getResolution(volume: RepublicVolume, resolutionId: String): BodyIdResult {
+        val key = Pair(volume.name, resolutionId)
+        val cached = cachedResolutions.get(key)
+        if (cached != null) {
+            log.info("cache hit for [$key]")
+            return cached
+        }
+
+        log.info("cache miss for [$key")
+        val value = delegate.getResolution(volume, resolutionId)
+        cachedResolutions.put(key, value)
         return value
     }
 }

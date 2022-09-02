@@ -85,6 +85,38 @@ class FetchingAnnoRepo(
         return ScanPageResult(annos, text)
     }
 
+    override fun getResolution(volume: RepublicVolume, resolutionId: String): BodyIdResult {
+        val before = System.currentTimeMillis()
+        val volumeName = buildVolumeName(volume)
+
+        val webTarget = client.target(annoRepoConfig.uri).path(AR_SERVICES).path(volumeName).path(AR_SEARCH)
+
+        val queryResponse = webTarget.request().post(json(mapOf("body.id" to resolutionId)))
+        log.info("code: ${queryResponse.status}")
+
+        val resultLocation = queryResponse.getHeaderString(HttpHeaders.LOCATION)
+        log.info("location header: $resultLocation")
+
+        val queryTarget = client.target(resultLocation)
+        val response = queryTarget.request().get()
+        log.info("code: ${response.status}")
+
+        val body = response.readEntity(String::class.java)
+        val json = jsonParser.parse(body)
+
+        // get relevant canvasId(s)
+        val canvasIds = json.read<List<String>>("$.items[0].target[?(@.type == 'Canvas')].source")
+        log.info("canvasIds: $canvasIds")
+
+        val data = json.read<List<Map<String, *>>>("$.items[0].target[?(@.type == 'Text')]")
+        val text = getText(data)
+        log.info("texts: $text")
+
+        TODO()
+        //val markers = getTextMarkers(data, startOfPage, text)
+        // 'startOfPage' not yet known. Need to fetch ScanPage
+    }
+
     override fun getBodyId(volume: RepublicVolume, opening: Int, bodyId: String): BodyIdResult {
         val before = System.currentTimeMillis()
         val volumeName = buildVolumeName(volume)
