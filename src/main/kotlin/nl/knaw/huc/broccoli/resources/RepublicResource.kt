@@ -140,7 +140,7 @@ class RepublicResource(
                     ),
                     "iiif" to mapOf(
                         "manifest" to manifest(volume),
-                        "canvasId" to iiifStore.getCanvasId(volume.name, openingNo)
+                        "canvasIds" to listOf(iiifStore.getCanvasId(volume.name, openingNo))
                     )
                 )
             ).build()
@@ -165,7 +165,7 @@ class RepublicResource(
                 ),
                 "iiif" to mapOf(
                     "manifest" to manifest(volume),
-                    "canvasId" to iiifStore.getCanvasId(volume.name, openingNo)
+                    "canvasIds" to listOf(iiifStore.getCanvasId(volume.name, openingNo))
                 )
             )
         ).build()
