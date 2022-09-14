@@ -2,12 +2,13 @@ package nl.knaw.huc.broccoli.api
 
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonPropertyOrder
+import java.net.URI
 
 @JsonPropertyOrder("type", "request", "iiif", "anno", "text")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class AnnoTextResult(
     val type: String = "AnnoTextResult",
-    val request: Request,
+    val request: Map<String, String>,
     val anno: List<Any>,
     val text: List<String>,
     val iiif: IIIFContext
@@ -16,6 +17,6 @@ data class AnnoTextResult(
 @JsonPropertyOrder("manifest", "canvasId")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class IIIFContext(
-    val manifest: String,
+    val manifest: URI,
     val canvasId: String
 )

@@ -1,6 +1,7 @@
 package nl.knaw.huc.broccoli.service.anno
 
 import com.jayway.jsonpath.Configuration.defaultConfiguration
+import com.jayway.jsonpath.DocumentContext
 import com.jayway.jsonpath.JsonPath
 import com.jayway.jsonpath.Option.DEFAULT_PATH_LEAF_TO_NULL
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
@@ -85,7 +86,7 @@ class FetchingAnnoRepo(
         return ScanPageResult(annos, text)
     }
 
-    override fun getResolution(volume: RepublicVolume, resolutionId: String): BodyIdResult {
+    override fun getResolution(volume: RepublicVolume, resolutionId: String): DocumentContext {
         val before = System.currentTimeMillis()
         val volumeName = buildVolumeName(volume)
 
@@ -102,19 +103,12 @@ class FetchingAnnoRepo(
         log.info("code: ${response.status}")
 
         val body = response.readEntity(String::class.java)
-        val json = jsonParser.parse(body)
+        val result = jsonParser.parse(body)
 
-        // get relevant canvasId(s)
-        val canvasIds = json.read<List<String>>("$.items[0].target[?(@.type == 'Canvas')].source")
-        log.info("canvasIds: $canvasIds")
+        val after = System.currentTimeMillis()
+        log.info("fetching resolution $resolutionId took ${after - before} ms")
 
-        val data = json.read<List<Map<String, *>>>("$.items[0].target[?(@.type == 'Text')]")
-        val text = getText(data)
-        log.info("texts: $text")
-
-        TODO()
-        //val markers = getTextMarkers(data, startOfPage, text)
-        // 'startOfPage' not yet known. Need to fetch ScanPage
+        return result
     }
 
     override fun getBodyId(volume: RepublicVolume, opening: Int, bodyId: String): BodyIdResult {
@@ -158,7 +152,7 @@ class FetchingAnnoRepo(
         return BodyIdResult(markers.first, markers.second, text)
     }
 
-    private fun getText(annoTargets: List<Map<String, *>>): List<String> {
+    fun getText(annoTargets: List<Map<String, *>>): List<String> {
         annoTargets.forEach {
             if (it["selector"] == null) {
                 return fetchTextLines(it["source"] as String)

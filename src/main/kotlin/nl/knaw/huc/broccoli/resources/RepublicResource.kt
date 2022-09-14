@@ -8,14 +8,17 @@ import nl.knaw.huc.broccoli.api.IIIFContext
 import nl.knaw.huc.broccoli.api.Request
 import nl.knaw.huc.broccoli.api.ResourcePaths.REPUBLIC
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
+import nl.knaw.huc.broccoli.config.RepublicVolume
 import nl.knaw.huc.broccoli.service.IIIFStore
 import nl.knaw.huc.broccoli.service.ResourceLoader
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
 import org.eclipse.jetty.util.ajax.JSON
 import org.glassfish.jersey.client.ClientProperties
 import org.slf4j.LoggerFactory
+import java.net.URI
 import javax.ws.rs.*
 import javax.ws.rs.client.Client
+import javax.ws.rs.core.GenericType
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.core.Response
 
@@ -63,81 +66,40 @@ class RepublicResource(
     @Path("v1")
     @Operation(description = "Get text, annotations and iiif details using AnnoRepo and TextRepo")
     fun getVolumeOpeningFromServers(
-        @QueryParam("volume") _volume: String?,
-        @QueryParam("opening") _opening: Int?,
+        @QueryParam("volume") _volumeId: String?,
+        @QueryParam("opening") _openingNo: Int?,
         @QueryParam("bodyId") _bodyId: String?
     ): Response {
-        /* Voor ophalen van volume + resolutionId:
-           1. ophalen annotatie behorende bij de resolution;
-           2. bij target[].type = Text mét selector (type urn:republic:TextAnchorSelector) halen:
-              - source (target.source)
-              - start (selector.start)
-              - end (selector.end)
-           3. overlappende annotaties ophalen voor (source,start,end) van type Scan:
-              {
-  ":overlapsWithTextAnchorRange": {
-    "source": "https://textrepo.republic-caf.diginfra.org/api/rest/versions/42df1275-81cd-489c-b28c-345780c3889b/contents",
-    "start": 49931,
-    "end": 50629
-  },
-  "body.type": {
-    ":isIn": [
-      "Scan"
-    ]
-  }
-}
-           4. in Location header zit link naar eerste pagina resultaten en "{hits: <aantal>}"
-           5. gepagineerd resultaten ophalen en daaruit body.id extraheren (... | jq -r .items[].body.id)
-           6. Uit scanpage body.id (urn:republic:....nlhana...._0285) deconstrueren -> "opening"
-           7. voor "iiif" deel van het antwoord: analoog aan eerder kan dan het canvasId bepaald worden.
-             {
-  "iiif": {
-    "manifest": "http://site.met.manifest",
-    "canvasId": "https://images.diginfra..../canvas283",
-    "openings": [
-      "0283",
-      "0284",
-      "0285"
-    ]
-  }
-}
-           8. voor "anno" deel: alleen de resolutie annotatie (uit 1)
-           9. voor "text" deel: de tekst regels van deze resolutie
-         */
+        val volumeId = _volumeId ?: configuration.republic.defaultVolume
+        val openingNo = _openingNo ?: configuration.republic.defaultOpening
 
+        log.info("volumeId: $volumeId, openingNo: $openingNo, bodyId: $_bodyId")
 
-        val volume = _volume ?: configuration.republic.defaultVolume
-        val opening = _opening ?: configuration.republic.defaultOpening
-
-        log.info("volume: $volume, opening: $opening, bodyId: $_bodyId")
-
-        val volumeDetails = configuration.republic.volumes.find { it.name == volume }
-            ?: throw NotFoundException("Volume $volume not found in republic configuration")
+        val volume = configuration.republic.volumes.find { it.name == volumeId }
+            ?: throw NotFoundException("Volume $volumeId not found in republic configuration")
 
         if (_bodyId == null) {
-            val scan = annoRepo.getScanAnno(volumeDetails, opening)
-            val target = client.target(configuration.iiifUri)
-                .path("imageset")
-                .path(volumeDetails.imageset)
-                .path("manifest")
-            val manifest = target.uri.toString()
-            val canvasId = iiifStore.getCanvasId(volumeDetails.name, opening)
+            val scan = annoRepo.getScanAnno(volume, openingNo)
+            val canvasId = iiifStore.getCanvasId(volume.name, openingNo)
 
             val result = AnnoTextResult(
-                request = Request(volume, opening),
+                request = mapOf(
+                    "volumeId" to volumeId,
+                    "opening" to openingNo.toString()
+                ),
                 anno = scan.anno,
                 text = scan.text,
                 iiif = IIIFContext(
-                    manifest = manifest,
+                    manifest = manifest(volume),
                     canvasId = canvasId
                 )
             )
             return Response.ok(result).build()
         }
 
-        val annoDetail = annoRepo.getBodyId(volumeDetails, opening, _bodyId)
+        val annoDetail = annoRepo.getBodyId(volume, openingNo, _bodyId)
         val result = AnnoTextBody(
-            request = Request(volume, opening, _bodyId),
+            request = Request(volumeId, openingNo, _bodyId),
             start = annoDetail.start,
             end = annoDetail.end,
             text = annoDetail.text,
@@ -145,91 +107,99 @@ class RepublicResource(
         return Response.ok(result).build()
     }
 
+    private fun manifest(volume: RepublicVolume): URI =
+        client.target(configuration.iiifUri)
+            .path("imageset")
+            .path(volume.imageset)
+            .path("manifest").uri
+
     @GET
-    @Path("v2/{volumeId}/resolution/{resolutionId}")
+    @Path("v2/resolutions/{resolutionId}")
     @Operation(description = "Get text, annotations and iiif details for a given resolution")
     fun getResolution(
-        @PathParam("volumeId") volumeId: String,
         @PathParam("resolutionId") resolutionId: String
     ): Response {
-        log.info("getResolution: volumeId=[$volumeId], resolutionId=[$resolutionId]")
-        val volumeDetails = configuration.republic.volumes.find { it.name == volumeId }
+        val volumeId = resolutionId
+            .substringAfter("urn:republic:session-")
+            .substringBefore('-')
+
+        log.info("getResolution: derivedVolumeId=[$volumeId], resolutionId=[$resolutionId]")
+
+        val volume = configuration.republic.volumes.find { it.name == volumeId }
             ?: throw NotFoundException("Volume $volumeId not found in republic configuration")
 
-        val anno = annoRepo.getResolution(volumeDetails, resolutionId)
+        val resolution = annoRepo.getResolution(volume, resolutionId)
+
+        val canvasIds = resolution.read<List<String>>("$.items[0].target[?(@.type == 'Canvas')].source")
+        log.info("canvasIds: $canvasIds")
+
+        val textTargets = resolution.read<List<Map<String, *>>>("$.items[0].target[?(@.type == 'Text')]")
+        val textLines = getText(textTargets)
+        log.info("textLines: $textLines")
+
+        val anno = resolution.read<List<Map<String, Any>>>("$.items")
         return Response.ok(
             mapOf(
+                "type" to "AnnoTextResult",
                 "request" to mapOf(
                     "volumeId" to volumeId,
                     "resolutionId" to resolutionId
                 ),
+                "anno" to anno,
+                "text" to textLines,
                 "iiif" to mapOf(
+                    "manifest" to manifest(volume),
+                    "canvasIds" to canvasIds
                 )
             )
         ).build()
     }
 
-    private fun buildResult(volume: String, opening: Int, bodyId: String? = null): AnnoTextResult {
+    private fun getText(annoTargets: List<Map<String, *>>): List<String> {
+        annoTargets.forEach {
+            if (it["selector"] == null) {
+                return fetchTextLines(it["source"] as String)
+            }
+        }
+        log.info("No text found!")
+        return emptyList()
+    }
+
+    private fun fetchTextLines(textSourceUrl: String): List<String> {
+        log.info("Fetching relevant text segments: $textSourceUrl")
+        val startTime = System.currentTimeMillis()
+        val resp = client.target(textSourceUrl).request().get()
+        val result = resp.readEntity(object : GenericType<List<String>>() {})
+        log.info("fetching took ${System.currentTimeMillis() - startTime} ms")
+        return result
+    }
+
+    private fun buildResult(volumeId: String, opening: Int, bodyId: String? = null): AnnoTextResult {
         if (opening < 1) {
             throw BadRequestException("Opening count starts at 1 (but got: $opening)")
         }
 
-        val volumeDetails = configuration.republic.volumes.find { it.name == volume }
-            ?: throw NotFoundException("Volume $volume not found in republic configuration")
+        val volume = configuration.republic.volumes.find { it.name == volumeId }
+            ?: throw NotFoundException("Volume $volumeId not found in republic configuration")
 
-        val imageSet = volumeDetails.imageset
         log.info("client.timeout (before call): ${client.configuration.getProperty(ClientProperties.READ_TIMEOUT)}")
-        val target = client
-            .target(configuration.iiifUri)
-            .path("imageset").path(imageSet).path("manifest")
-        val manifest = target.uri.toString()
 
-        val canvasId = iiifStore.getCanvasId(volume, opening)
-
-//        val response = target.request().get()
-//        log.info("iiif result: $response")
-//
-//        if (response.status != 200) {
-//            val msg = "Fetching $manifest failed: ${response.status} ${response.statusInfo}"
-//            log.info("Upstream failure: $msg")
-//            throw WebApplicationException(msg)
-//        }
-//        data = response.readEntity(String::class.java)
-
+        val canvasId = iiifStore.getCanvasId(volumeId, opening)
         val mockedAnnotations = loadMockAnnotations()
 
-        /* curl -LSs --data '{"body.id": "urn:republic:NL-HaNA_1.01.02_3783_0285"}' $ar/annotations
-         * levert op: 1 annotatie (in .items) waar alles van opening 285 in zit. (de 'Scan')
-         *
-         * - in target met type=Text zit de text selector voor start en end markering van regels text
-         *   EN DEZE source url moet gebruikt worden (URL escaped) bij ophalen annotaties verderop
-         * - in target met type=Text maar zónder selector zit de URL naar TR met alle regels text van opening 285
-         * {
-          "source": "https://textrepo.republic-caf.diginfra.org/api/view/versions/42df1275-81cd-489c-b28c-345780c3889b/segments/index/49840/50066",
-          "type": "Text"
-          * => vervanging van getMockedText()
-        },
-         *
-         * voor de annotaties nog een call naar annorepo:
-         *   - query parameter aan broccoli call (default: overlap) of je alle annotaties voor opening wil die
-         *     OP deze opening staan, of die deze opening omvatten.
-         *   naar annorepo dan (containerName=volume-1728):
-         *      - /search/{containerName}/overlapping_with_range
-         *   OF - /search/{containerName}/within_range
-         *
-         * bijv. curl -LSs 'https://annorepo.republic-caf.diginfra.org/search/volume-1728/overlapping_with_range?target.source=https%3A%2F%2Ftextrepo.republic-caf.diginfra.org%2Fapi%2Frest%2Fversions%2F42df1275-81cd-489c-b28c-345780c3889b%2Fcontents&range.start=49840&range.end=50066&page=0'
-         * !! Resultaat is gepagineerd.
-         *
-         * wegfilteren: body.type in {"TextRegion", "Line"} (column is vervallen, nu parentType van een "Line")
-         * wel gewenst: body.type in {AttendanceList, Attendant, Resolution, Reviewed, Session}
-         */
+        val request = mapOf(
+            "volumeId" to volumeId,
+            "openingNo" to opening.toString()
+        ).toMutableMap()
+
+        if (bodyId != null) request["bodyId"] = bodyId
 
         return AnnoTextResult(
-            request = Request(volume, opening, bodyId),
+            request = request,
             anno = mockedAnnotations.filter { !setOf("line", "column", "textregion").contains(getBodyValue(it)) },
             text = getMockedText(mockedAnnotations),
             iiif = IIIFContext(
-                manifest = manifest,
+                manifest = manifest(volume),
                 canvasId = canvasId
             )
         )
