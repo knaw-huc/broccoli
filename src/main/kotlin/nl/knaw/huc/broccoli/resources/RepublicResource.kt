@@ -142,7 +142,6 @@ class RepublicResource(
             mapOf(
                 "type" to "AnnoTextResult",
                 "request" to mapOf(
-                    "volumeId" to volumeId,
                     "resolutionId" to resolutionId
                 ),
                 "anno" to anno,
