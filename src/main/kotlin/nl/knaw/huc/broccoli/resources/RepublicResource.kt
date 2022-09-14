@@ -2,10 +2,7 @@ package nl.knaw.huc.broccoli.resources
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.swagger.v3.oas.annotations.Operation
-import nl.knaw.huc.broccoli.api.AnnoTextBody
-import nl.knaw.huc.broccoli.api.AnnoTextResult
-import nl.knaw.huc.broccoli.api.IIIFContext
-import nl.knaw.huc.broccoli.api.Request
+import nl.knaw.huc.broccoli.api.*
 import nl.knaw.huc.broccoli.api.ResourcePaths.REPUBLIC
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.config.RepublicVolume
@@ -84,7 +81,7 @@ class RepublicResource(
 
             val result = AnnoTextResult(
                 request = mapOf(
-                    "volumeId" to volumeId,
+                    "volume" to volumeId,
                     "opening" to openingNo.toString()
                 ),
                 anno = scan.anno,
@@ -105,6 +102,73 @@ class RepublicResource(
             text = annoDetail.text,
         )
         return Response.ok(result).build()
+    }
+
+    @GET
+    @Path("v2")
+    @Operation(description = "Get text, annotations and iiif details using AnnoRepo and TextRepo")
+    fun getVolumeOpeningBodyId(
+        @QueryParam("volume") _volumeId: String?,
+        @QueryParam("opening") _openingNo: Int?,
+        @QueryParam("bodyId") _bodyId: String?
+    ): Response {
+        val volumeId = _volumeId ?: configuration.republic.defaultVolume
+        val openingNo = _openingNo ?: configuration.republic.defaultOpening
+
+        log.info("volumeId: $volumeId, openingNo: $openingNo, bodyId: $_bodyId")
+
+        val volume = configuration.republic.volumes.find { it.name == volumeId }
+            ?: throw NotFoundException("Volume $volumeId not found in republic configuration")
+
+        if (_bodyId == null) {
+            val scan = annoRepo.getScanAnno(volume, openingNo)
+
+            return Response.ok(
+                mapOf(
+                    "request" to mapOf(
+                        "volumeId" to volumeId,
+                        "opening" to openingNo
+                    ),
+                    "anno" to scan.anno,
+                    "text" to mapOf(
+                        "location" to mapOf(
+                            "relativeTo" to "TODO", // for later
+                            "start" to TextMarker(-1, -1, -1),
+                            "end" to TextMarker(-1, -1, -1)
+                        ),
+                        "lines" to scan.text,
+                    ),
+                    "iiif" to mapOf(
+                        "manifest" to manifest(volume),
+                        "canvasId" to iiifStore.getCanvasId(volume.name, openingNo)
+                    )
+                )
+            ).build()
+        }
+
+        val annoDetail = annoRepo.getBodyId(volume, openingNo, _bodyId)
+        return Response.ok(
+            mapOf(
+                "request" to mapOf(
+                    "volumeId" to volumeId,
+                    "opening" to openingNo,
+                    "bodyId" to _bodyId
+                ),
+                "anno" to emptyList<String>(),
+                "text" to mapOf(
+                    "location" to mapOf(
+                        "relativeTo" to "Scan",
+                        "start" to annoDetail.start,
+                        "end" to annoDetail.end
+                    ),
+                    "lines" to annoDetail.text
+                ),
+                "iiif" to mapOf(
+                    "manifest" to manifest(volume),
+                    "canvasId" to iiifStore.getCanvasId(volume.name, openingNo)
+                )
+            )
+        ).build()
     }
 
     private fun manifest(volume: RepublicVolume): URI =
@@ -145,7 +209,14 @@ class RepublicResource(
                     "resolutionId" to resolutionId
                 ),
                 "anno" to anno,
-                "text" to textLines,
+                "text" to mapOf(
+                    "location" to mapOf(
+                        "relativeTo" to "TODO", // for later
+                        "start" to TextMarker(-1, -1, -1),
+                        "end" to TextMarker(-1, -1, -1)
+                    ),
+                    "lines" to textLines,
+                ),
                 "iiif" to mapOf(
                     "manifest" to manifest(volume),
                     "canvasIds" to canvasIds
@@ -153,6 +224,14 @@ class RepublicResource(
             )
         ).build()
     }
+
+    @GET
+    @Path("/v3/{bodyId}")
+    // E.g., .../v3/urn:republic:session-1728-06-19-ordinaris-num-1-resolution-11?relativeTo=Session
+    fun getGenericAnnotationRelativeToContext(
+        @PathParam("bodyId") bodyId: String, // could be resolutionId, sessionId, ...
+        @QueryParam("relativeTo") relativeTo: String // e.g., "Scan", "Session"
+    ): Response = TODO()
 
     private fun getText(annoTargets: List<Map<String, *>>): List<String> {
         annoTargets.forEach {
