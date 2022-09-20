@@ -76,7 +76,7 @@ class RepublicResource(
         val openingNo = _openingNo ?: configuration.republic.defaultOpening
 
         log.info("volumeId: $volumeId, openingNo: $openingNo, bodyId: $_bodyId")
-        val volume = volumeMapper.findVolume(volumeId)
+        val volume = volumeMapper.byVolumeId(volumeId)
 
         if (_bodyId == null) {
             val scan = annoRepo.getScanAnno(volume, openingNo)
@@ -120,7 +120,7 @@ class RepublicResource(
 
         log.info("volumeId: $volumeId, openingNo: $openingNo, bodyId: $_bodyId")
 
-        val volume = volumeMapper.findVolume(volumeId)
+        val volume = volumeMapper.byVolumeId(volumeId)
 
         if (_bodyId == null) {
             val scan = annoRepo.getScanAnno(volume, openingNo)
@@ -185,7 +185,7 @@ class RepublicResource(
     fun getResolution(
         @PathParam("resolutionId") resolutionId: String
     ): Response {
-        val volume = volumeMapper.findResolutionVolume(resolutionId)
+        val volume = volumeMapper.byResolutionId(resolutionId)
         val annoPage = annoRepo.getResolution(volume.name, resolutionId)
 
         return Response.ok(
@@ -243,7 +243,7 @@ class RepublicResource(
             throw BadRequestException("Opening count starts at 1 (but got: $opening)")
         }
 
-        val volume = volumeMapper.findVolume(volumeId)
+        val volume = volumeMapper.byVolumeId(volumeId)
         log.info("client.timeout (before call): ${client.configuration.getProperty(ClientProperties.READ_TIMEOUT)}")
 
         val canvasId = iiifStore.getCanvasId(volumeId, opening)
@@ -325,13 +325,13 @@ class RepublicResource(
 class VolumeMapper(private val config: RepublicConfiguration) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    fun findVolume(volumeId: String): RepublicVolume {
-        return config.volumes.find { it.name == volumeId }
-            ?: throw NotFoundException("Volume [$volumeId] not found in republic configuration")
+    fun byResolutionId(resolutionId: String): RepublicVolume {
+        return byVolumeId(deriveVolumeId(resolutionId))
     }
 
-    fun findResolutionVolume(resolutionId: String): RepublicVolume {
-        return findVolume(deriveVolumeId(resolutionId))
+    fun byVolumeId(volumeId: String): RepublicVolume {
+        return config.volumes.find { it.name == volumeId }
+            ?: throw NotFoundException("Volume [$volumeId] not found in republic configuration")
     }
 
     private fun deriveVolumeId(resolutionId: String): String {
@@ -340,10 +340,12 @@ class VolumeMapper(private val config: RepublicConfiguration) {
                 "invalid resolutionId [$resolutionId]: expecting startsWith($REPUBLIC_SESSION_PREFIX)"
             )
         }
+
         val volumeId = resolutionId
             .substringAfter("$REPUBLIC_SESSION_PREFIX-")
             .substringBefore('-')
         log.info("resolutionId=[$resolutionId] -> derivedVolumeId=[$volumeId]")
+
         return volumeId
     }
 }
