@@ -120,30 +120,15 @@ class FetchingAnnoRepo(
         }
         val startOfPage = (pageStarts[Pair(volumeName, opening)] ?: throw NotFoundException(bodyId))
 
-        val webTarget = client.target(annoRepoConfig.uri).path(AR_SERVICES).path(volumeName).path(AR_SEARCH)
-        log.info("path: ${webTarget.uri}")
+        val annoPage = getResolution(volume.name, bodyId)
+        val textTargets = annoPage.target<Any>("Text")
+        log.info("data: $textTargets")
+        if (textTargets.size != 2) throw NotAcceptableException("unsupported # of target.type == Text elements: ${textTargets.size}")
 
-        val queryResponse = webTarget.request().post(json(mapOf("body.id" to bodyId)))
-        log.info("code: ${queryResponse.status}")
-
-        val resultLocation = queryResponse.getHeaderString(HttpHeaders.LOCATION)
-        log.info("query created: $resultLocation")
-
-        val queryTarget = client.target(resultLocation)
-        val response = queryTarget.request().get()
-        log.info("code: ${response.status}")
-
-        val body = response.readEntity(String::class.java)
-        val json = jsonParser.parse(body)
-        val data = json.read<List<Map<String, *>>>("$.items[0].target[?(@.type == 'Text')]")
-        log.info("data: $data")
-        if (data.size != 2) throw NotAcceptableException("unsupported # of target.type == Text elements: ${data.size}")
-
-        val text = getText(data)
+        val text = getText(textTargets)
         log.info("text: $text")
 
-        val markers = getTextMarkers(data, startOfPage, text)
-            ?: throw NotFoundException("missing start, end and offset markers")
+        val markers = getTextMarkers(textTargets, startOfPage, text)
         log.info("markers: $markers")
 
         val after = System.currentTimeMillis()
@@ -166,30 +151,33 @@ class FetchingAnnoRepo(
         annoTargets: List<Map<String, *>>,
         startOfPage: Int,
         text: List<String>
-    ): Pair<TextMarker, TextMarker>? {
+    ): Pair<TextMarker, TextMarker> {
         annoTargets.forEach {
-            if (it["selector"] != null) {
-
+            if (it["selector"] is Map<*, *>) {
                 @Suppress("UNCHECKED_CAST")
-                val selector = it["selector"] as Map<String, Any>
+                val selector = TextSelector(it["selector"] as Map<String, Any>)
 
-                val absoluteStart = selector["start"] as Int
-                val relativeStart = absoluteStart - startOfPage
-                val beginCharOffset = selector["beginCharOffset"] as Int?
-                val start = TextMarker(relativeStart, beginCharOffset ?: 0, text[0].length)
+                val beginCharOffset = selector.beginCharOffset() ?: 0
+                val start = TextMarker(selector.start(), beginCharOffset, text[0].length)
                 log.info("start: $start")
 
-                val absoluteEnd = selector["end"] as Int
-                val relativeEnd = absoluteEnd - startOfPage
-                val endCharOffset = selector["endCharOffset"] as Int?
-                val index = text.size - 1
-                val end = TextMarker(relativeEnd, endCharOffset ?: (text[index].length - 1), text[index].length)
+                val lengthOfLastLine = text.last().length
+                val endCharOffset = selector.endCharOffset() ?: (lengthOfLastLine - 1)
+                val end = TextMarker(selector.end(), endCharOffset, lengthOfLastLine)
                 log.info("end: $end")
 
-                return Pair(start, end)
+                return Pair(start.relativeTo(startOfPage), end.relativeTo(startOfPage))
             }
         }
-        return null
+
+        throw NotFoundException("missing start, end and offset markers")
+    }
+
+    class TextSelector(private val context: Map<String, Any>) {
+        fun start(): Int = context["start"] as Int
+        fun beginCharOffset(): Int? = context["beginCharOffset"] as Int?
+        fun end(): Int = context["end"] as Int
+        fun endCharOffset(): Int? = context["endCharOffset"] as Int?
     }
 
     private fun buildVolumeName(volume: String): String {

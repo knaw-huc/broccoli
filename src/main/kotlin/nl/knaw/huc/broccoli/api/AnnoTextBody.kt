@@ -18,4 +18,12 @@ data class TextMarker(
     val line: Int,
     val offset: Int,
     val len: Int
-)
+) {
+    fun relativeTo(startLine: Int): TextMarker {
+        return TextMarker(
+            line = line - startLine,
+            offset = offset,
+            len = len
+        )
+    }
+}
