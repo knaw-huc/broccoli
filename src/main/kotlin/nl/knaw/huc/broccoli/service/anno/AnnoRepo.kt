@@ -1,7 +1,7 @@
 package nl.knaw.huc.broccoli.service.anno
 
-import com.jayway.jsonpath.DocumentContext
 import nl.knaw.huc.broccoli.api.TextMarker
+import nl.knaw.huc.broccoli.api.WebAnnoPage
 import nl.knaw.huc.broccoli.config.RepublicVolume
 
 interface AnnoRepo {
@@ -9,7 +9,7 @@ interface AnnoRepo {
 
     fun getBodyId(volume: RepublicVolume, opening: Int, bodyId: String): BodyIdResult
 
-    fun getResolution(volume: RepublicVolume, resolutionId: String): DocumentContext
+    fun getResolution(volume: String, bodyId: String): WebAnnoPage
 }
 
 data class ScanPageResult(

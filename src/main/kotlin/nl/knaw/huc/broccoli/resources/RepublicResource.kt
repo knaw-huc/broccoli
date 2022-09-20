@@ -192,34 +192,26 @@ class RepublicResource(
         val volume = configuration.republic.volumes.find { it.name == volumeId }
             ?: throw NotFoundException("Volume $volumeId not found in republic configuration")
 
-        val resolution = annoRepo.getResolution(volume, resolutionId)
+        val annoPage = annoRepo.getResolution(volume.name, resolutionId)
 
-        val canvasIds = resolution.read<List<String>>("$.items[0].target[?(@.type == 'Canvas')].source")
-        log.info("canvasIds: $canvasIds")
-
-        val textTargets = resolution.read<List<Map<String, *>>>("$.items[0].target[?(@.type == 'Text')]")
-        val textLines = getText(textTargets)
-        log.info("textLines: $textLines")
-
-        val anno = resolution.read<List<Map<String, Any>>>("$.items")
         return Response.ok(
             mapOf(
                 "type" to "AnnoTextResult",
                 "request" to mapOf(
                     "resolutionId" to resolutionId
                 ),
-                "anno" to anno,
+                "anno" to annoPage.items(),
                 "text" to mapOf(
                     "location" to mapOf(
                         "relativeTo" to "TODO", // for later
                         "start" to TextMarker(-1, -1, -1),
                         "end" to TextMarker(-1, -1, -1)
                     ),
-                    "lines" to textLines,
+                    "lines" to getTextLines(annoPage),
                 ),
                 "iiif" to mapOf(
                     "manifest" to manifest(volume),
-                    "canvasIds" to canvasIds
+                    "canvasIds" to extractCanvasIds(annoPage)
                 )
             )
         ).build()
@@ -230,17 +222,17 @@ class RepublicResource(
     // E.g., .../v3/urn:republic:session-1728-06-19-ordinaris-num-1-resolution-11?relativeTo=Session
     fun getGenericAnnotationRelativeToContext(
         @PathParam("bodyId") bodyId: String, // could be resolutionId, sessionId, ...
-        @QueryParam("relativeTo") relativeTo: String // e.g., "Scan", "Session"
+        @QueryParam("relativeTo") relativeTo: String // e.g., "Scan", "Session" -> Enum? Generic?
     ): Response = TODO()
 
-    private fun getText(annoTargets: List<Map<String, *>>): List<String> {
-        annoTargets.forEach {
-            if (it["selector"] == null) {
-                return fetchTextLines(it["source"] as String)
-            }
+    private fun extractCanvasIds(annoPage: WebAnnoPage) = annoPage.targetField<String>("Canvas", "source")
+
+    private fun getTextLines(annoPage: WebAnnoPage): List<String> {
+        val textTargets = annoPage.target<String>("Text").filter { !it.containsKey("selector") }
+        if (textTargets.size > 1) {
+            log.warn("Multiple text targets (without selector) found, arbitrarily using the first: $textTargets")
         }
-        log.info("No text found!")
-        return emptyList()
+        return textTargets[0]["source"]?.let { fetchTextLines(it) }.orEmpty()
     }
 
     private fun fetchTextLines(textSourceUrl: String): List<String> {

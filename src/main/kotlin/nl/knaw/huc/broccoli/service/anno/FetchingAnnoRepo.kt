@@ -1,7 +1,6 @@
 package nl.knaw.huc.broccoli.service.anno
 
 import com.jayway.jsonpath.Configuration.defaultConfiguration
-import com.jayway.jsonpath.DocumentContext
 import com.jayway.jsonpath.JsonPath
 import com.jayway.jsonpath.Option.DEFAULT_PATH_LEAF_TO_NULL
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
@@ -11,6 +10,7 @@ import nl.knaw.huc.broccoli.api.Constants.AR_SERVICES
 import nl.knaw.huc.broccoli.api.Constants.isNotIn
 import nl.knaw.huc.broccoli.api.Constants.overlap
 import nl.knaw.huc.broccoli.api.TextMarker
+import nl.knaw.huc.broccoli.api.WebAnnoPage
 import nl.knaw.huc.broccoli.config.AnnoRepoConfiguration
 import nl.knaw.huc.broccoli.config.RepublicConfiguration
 import nl.knaw.huc.broccoli.config.RepublicVolume
@@ -39,7 +39,7 @@ class FetchingAnnoRepo(
 
     override fun getScanAnno(volume: RepublicVolume, opening: Int): ScanPageResult {
         val before = System.currentTimeMillis()
-        val volumeName = buildVolumeName(volume)
+        val volumeName = buildVolumeName(volume.name)
         val webTarget = client.target(annoRepoConfig.uri).path(AR_SERVICES).path(volumeName).path(AR_SEARCH)
         log.info("path: ${webTarget.uri}")
 
@@ -86,13 +86,13 @@ class FetchingAnnoRepo(
         return ScanPageResult(annos, text)
     }
 
-    override fun getResolution(volume: RepublicVolume, resolutionId: String): DocumentContext {
+    override fun getResolution(volume: String, bodyId: String): WebAnnoPage {
         val before = System.currentTimeMillis()
         val volumeName = buildVolumeName(volume)
 
         val webTarget = client.target(annoRepoConfig.uri).path(AR_SERVICES).path(volumeName).path(AR_SEARCH)
 
-        val queryResponse = webTarget.request().post(json(mapOf("body.id" to resolutionId)))
+        val queryResponse = webTarget.request().post(json(mapOf("body.id" to bodyId)))
         log.info("code: ${queryResponse.status}")
 
         val resultLocation = queryResponse.getHeaderString(HttpHeaders.LOCATION)
@@ -103,17 +103,17 @@ class FetchingAnnoRepo(
         log.info("code: ${response.status}")
 
         val body = response.readEntity(String::class.java)
-        val result = jsonParser.parse(body)
+        val result = WebAnnoPage(jsonParser.parse(body))
 
         val after = System.currentTimeMillis()
-        log.info("fetching resolution $resolutionId took ${after - before} ms")
+        log.info("fetching resolution $bodyId took ${after - before} ms")
 
         return result
     }
 
     override fun getBodyId(volume: RepublicVolume, opening: Int, bodyId: String): BodyIdResult {
         val before = System.currentTimeMillis()
-        val volumeName = buildVolumeName(volume)
+        val volumeName = buildVolumeName(volume.name)
         if (pageStarts[Pair(volumeName, opening)] == null) {
             log.info("page starts for ($volumeName, opening) not yet loaded, fetching...")
             getScanAnno(volume, opening)
@@ -192,8 +192,8 @@ class FetchingAnnoRepo(
         return null
     }
 
-    private fun buildVolumeName(volume: RepublicVolume): String {
-        val volumeNameBuilder = StringBuilder("volume-${volume.name}")
+    private fun buildVolumeName(volume: String): String {
+        val volumeNameBuilder = StringBuilder("volume-$volume")
         if (annoRepoConfig.rev != null) {
             volumeNameBuilder.append('-')
             volumeNameBuilder.append(annoRepoConfig.rev)
