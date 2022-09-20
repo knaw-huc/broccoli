@@ -86,7 +86,7 @@ class FetchingAnnoRepo(
         return ScanPageResult(annos, text)
     }
 
-    override fun getResolution(volume: String, bodyId: String): WebAnnoPage {
+    override fun getBodyId(volume: String, bodyId: String): WebAnnoPage {
         val before = System.currentTimeMillis()
         val volumeName = buildVolumeName(volume)
 
@@ -111,7 +111,7 @@ class FetchingAnnoRepo(
         return result
     }
 
-    override fun getBodyId(volume: RepublicVolume, opening: Int, bodyId: String): BodyIdResult {
+    override fun getRepublicBodyId(volume: RepublicVolume, opening: Int, bodyId: String): BodyIdResult {
         val before = System.currentTimeMillis()
         val volumeName = buildVolumeName(volume.name)
         if (pageStarts[Pair(volumeName, opening)] == null) {
@@ -120,7 +120,7 @@ class FetchingAnnoRepo(
         }
         val startOfPage = (pageStarts[Pair(volumeName, opening)] ?: throw NotFoundException(bodyId))
 
-        val annoPage = getResolution(volume.name, bodyId)
+        val annoPage = getBodyId(volume.name, bodyId)
         val textTargets = annoPage.target<Any>("Text")
         log.info("data: $textTargets")
         if (textTargets.size != 2) throw NotAcceptableException("unsupported # of target.type == Text elements: ${textTargets.size}")

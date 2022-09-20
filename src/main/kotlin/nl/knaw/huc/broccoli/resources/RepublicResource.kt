@@ -66,7 +66,7 @@ class RepublicResource(
             return Response.ok(result).build()
         }
 
-        val annoDetail = annoRepo.getBodyId(volume, openingNo, _bodyId)
+        val annoDetail = annoRepo.getRepublicBodyId(volume, openingNo, _bodyId)
         val result = AnnoTextBody(
             request = Request(volumeId, openingNo, _bodyId),
             start = annoDetail.start,
@@ -116,7 +116,7 @@ class RepublicResource(
             ).build()
         }
 
-        val annoDetail = annoRepo.getBodyId(volume, openingNo, _bodyId)
+        val annoDetail = annoRepo.getRepublicBodyId(volume, openingNo, _bodyId)
         return Response.ok(
             mapOf(
                 "request" to mapOf(
@@ -154,7 +154,7 @@ class RepublicResource(
         @PathParam("resolutionId") resolutionId: String
     ): Response {
         val volume = volumeMapper.byResolutionId(resolutionId)
-        val annoPage = annoRepo.getResolution(volume.name, resolutionId)
+        val annoPage = annoRepo.getBodyId(volume.name, resolutionId)
 
         return Response.ok(
             mapOf(

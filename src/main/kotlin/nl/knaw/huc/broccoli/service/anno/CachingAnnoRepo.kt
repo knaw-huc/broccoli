@@ -26,7 +26,7 @@ class CachingAnnoRepo(private val delegate: AnnoRepo, capacity: Int = 10) : Anno
         return value
     }
 
-    override fun getBodyId(volume: RepublicVolume, opening: Int, bodyId: String): BodyIdResult {
+    override fun getRepublicBodyId(volume: RepublicVolume, opening: Int, bodyId: String): BodyIdResult {
         val key = Triple(volume.name, opening, bodyId)
         val cached = cachedAnnoDetails.get(key)
         if (cached != null) {
@@ -35,12 +35,12 @@ class CachingAnnoRepo(private val delegate: AnnoRepo, capacity: Int = 10) : Anno
         }
 
         log.info("cache miss for [$key]")
-        val value = delegate.getBodyId(volume, opening, bodyId)
+        val value = delegate.getRepublicBodyId(volume, opening, bodyId)
         cachedAnnoDetails.put(key, value)
         return value
     }
 
-    override fun getResolution(volume: String, bodyId: String): WebAnnoPage {
+    override fun getBodyId(volume: String, bodyId: String): WebAnnoPage {
         val key = Pair(volume, bodyId)
         val cached = cachedResolutions.get(key)
         if (cached != null) {
@@ -49,7 +49,7 @@ class CachingAnnoRepo(private val delegate: AnnoRepo, capacity: Int = 10) : Anno
         }
 
         log.info("cache miss for [$key]")
-        val value = delegate.getResolution(volume, bodyId)
+        val value = delegate.getBodyId(volume, bodyId)
         cachedResolutions.put(key, value)
         return value
     }
