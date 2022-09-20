@@ -211,32 +211,6 @@ class RepublicResource(
         ).build()
     }
 
-    class VolumeMapper(private val config: RepublicConfiguration) {
-        private val log = LoggerFactory.getLogger(javaClass)
-
-        fun findVolume(volumeId: String): RepublicVolume {
-            return config.volumes.find { it.name == volumeId }
-                ?: throw NotFoundException("Volume [$volumeId] not found in republic configuration")
-        }
-
-        fun findResolutionVolume(resolutionId: String): RepublicVolume {
-            return findVolume(deriveVolumeId(resolutionId))
-        }
-
-        private fun deriveVolumeId(resolutionId: String): String {
-            if (!resolutionId.startsWith(REPUBLIC_SESSION_PREFIX)) {
-                throw BadRequestException(
-                    "invalid resolutionId [$resolutionId]: expecting startsWith($REPUBLIC_SESSION_PREFIX)"
-                )
-            }
-            val volumeId = resolutionId
-                .substringAfter("$REPUBLIC_SESSION_PREFIX-")
-                .substringBefore('-')
-            log.info("resolutionId=[$resolutionId] -> derivedVolumeId=[$volumeId]")
-            return volumeId
-        }
-    }
-
     @GET
     @Path("/v3/{bodyId}")
     // E.g., .../v3/urn:republic:session-1728-06-19-ordinaris-num-1-resolution-11?relativeTo=Session
@@ -344,5 +318,32 @@ class RepublicResource(
             }
         }
         return mockedAnnos
+    }
+
+}
+
+class VolumeMapper(private val config: RepublicConfiguration) {
+    private val log = LoggerFactory.getLogger(javaClass)
+
+    fun findVolume(volumeId: String): RepublicVolume {
+        return config.volumes.find { it.name == volumeId }
+            ?: throw NotFoundException("Volume [$volumeId] not found in republic configuration")
+    }
+
+    fun findResolutionVolume(resolutionId: String): RepublicVolume {
+        return findVolume(deriveVolumeId(resolutionId))
+    }
+
+    private fun deriveVolumeId(resolutionId: String): String {
+        if (!resolutionId.startsWith(REPUBLIC_SESSION_PREFIX)) {
+            throw BadRequestException(
+                "invalid resolutionId [$resolutionId]: expecting startsWith($REPUBLIC_SESSION_PREFIX)"
+            )
+        }
+        val volumeId = resolutionId
+            .substringAfter("$REPUBLIC_SESSION_PREFIX-")
+            .substringBefore('-')
+        log.info("resolutionId=[$resolutionId] -> derivedVolumeId=[$volumeId]")
+        return volumeId
     }
 }
