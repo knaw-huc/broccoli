@@ -2,15 +2,12 @@ package nl.knaw.huc.broccoli.resources
 
 import nl.knaw.huc.broccoli.config.RepublicConfiguration
 import nl.knaw.huc.broccoli.config.RepublicVolume
-import org.slf4j.LoggerFactory
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.NotFoundException
 
 private const val REPUBLIC_PREFIX = "urn:republic:"
 
 class VolumeMapper(private val config: RepublicConfiguration) {
-    private val log = LoggerFactory.getLogger(javaClass)
-
     fun byBodyId(bodyId: String): RepublicVolume {
         if (bodyId.startsWith(REPUBLIC_PREFIX)) {
             val remainderOfId = bodyId.substringAfter(REPUBLIC_PREFIX)
@@ -23,7 +20,7 @@ class VolumeMapper(private val config: RepublicConfiguration) {
                 return byVolumeId(volumeId)
             }
 
-            // urn:republic:NL-HaNA_1.01.02_3783_0331
+            // urn:republic:NL-HaNA_1.01.02_3783_0331 -> [invnr 3783] -> 1728
             if (remainderOfId.startsWith("NL-HaNA_${config.archiefNr}")) {
                 val invNr = remainderOfId
                     .substringAfter("NL-HaNA_${config.archiefNr}_")
