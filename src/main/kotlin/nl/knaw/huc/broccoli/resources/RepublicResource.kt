@@ -4,7 +4,6 @@ import io.swagger.v3.oas.annotations.Operation
 import nl.knaw.huc.broccoli.api.*
 import nl.knaw.huc.broccoli.api.ResourcePaths.REPUBLIC
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
-import nl.knaw.huc.broccoli.config.RepublicConfiguration
 import nl.knaw.huc.broccoli.config.RepublicVolume
 import nl.knaw.huc.broccoli.service.IIIFStore
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
@@ -15,8 +14,6 @@ import javax.ws.rs.client.Client
 import javax.ws.rs.core.GenericType
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.core.Response
-
-private const val REPUBLIC_SESSION_PREFIX = "urn:republic:session"
 
 @Path(REPUBLIC)
 @Produces(MediaType.APPLICATION_JSON)
@@ -153,7 +150,7 @@ class RepublicResource(
     fun getResolution(
         @PathParam("resolutionId") resolutionId: String
     ): Response {
-        val volume = volumeMapper.byResolutionId(resolutionId)
+        val volume = volumeMapper.byBodyId(resolutionId)
         val annoPage = annoRepo.getBodyId(volume.name, resolutionId)
 
         return Response.ok(
@@ -215,30 +212,3 @@ class RepublicResource(
     }
 }
 
-class VolumeMapper(private val config: RepublicConfiguration) {
-    private val log = LoggerFactory.getLogger(javaClass)
-
-    fun byResolutionId(resolutionId: String): RepublicVolume {
-        return byVolumeId(deriveVolumeId(resolutionId))
-    }
-
-    fun byVolumeId(volumeId: String): RepublicVolume {
-        return config.volumes.find { it.name == volumeId }
-            ?: throw NotFoundException("Volume [$volumeId] not found in republic configuration")
-    }
-
-    private fun deriveVolumeId(resolutionId: String): String {
-        if (!resolutionId.startsWith(REPUBLIC_SESSION_PREFIX)) {
-            throw BadRequestException(
-                "invalid resolutionId [$resolutionId]: expecting startsWith($REPUBLIC_SESSION_PREFIX)"
-            )
-        }
-
-        val volumeId = resolutionId
-            .substringAfter("$REPUBLIC_SESSION_PREFIX-")
-            .substringBefore('-')
-        log.info("resolutionId=[$resolutionId] -> derivedVolumeId=[$volumeId]")
-
-        return volumeId
-    }
-}
