@@ -180,11 +180,19 @@ class RepublicResource(
     }
 
     @GET
-    @Path("/v3/{bodyId}")
-    // E.g., .../v3/urn:republic:session-1728-06-19-ordinaris-num-1-resolution-11?relativeTo=Session
+    @Path("/v3/volumes/{volumeId}/openings/{openingId}")
+    fun getVolumeOpening(
+        @PathParam("volumeId") volumeId: String,
+        @PathParam("openingId") openingId: Int
+    ): Response = TODO()
+
+    @GET
+    @Path("/v3/bodies/{bodyId}")
+    // Both.../v3/bodies/urn:republic:session-1728-06-19-ordinaris-num-1-resolution-11?relativeTo=Session
+    // and /v3/bodies/urn:republic:NL-HaNA_1.01.02_3783_0331 (Either NO ?relativeTo or MUST BE: relativeTo=Volume)
     fun getGenericAnnotationRelativeToContext(
         @PathParam("bodyId") bodyId: String, // could be resolutionId, sessionId, ...
-        @QueryParam("relativeTo") relativeTo: String // e.g., "Scan", "Session" -> Enum? Generic?
+        @QueryParam("relativeTo") relativeTo: String? // e.g., "Scan", "Session" -> Enum? Generic?
     ): Response = TODO()
 
     private fun extractCanvasIds(annoPage: WebAnnoPage) = annoPage.targetField<String>("Canvas", "source")
