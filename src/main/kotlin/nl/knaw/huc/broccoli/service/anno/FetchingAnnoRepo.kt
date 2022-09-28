@@ -123,7 +123,8 @@ class FetchingAnnoRepo(
         val annoPage = getBodyId(volume.name, bodyId)
         val textTargets = annoPage.target<Any>("Text")
         log.info("data: $textTargets")
-        if (textTargets.size != 2) throw NotAcceptableException("unsupported # of target.type == Text elements: ${textTargets.size}")
+        if (textTargets.size != 2)
+            throw NotAcceptableException("unsupported # of target.type == Text elements: ${textTargets.size}")
 
         val text = getText(textTargets)
         log.info("text: $text")
