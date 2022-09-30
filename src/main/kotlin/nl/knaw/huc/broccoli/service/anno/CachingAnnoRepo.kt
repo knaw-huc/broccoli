@@ -56,7 +56,7 @@ class CachingAnnoRepo(private val delegate: AnnoRepo, capacity: Int = 10) : Anno
     }
 
     override fun findOffsetRelativeTo(volume: String, source: String, selector: TextSelector, type: String): Int {
-        log.info("TODO: cache findEncompassing")
+        log.info("TODO: cache findOffsetRelativeTo")
         return delegate.findOffsetRelativeTo(volume, source, selector, type)
     }
 }

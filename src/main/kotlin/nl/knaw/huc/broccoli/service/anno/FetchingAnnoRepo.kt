@@ -251,7 +251,7 @@ class FetchingAnnoRepo(
     }
 
     override fun findOffsetRelativeTo(volume: String, source: String, selector: TextSelector, type: String): Int {
-        log.info("findEncompassing: volume=[$volume], selector=$selector, type=[$type]")
+        log.info("findOffsetRelativeTo: volume=[$volume], selector=$selector, type=[$type]")
         val volumeName = buildVolumeName(volume)
         var webTarget = client.target(annoRepoConfig.uri).path(AR_SERVICES).path(volumeName).path(AR_SEARCH)
         val queryResponse = webTarget.request()
