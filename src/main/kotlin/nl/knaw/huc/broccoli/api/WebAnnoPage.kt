@@ -12,6 +12,6 @@ class WebAnnoPage(val context: DocumentContext) {
     }
 
     fun <T> targetField(type: String, field: String): List<T> {
-        return context.read("$.items[*].target[?(@.type == '$type')].$field")
+        return context.read<List<T?>>("$.items[*].target[?(@.type == '$type')].$field").filterNotNull()
     }
 }

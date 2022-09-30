@@ -5,12 +5,12 @@ import nl.knaw.huc.broccoli.config.RepublicVolume
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.NotFoundException
 
-private const val REPUBLIC_PREFIX = "urn:republic:"
+private const val REPUBLIC_NS = "urn:republic:"
 
 class VolumeMapper(private val config: RepublicConfiguration) {
     fun byBodyId(bodyId: String): RepublicVolume {
-        if (bodyId.startsWith(REPUBLIC_PREFIX)) {
-            val remainderOfId = bodyId.substringAfter(REPUBLIC_PREFIX)
+        if (bodyId.startsWith(REPUBLIC_NS)) {
+            val remainderOfId = bodyId.substringAfter(REPUBLIC_NS)
 
             // urn:republic:session-1728-06-19-ordinaris-num-1-resolution-11 -> 1728
             if (remainderOfId.startsWith("session")) {
@@ -30,7 +30,7 @@ class VolumeMapper(private val config: RepublicConfiguration) {
         }
 
         throw BadRequestException(
-            "Unrecognised bodyId [$bodyId]: expecting session, or NL-HaNA_${config.archiefNr} after $REPUBLIC_PREFIX"
+            "Unrecognised bodyId [$bodyId]: expecting session, or NL-HaNA_${config.archiefNr} after $REPUBLIC_NS"
         )
     }
 
@@ -42,6 +42,13 @@ class VolumeMapper(private val config: RepublicConfiguration) {
     fun byVolumeId(volumeId: String): RepublicVolume {
         return config.volumes.find { it.name == volumeId }
             ?: throw NotFoundException("Volume [$volumeId] not found in republic configuration")
+    }
+
+    fun buildBodyId(volume: RepublicVolume, openingNr: Int): String {
+        val archNr = config.archiefNr
+        val invNr = volume.invNr
+        val scanNr = "%04d".format(openingNr)
+        return "${REPUBLIC_NS}NL-HaNA_${archNr}_${invNr}_${scanNr}"
     }
 
 }

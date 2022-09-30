@@ -14,8 +14,10 @@ object Constants {
     fun overlap(source: String, start: Int, end: Int): Map<String, *> =
         mapOf(AR_OVERLAP_SOURCE to source, AR_OVERLAP_START to start, AR_OVERLAP_END to end)
 
-    const val AR_IS_NOT_IN = ":isNotIn"
-    fun isNotIn(vararg excluded: String) = mapOf(AR_IS_NOT_IN to excluded)
+    fun isEqualTo(it: String) = mapOf(":=" to it)
+    fun isNotEqualTo(it: String) = mapOf(":!=" to it)
+    fun isIn(vararg included: String) = mapOf(":isIn" to included)
+    fun isNotIn(vararg excluded: String) = mapOf(":isNotIn" to excluded)
 
     enum class EnvironmentVariable {
         BR_SERVER_PORT,

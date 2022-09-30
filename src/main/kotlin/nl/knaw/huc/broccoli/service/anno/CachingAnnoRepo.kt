@@ -2,6 +2,7 @@ package nl.knaw.huc.broccoli.service.anno
 
 import nl.knaw.huc.broccoli.api.WebAnnoPage
 import nl.knaw.huc.broccoli.config.RepublicVolume
+import nl.knaw.huc.broccoli.service.anno.FetchingAnnoRepo.TextSelector
 import nl.knaw.huc.broccoli.service.cache.LRUCache
 import org.slf4j.LoggerFactory
 
@@ -52,5 +53,10 @@ class CachingAnnoRepo(private val delegate: AnnoRepo, capacity: Int = 10) : Anno
         val value = delegate.getBodyId(volume, bodyId)
         cachedResolutions.put(key, value)
         return value
+    }
+
+    override fun findOffsetRelativeTo(volume: String, source: String, selector: TextSelector, type: String): Int {
+        log.info("TODO: cache findEncompassing")
+        return delegate.findOffsetRelativeTo(volume, source, selector, type)
     }
 }

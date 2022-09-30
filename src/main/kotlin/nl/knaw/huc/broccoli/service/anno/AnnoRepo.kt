@@ -1,8 +1,9 @@
 package nl.knaw.huc.broccoli.service.anno
 
-import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.api.WebAnnoPage
 import nl.knaw.huc.broccoli.config.RepublicVolume
+import nl.knaw.huc.broccoli.service.anno.FetchingAnnoRepo.TextMarkers
+import nl.knaw.huc.broccoli.service.anno.FetchingAnnoRepo.TextSelector
 
 interface AnnoRepo {
     fun getScanAnno(volume: RepublicVolume, opening: Int): ScanPageResult
@@ -10,6 +11,8 @@ interface AnnoRepo {
     fun getRepublicBodyId(volume: RepublicVolume, opening: Int, bodyId: String): BodyIdResult
 
     fun getBodyId(volume: String, bodyId: String): WebAnnoPage
+
+    fun findOffsetRelativeTo(volume: String, source: String, selector: TextSelector, type: String): Int
 }
 
 data class ScanPageResult(
@@ -18,7 +21,6 @@ data class ScanPageResult(
 )
 
 data class BodyIdResult(
-    val start: TextMarker,
-    val end: TextMarker,
+    val markers: TextMarkers,
     val text: List<String>
 )

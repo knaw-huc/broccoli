@@ -7,6 +7,7 @@ import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.config.RepublicVolume
 import nl.knaw.huc.broccoli.service.IIIFStore
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
+import nl.knaw.huc.broccoli.service.anno.FetchingAnnoRepo.TextSelector
 import org.slf4j.LoggerFactory
 import java.net.URI
 import javax.ws.rs.*
@@ -66,8 +67,8 @@ class RepublicResource(
         val annoDetail = annoRepo.getRepublicBodyId(volume, openingNo, _bodyId)
         val result = AnnoTextBody(
             request = Request(volumeId, openingNo, _bodyId),
-            start = annoDetail.start,
-            end = annoDetail.end,
+            start = annoDetail.markers.start,
+            end = annoDetail.markers.end,
             text = annoDetail.text,
         )
         return Response.ok(result).build()
@@ -125,8 +126,8 @@ class RepublicResource(
                 "text" to mapOf(
                     "location" to mapOf(
                         "relativeTo" to "Scan",
-                        "start" to annoDetail.start,
-                        "end" to annoDetail.end
+                        "start" to annoDetail.markers.start,
+                        "end" to annoDetail.markers.end
                     ),
                     "lines" to annoDetail.text
                 ),
@@ -177,20 +178,91 @@ class RepublicResource(
     }
 
     @GET
-    @Path("/v3/volumes/{volumeId}/openings/{openingId}")
+    @Path("/v3/volumes/{volumeId}/openings/{openingNr}")
     fun getVolumeOpening(
         @PathParam("volumeId") volumeId: String,
-        @PathParam("openingId") openingId: Int
-    ): Response = TODO()
+        @PathParam("openingNr") openingNr: Int
+    ): Response {
+        log.info("volumeId: $volumeId, openingNo: $openingNr")
+
+        val volume = volumeMapper.byVolumeId(volumeId)
+
+        if (openingNr < 1) {
+            throw BadRequestException("Path parameter 'openingNr' must be >= 1")
+        }
+
+        val bodyId = volumeMapper.buildBodyId(volume, openingNr)
+        log.info("constructed bodyId: $bodyId")
+
+        val annoPage = annoRepo.getBodyId(volume.name, bodyId)
+        return Response.ok(
+            mapOf(
+                "type" to "AnnoTextResult",
+                "request" to mapOf(
+                    "volumeId" to volumeId,
+                    "openingNo" to openingNr
+                ),
+                "anno" to annoPage.items(),
+                "text" to mapOf(
+                    "location" to mapOf(
+                        "relativeTo" to "TODO",
+                        "start" to TextMarker(-1, -1, -1),
+                        "end" to TextMarker(-1, -1, -1)
+                    ),
+                    "lines" to getTextLines(annoPage)
+                ),
+                "iiif" to mapOf(
+                    "manifest" to manifest(volume),
+                    "canvasIds" to extractCanvasIds(annoPage)
+                )
+            )
+        ).build()
+    }
 
     @GET
     @Path("/v3/bodies/{bodyId}")
     // Both.../v3/bodies/urn:republic:session-1728-06-19-ordinaris-num-1-resolution-11?relativeTo=Session
     // and /v3/bodies/urn:republic:NL-HaNA_1.01.02_3783_0331 (Either NO ?relativeTo or MUST BE: relativeTo=Volume)
-    fun getGenericAnnotationRelativeToContext(
+    fun getBodyIdRelativeTo(
         @PathParam("bodyId") bodyId: String, // could be resolutionId, sessionId, ...
         @QueryParam("relativeTo") relativeTo: String? // e.g., "Scan", "Session" -> Enum? Generic?
-    ): Response = TODO()
+    ): Response {
+        val volume = volumeMapper.byBodyId(bodyId)
+        val annoPage = annoRepo.getBodyId(volume.name, bodyId)
+        val textTargets = annoPage.target<Any>("Text")
+        val find = textTargets.find { it["selector"] != null }
+        log.info("find: $find")
+        if (find != null) {
+            val source = find["source"] as String
+            @Suppress("UNCHECKED_CAST") val selector = TextSelector(find["selector"] as Map<String, Any>)
+            val pageStart = selector.start()
+            val pageEnd = selector.end()
+            log.info("source=$source, pageStart=$pageStart, pageEnd=$pageEnd")
+            val offset = annoRepo.findOffsetRelativeTo(volume.name, source, selector, relativeTo ?: "Scan")
+        }
+
+        return Response.ok(
+            mapOf(
+                "type" to "AnnoTextResult",
+                "request" to mapOf(
+                    "resolutionId" to bodyId
+                ),
+                "anno" to annoPage.items(),
+                "text" to mapOf(
+                    "location" to mapOf(
+                        "relativeTo" to relativeTo,
+                        "start" to TextMarker(-1, -1, -1),
+                        "end" to TextMarker(-1, -1, -1)
+                    ),
+                    "lines" to getTextLines(annoPage),
+                ),
+                "iiif" to mapOf(
+                    "manifest" to manifest(volume),
+                    "canvasIds" to extractCanvasIds(annoPage)
+                )
+            )
+        ).build()
+    }
 
     private fun extractCanvasIds(annoPage: WebAnnoPage) = annoPage.targetField<String>("Canvas", "source")
 

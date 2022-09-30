@@ -7,6 +7,7 @@ import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE
 import nl.knaw.huc.broccoli.api.Constants.AR_SEARCH
 import nl.knaw.huc.broccoli.api.Constants.AR_SERVICES
+import nl.knaw.huc.broccoli.api.Constants.isEqualTo
 import nl.knaw.huc.broccoli.api.Constants.isNotIn
 import nl.knaw.huc.broccoli.api.Constants.overlap
 import nl.knaw.huc.broccoli.api.TextMarker
@@ -129,13 +130,13 @@ class FetchingAnnoRepo(
         val text = getText(textTargets)
         log.info("text: $text")
 
-        val markers = getTextMarkers(textTargets, startOfPage, text)
+        val markers = getTextMarkers(textTargets, text)
         log.info("markers: $markers")
 
         val after = System.currentTimeMillis()
         log.info("fetching bodyId took ${after - before} ms")
 
-        return BodyIdResult(markers.first, markers.second, text)
+        return BodyIdResult(markers.relativeTo(startOfPage), text)
     }
 
     fun getText(annoTargets: List<Map<String, *>>): List<String> {
@@ -150,9 +151,8 @@ class FetchingAnnoRepo(
 
     private fun getTextMarkers(
         annoTargets: List<Map<String, *>>,
-        startOfPage: Int,
         text: List<String>
-    ): Pair<TextMarker, TextMarker> {
+    ): TextMarkers {
         annoTargets.forEach {
             if (it["selector"] is Map<*, *>) {
                 @Suppress("UNCHECKED_CAST")
@@ -167,11 +167,17 @@ class FetchingAnnoRepo(
                 val end = TextMarker(selector.end(), endCharOffset, lengthOfLastLine)
                 log.info("end: $end")
 
-                return Pair(start.relativeTo(startOfPage), end.relativeTo(startOfPage))
+                return TextMarkers(start, end)
             }
         }
 
         throw NotFoundException("missing start, end and offset markers")
+    }
+
+    class TextMarkers(val start: TextMarker, val end: TextMarker) {
+        fun relativeTo(offset: Int): TextMarkers {
+            return TextMarkers(start.relativeTo(offset), end.relativeTo(offset))
+        }
     }
 
     class TextSelector(private val context: Map<String, Any>) {
@@ -242,5 +248,40 @@ class FetchingAnnoRepo(
 
         log.info("fetching overlapping annotations took: ${System.currentTimeMillis() - startTime} ms")
         return result
+    }
+
+    override fun findOffsetRelativeTo(volume: String, source: String, selector: TextSelector, type: String): Int {
+        log.info("findEncompassing: volume=[$volume], selector=$selector, type=[$type]")
+        val volumeName = buildVolumeName(volume)
+        var webTarget = client.target(annoRepoConfig.uri).path(AR_SERVICES).path(volumeName).path(AR_SEARCH)
+        val queryResponse = webTarget.request()
+            .post(
+                json(
+                    mapOf(
+                        AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to overlap(source, selector.start(), selector.end()),
+                        AR_BODY_TYPE to isEqualTo(type)
+                    )
+                )
+            )
+
+        log.info("code: ${queryResponse.status}")
+        if (queryResponse.status == HttpStatus.BAD_REQUEST_400) {
+            log.info("BAD REQUEST: ${queryResponse.readEntity(String::class.java)}")
+        }
+
+        val resultLocation = queryResponse.getHeaderString(HttpHeaders.LOCATION)
+        log.info("query created: $resultLocation")
+
+        webTarget = client.target(resultLocation)
+        val resp = webTarget.request().get()
+        val body = resp.readEntity(String::class.java)
+        val json = jsonParser.parse(body)
+        val page = WebAnnoPage(json)
+        val start = page.targetField<Int>("Text", "selector.start")
+            .filter { it <= selector.start() }
+            .max()
+        val offset = selector.start() - start
+        log.info("closest $type starts at $start (absolute), so offset is ${offset}")
+        return offset
     }
 }
