@@ -192,10 +192,7 @@ class RepublicResource(
             throw BadRequestException("Path parameter 'openingNr' must be >= 1")
         }
 
-        val bodyId = volumeMapper.buildBodyId(volume, openingNr)
-        log.info("constructed bodyId: $bodyId")
-
-        val annoPage = annoRepo.getBodyId(volume.name, bodyId)
+        val scan = annoRepo.getScanAnno(volume, openingNr)
         return Response.ok(
             mapOf(
                 "type" to "AnnoTextResult",
@@ -203,14 +200,14 @@ class RepublicResource(
                     "volumeId" to volumeId,
                     "openingNr" to openingNr
                 ),
-                "anno" to annoPage.items(),
+                "anno" to scan.anno,
                 "text" to mapOf(
                     "location" to mapOf(
                         "relativeTo" to "TODO",
                         "start" to TextMarker(-1, -1, -1),
                         "end" to TextMarker(-1, -1, -1)
                     ),
-                    "lines" to getTextLines(annoPage)
+                    "lines" to scan.text
                 ),
                 "iiif" to mapOf(
                     "manifest" to manifest(volume),
