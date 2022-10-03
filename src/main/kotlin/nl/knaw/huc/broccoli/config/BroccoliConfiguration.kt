@@ -60,6 +60,10 @@ class AnnoRepoConfiguration {
 
     @Valid
     @JsonProperty
+    var key: String = "api-key-provided-by-annorepo-maintainer"
+
+    @Valid
+    @JsonProperty
     var rev: String? = null
 }
 
