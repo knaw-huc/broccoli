@@ -214,7 +214,7 @@ class RepublicResource(
                 ),
                 "iiif" to mapOf(
                     "manifest" to manifest(volume),
-                    "canvasIds" to extractCanvasIds(annoPage)
+                    "canvasIds" to listOf(iiifStore.getCanvasId(volume.name, openingNr))
                 )
             )
         ).build()
