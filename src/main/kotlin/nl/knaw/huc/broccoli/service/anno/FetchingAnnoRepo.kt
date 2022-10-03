@@ -174,13 +174,13 @@ class FetchingAnnoRepo(
         throw NotFoundException("missing start, end and offset markers")
     }
 
-    class TextMarkers(val start: TextMarker, val end: TextMarker) {
+    data class TextMarkers(val start: TextMarker, val end: TextMarker) {
         fun relativeTo(offset: Int): TextMarkers {
             return TextMarkers(start.relativeTo(offset), end.relativeTo(offset))
         }
     }
 
-    class TextSelector(private val context: Map<String, Any>) {
+    data class TextSelector(private val context: Map<String, Any>) {
         fun start(): Int = context["start"] as Int
         fun beginCharOffset(): Int? = context["beginCharOffset"] as Int?
         fun end(): Int = context["end"] as Int
@@ -250,7 +250,8 @@ class FetchingAnnoRepo(
         return result
     }
 
-    override fun findOffsetRelativeTo(volume: String, source: String, selector: TextSelector, type: String): Int {
+    override fun findOffsetRelativeTo(volume: String, source: String, selector: TextSelector, type: String)
+            : Pair<Int, String> {
         log.info("findOffsetRelativeTo: volume=[$volume], selector=$selector, type=[$type]")
         val volumeName = buildVolumeName(volume)
         var webTarget = client.target(annoRepoConfig.uri).path(AR_SERVICES).path(volumeName).path(AR_SEARCH)
@@ -280,8 +281,7 @@ class FetchingAnnoRepo(
         val start = page.targetField<Int>("Text", "selector.start")
             .filter { it <= selector.start() }
             .max()
-        val offset = selector.start() - start
-        log.info("closest $type starts at $start (absolute), so offset is ${offset}")
-        return offset
+        log.info("closest [$type] starts at $start (absolute)")
+        return Pair(start, page.bodyId().first())
     }
 }

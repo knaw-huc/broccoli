@@ -7,6 +7,7 @@ import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.config.RepublicVolume
 import nl.knaw.huc.broccoli.service.IIIFStore
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
+import nl.knaw.huc.broccoli.service.anno.FetchingAnnoRepo.TextMarkers
 import nl.knaw.huc.broccoli.service.anno.FetchingAnnoRepo.TextSelector
 import org.slf4j.LoggerFactory
 import java.net.URI
@@ -225,35 +226,65 @@ class RepublicResource(
     // and /v3/bodies/urn:republic:NL-HaNA_1.01.02_3783_0331 (Either NO ?relativeTo or MUST BE: relativeTo=Volume)
     fun getBodyIdRelativeTo(
         @PathParam("bodyId") bodyId: String, // could be resolutionId, sessionId, ...
-        @QueryParam("relativeTo") relativeTo: String? // e.g., "Scan", "Session" -> Enum? Generic?
+        @QueryParam("relativeTo") @DefaultValue("Origin") relativeTo: String // e.g., "Scan", "Session" -> Enum? Generic?
     ): Response {
         val volume = volumeMapper.byBodyId(bodyId)
         val annoPage = annoRepo.getBodyId(volume.name, bodyId)
         val textTargets = annoPage.target<Any>("Text")
-        val find = textTargets.find { it["selector"] != null }
-        log.info("find: $find")
-        if (find != null) {
-            val source = find["source"] as String
-            @Suppress("UNCHECKED_CAST") val selector = TextSelector(find["selector"] as Map<String, Any>)
-            val pageStart = selector.start()
-            val pageEnd = selector.end()
-            log.info("source=$source, pageStart=$pageStart, pageEnd=$pageEnd")
-            val offset = annoRepo.findOffsetRelativeTo(volume.name, source, selector, relativeTo ?: "Scan")
+
+        val textTargetWithoutSelector = textTargets.find { it["selector"] == null }
+            ?: throw WebApplicationException("annotation body $bodyId has no 'Text' target without selector")
+        log.info("textTargetWithoutSelector: $textTargetWithoutSelector")
+        val textLinesSource = textTargetWithoutSelector["source"] as String
+        val textLines = fetchTextLines(textLinesSource)
+
+        val textTargetWithSelector = textTargets.find { it["selector"] != null }
+            ?: throw WebApplicationException("annotation body $bodyId has no 'Text' target with selector")
+
+        log.info("textTargetWithSelector: $textTargetWithSelector")
+        val textSegmentsSource = textTargetWithSelector["source"] as String
+        @Suppress("UNCHECKED_CAST") val selector =
+            TextSelector(textTargetWithSelector["selector"] as Map<String, Any>)
+
+        val beginCharOffset = selector.beginCharOffset() ?: 0
+        val start = TextMarker(selector.start(), beginCharOffset, textLines[0].length)
+        log.info("start: $start")
+
+        val lengthOfLastLine = textLines.last().length
+        val endCharOffset = selector.endCharOffset() ?: (lengthOfLastLine - 1)
+        val end = TextMarker(selector.end(), endCharOffset, lengthOfLastLine)
+        log.info("end: $end")
+
+        var markers = TextMarkers(start, end)
+        log.info("markers (absolute): $markers")
+
+        val location = HashMap<String, Any>()
+        if (relativeTo == "Origin") {
+            location["relativeTo"] = mapOf("type" to "Origin", "id" to "")
+        } else {
+            val (offset, offsetId) = annoRepo.findOffsetRelativeTo(
+                volume.name,
+                textSegmentsSource,
+                selector,
+                relativeTo
+            )
+            markers = markers.relativeTo(offset)
+            log.info("markers (relative to $offsetId): $markers")
+            location["relativeTo"] = mapOf("type" to relativeTo, "bodyId" to offsetId)
         }
+        location["start"] = markers.start
+        location["end"] = markers.end
 
         return Response.ok(
             mapOf(
                 "type" to "AnnoTextResult",
                 "request" to mapOf(
-                    "resolutionId" to bodyId
+                    "resolutionId" to bodyId,
+                    "relativeTo" to relativeTo
                 ),
                 "anno" to annoPage.items(),
                 "text" to mapOf(
-                    "location" to mapOf(
-                        "relativeTo" to relativeTo,
-                        "start" to TextMarker(-1, -1, -1),
-                        "end" to TextMarker(-1, -1, -1)
-                    ),
+                    "location" to location,
                     "lines" to getTextLines(annoPage),
                 ),
                 "iiif" to mapOf(

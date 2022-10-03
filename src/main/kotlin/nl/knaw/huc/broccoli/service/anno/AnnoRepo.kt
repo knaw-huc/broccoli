@@ -12,15 +12,9 @@ interface AnnoRepo {
 
     fun getBodyId(volume: String, bodyId: String): WebAnnoPage
 
-    fun findOffsetRelativeTo(volume: String, source: String, selector: TextSelector, type: String): Int
+    fun findOffsetRelativeTo(volume: String, source: String, selector: TextSelector, type: String): Pair<Int, String>
 }
 
-data class ScanPageResult(
-    val anno: List<Map<String, Any>>,
-    val text: List<String>
-)
+data class ScanPageResult(val anno: List<Map<String, Any>>, val text: List<String>)
 
-data class BodyIdResult(
-    val markers: TextMarkers,
-    val text: List<String>
-)
+data class BodyIdResult(val markers: TextMarkers, val text: List<String>)

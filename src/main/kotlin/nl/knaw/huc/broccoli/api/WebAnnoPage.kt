@@ -7,11 +7,10 @@ class WebAnnoPage(val context: DocumentContext) {
         return context.read("$.items")
     }
 
-    fun <T> target(type: String): List<Map<String, T>> {
-        return context.read("$.items[*].target[?(@.type == '$type')]")
-    }
+    fun bodyId(): List<String> = context.read("$.items[*].body.id")
 
-    fun <T> targetField(type: String, field: String): List<T> {
-        return context.read<List<T?>>("$.items[*].target[?(@.type == '$type')].$field").filterNotNull()
-    }
+    fun <T> target(type: String): List<Map<String, T>> = context.read("$.items[*].target[?(@.type == '$type')]")
+
+    fun <T> targetField(type: String, field: String): List<T> =
+        context.read<List<T?>>("$.items[*].target[?(@.type == '$type')].$field").filterNotNull()
 }
