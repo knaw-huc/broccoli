@@ -7,6 +7,7 @@ externalBaseUrl: ${BR_EXTERNAL_BASE_URL:-http://localhost:8080}
 
 annoRepo:
   uri: https://annorepo.republic-caf.diginfra.org
+  # key: abc-def-123-456
   rev: 7
 
 iiifUri: https://images.diginfra.net/api/pim
