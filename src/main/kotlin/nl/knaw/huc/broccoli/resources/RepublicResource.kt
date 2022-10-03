@@ -184,7 +184,7 @@ class RepublicResource(
         @PathParam("volumeId") volumeId: String,
         @PathParam("openingNr") openingNr: Int
     ): Response {
-        log.info("volumeId: $volumeId, openingNo: $openingNr")
+        log.info("volumeId: $volumeId, openingNr: $openingNr")
 
         val volume = volumeMapper.byVolumeId(volumeId)
 
@@ -201,7 +201,7 @@ class RepublicResource(
                 "type" to "AnnoTextResult",
                 "request" to mapOf(
                     "volumeId" to volumeId,
-                    "openingNo" to openingNr
+                    "openingNr" to openingNr
                 ),
                 "anno" to annoPage.items(),
                 "text" to mapOf(
