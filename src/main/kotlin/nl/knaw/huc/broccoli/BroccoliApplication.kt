@@ -8,20 +8,22 @@ import io.dropwizard.configuration.EnvironmentVariableSubstitutor
 import io.dropwizard.configuration.SubstitutingSourceProvider
 import io.dropwizard.setup.Bootstrap
 import io.dropwizard.setup.Environment
+import nl.knaw.huc.annorepo.client.AnnoRepoClient
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.Constants.APP_NAME
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
 import nl.knaw.huc.broccoli.resources.RepublicResource
-import nl.knaw.huc.broccoli.service.anno.FetchingAnnoRepo
 import nl.knaw.huc.broccoli.service.anno.CachingAnnoRepo
+import nl.knaw.huc.broccoli.service.anno.FetchingAnnoRepo
 import nl.knaw.huc.broccoli.service.mock.MockIIIFStore
 import org.eclipse.jetty.servlets.CrossOriginFilter
 import org.eclipse.jetty.servlets.CrossOriginFilter.*
 import org.glassfish.jersey.client.ClientProperties.CONNECT_TIMEOUT
 import org.glassfish.jersey.client.ClientProperties.READ_TIMEOUT
 import org.slf4j.LoggerFactory
+import java.net.URI
 import java.util.*
 import javax.servlet.DispatcherType
 
@@ -101,6 +103,13 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
                     "    externally accessible at ${configuration.externalBaseUrl}\n"
         )
     }
+
+    private fun createAnnoRepoClient() =
+        AnnoRepoClient(
+            serverURI = URI.create("http://example.com/annorepo-server-base-url"),
+            apiKey = "your-api-key-if-required-by-the-server",
+            userAgent = "name-to-identify-this-client-instance-in-the-User-Agent-header"
+        )
 
     companion object {
         @Throws(Exception::class)
