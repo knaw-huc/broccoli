@@ -11,6 +11,7 @@ import io.dropwizard.setup.Environment
 import nl.knaw.huc.annorepo.client.AnnoRepoClient
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.Constants.APP_NAME
+import nl.knaw.huc.broccoli.config.AnnoRepoConfiguration
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
@@ -27,9 +28,10 @@ import java.net.URI
 import java.util.*
 import javax.servlet.DispatcherType
 
-
 class BroccoliApplication : Application<BroccoliConfiguration>() {
     private val log = LoggerFactory.getLogger(javaClass)
+
+    private val appVersion = javaClass.`package`.implementationVersion
 
     override fun getName(): String = APP_NAME
 
@@ -55,8 +57,6 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
                     "\n"
         )
 
-        val appVersion = javaClass.getPackage().implementationVersion
-
         val client = JerseyClientBuilder(environment)
             .using(configuration.jerseyClient)
             .build(name)
@@ -77,6 +77,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         log.info("sample republic id: urn:republic:${naPrefix}_${naArchiefNr}_${naInvNr}_${opening}")
 
         val annoRepo = CachingAnnoRepo(FetchingAnnoRepo(configuration.annoRepo, configuration.republic))
+        val arc = createAnnoRepoClient(configuration.annoRepo)
         environment.jersey().apply {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())
@@ -104,12 +105,13 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         )
     }
 
-    private fun createAnnoRepoClient() =
-        AnnoRepoClient(
-            serverURI = URI.create("http://example.com/annorepo-server-base-url"),
-            apiKey = "your-api-key-if-required-by-the-server",
-            userAgent = "name-to-identify-this-client-instance-in-the-User-Agent-header"
+    private fun createAnnoRepoClient(config: AnnoRepoConfiguration): AnnoRepoClient {
+        return AnnoRepoClient(
+            serverURI = URI.create(config.uri),
+            apiKey = config.key,
+            userAgent = "${name} (${javaClass.name}/$appVersion)"
         )
+    }
 
     companion object {
         @Throws(Exception::class)
