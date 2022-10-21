@@ -66,7 +66,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         log.info("client.readTimeout (after setting): ${client.configuration.getProperty(READ_TIMEOUT)}")
         log.info("client.connectTimeout (after setting): ${client.configuration.getProperty(CONNECT_TIMEOUT)}")
 
-        log.info("using AnnoRepo located at: ${configuration.annoRepo.uri}")
+        log.info("using AnnoRepo located at: ${configuration.annoRepo.uri}, api-key=${configuration.annoRepo.key}")
         log.info("using IIIFRepo located at: ${configuration.iiifUri}")
         log.info("using TextRepo located at: ${configuration.textUri}")
 
