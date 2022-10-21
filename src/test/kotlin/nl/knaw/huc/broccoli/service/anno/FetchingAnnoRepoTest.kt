@@ -17,7 +17,7 @@ class FetchingAnnoRepoTest {
     @Test
     fun `Anno fetcher should call out to remote annotation repository`() {
         annoRepoConfig.uri = "https://annorepo.republic-caf.diginfra.org"
-        annoRepoConfig.rev = "3"
+        annoRepoConfig.rev = "7"
 
         republicConfig.archiefNr = "1.01.02"
 
@@ -25,7 +25,7 @@ class FetchingAnnoRepoTest {
         volume.name = "1728"
         volume.invNr = "3783"
 
-        val anno = sut.getScanAnno(volume, 285)
-        log.info("anno: $anno")
+        val scanPageResult = sut.getScanAnno(volume, 285)
+        log.info("scanPageResult: ${scanPageResult.anno.size}")
     }
 }
