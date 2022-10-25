@@ -1,6 +1,5 @@
 package nl.knaw.huc.broccoli.resources
 
-import io.swagger.v3.oas.annotations.Operation
 import nl.knaw.huc.broccoli.api.*
 import nl.knaw.huc.broccoli.api.ResourcePaths.REPUBLIC
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
@@ -29,154 +28,11 @@ class RepublicResource(
 
     private val volumeMapper = VolumeMapper(configuration.republic)
 
-    @GET
-    @Path("v1")
-    @Operation(
-        deprecated = true,
-        description = "Get text, annotations and iiif details using AnnoRepo and TextRepo"
-    )
-    fun getVolumeOpeningFromServers(
-        @QueryParam("volume") _volumeId: String?,
-        @QueryParam("opening") _openingNo: Int?,
-        @QueryParam("bodyId") _bodyId: String?
-    ): Response {
-        val volumeId = _volumeId ?: configuration.republic.defaultVolume
-        val openingNo = _openingNo ?: configuration.republic.defaultOpening
-        log.info("volumeId: $volumeId, openingNo: $openingNo, bodyId: $_bodyId")
-
-        val volume = volumeMapper.byVolumeId(volumeId)
-
-        if (_bodyId == null) {
-            val scan = annoRepo.getScanAnno(volume, openingNo)
-            val canvasId = iiifStore.getCanvasId(volume.name, openingNo)
-
-            val result = AnnoTextResult(
-                request = mapOf(
-                    "volume" to volumeId,
-                    "opening" to openingNo.toString()
-                ),
-                anno = scan.anno,
-                text = scan.text,
-                iiif = IIIFContext(
-                    manifest = manifest(volume),
-                    canvasId = canvasId
-                )
-            )
-            return Response.ok(result).build()
-        }
-
-        val annoDetail = annoRepo.getRepublicBodyId(volume, openingNo, _bodyId)
-        val result = AnnoTextBody(
-            request = Request(volumeId, openingNo, _bodyId),
-            start = annoDetail.markers.start,
-            end = annoDetail.markers.end,
-            text = annoDetail.text,
-        )
-        return Response.ok(result).build()
-    }
-
-    @GET
-    @Path("v2")
-    @Operation(description = "Get text, annotations and iiif details using AnnoRepo and TextRepo")
-    fun getVolumeOpeningBodyId(
-        @QueryParam("volume") _volumeId: String?,
-        @QueryParam("opening") _openingNo: Int?,
-        @QueryParam("bodyId") _bodyId: String?
-    ): Response {
-        val volumeId = _volumeId ?: configuration.republic.defaultVolume
-        val openingNo = _openingNo ?: configuration.republic.defaultOpening
-        log.info("volumeId: $volumeId, openingNo: $openingNo, bodyId: $_bodyId")
-
-        val volume = volumeMapper.byVolumeId(volumeId)
-
-        if (_bodyId == null) {
-            val scan = annoRepo.getScanAnno(volume, openingNo)
-
-            return Response.ok(
-                mapOf(
-                    "request" to mapOf(
-                        "volumeId" to volumeId,
-                        "opening" to openingNo
-                    ),
-                    "anno" to scan.anno,
-                    "text" to mapOf(
-                        "location" to mapOf(
-                            "relativeTo" to "TODO", // for later
-                            "start" to TextMarker(-1, -1, -1),
-                            "end" to TextMarker(-1, -1, -1)
-                        ),
-                        "lines" to scan.text,
-                    ),
-                    "iiif" to mapOf(
-                        "manifest" to manifest(volume),
-                        "canvasIds" to listOf(iiifStore.getCanvasId(volume.name, openingNo))
-                    )
-                )
-            ).build()
-        }
-
-        val annoDetail = annoRepo.getRepublicBodyId(volume, openingNo, _bodyId)
-        return Response.ok(
-            mapOf(
-                "request" to mapOf(
-                    "volumeId" to volumeId,
-                    "opening" to openingNo,
-                    "bodyId" to _bodyId
-                ),
-                "anno" to emptyList<String>(),
-                "text" to mapOf(
-                    "location" to mapOf(
-                        "relativeTo" to "Scan",
-                        "start" to annoDetail.markers.start,
-                        "end" to annoDetail.markers.end
-                    ),
-                    "lines" to annoDetail.text
-                ),
-                "iiif" to mapOf(
-                    "manifest" to manifest(volume),
-                    "canvasIds" to listOf(iiifStore.getCanvasId(volume.name, openingNo))
-                )
-            )
-        ).build()
-    }
-
     private fun manifest(volume: RepublicVolume): URI =
         client.target(configuration.iiifUri)
             .path("imageset")
             .path(volume.imageset)
             .path("manifest").uri
-
-    @GET
-    @Path("v2/resolutions/{resolutionId}")
-    @Operation(description = "Get text, annotations and iiif details for a given resolution")
-    fun getResolution(
-        @PathParam("resolutionId") resolutionId: String
-    ): Response {
-        val volume = volumeMapper.byBodyId(resolutionId)
-        val annoPage = annoRepo.getBodyId(volume.name, resolutionId)
-
-        return Response.ok(
-            mapOf(
-                "type" to "AnnoTextResult",
-                "request" to mapOf(
-                    "resolutionId" to resolutionId
-                ),
-                "anno" to annoPage.items(),
-                "text" to mapOf(
-                    "location" to mapOf(
-                        "relativeTo" to "TODO", // for later
-                        "start" to TextMarker(-1, -1, -1),
-                        "end" to TextMarker(-1, -1, -1)
-                    ),
-                    "lines" to getTextLines(annoPage),
-                ),
-                "iiif" to mapOf(
-                    "manifest" to manifest(volume),
-                    "canvasIds" to extractCanvasIds(annoPage)
-                )
-            )
-        ).build()
-    }
 
     @GET
     @Path("/v3/volumes/{volumeId}/openings/{openingNr}")
