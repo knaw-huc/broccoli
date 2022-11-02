@@ -83,7 +83,8 @@ class FetchingAnnoRepo(
             .map { it.getOrHandle { err -> throw BadRequestException("fetch failed: $err") } }
             .map(jsonParser::parse)
             .map(::WebAnnoPage)
-            .first()
+            .firstOrNull()
+            ?: throw NotFoundException("bodyId not found: $bodyId")
 
         val after = System.currentTimeMillis()
         log.info("fetching resolution $bodyId took ${after - before} ms")
@@ -225,7 +226,8 @@ class FetchingAnnoRepo(
             .map { it.getOrHandle { err -> throw BadRequestException("fetch failed: $err") } }
             .map(jsonParser::parse)
             .map(::WebAnnoPage)
-            .first()
+            .firstOrNull()
+            ?: throw NotFoundException("overlap not found ($volume,$source,$selector)")
 
         val start = anno.targetField<Int>("Text", "selector.start")
             .filter { it <= selector.start() }
