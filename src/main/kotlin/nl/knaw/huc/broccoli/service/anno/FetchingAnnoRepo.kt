@@ -80,17 +80,12 @@ class FetchingAnnoRepo(
         val volumeName = buildVolumeName(volume)
 
         val query = mapOf("body.id" to bodyId)
-        val res = annoRepoClient.filterContainerAnnotations(volumeName, query)
-            .fold(
-                { err -> throw BadRequestException("query failed: $err") },
-                { (queryId, annotations) ->
-                    log.info("queryId: $queryId")
-                    annotations.asSequence()
-                })
-            .firstOrNull()
-            ?: throw NotFoundException("annotation with body.id $bodyId not found")
+        val str = annoRepoClient.filterContainerAnnotations(volumeName, query)
+            .getOrHandle { err -> throw BadRequestException("query failed: $err") }
+            .annotations.asSequence()
+            .map { it.getOrHandle { err -> throw BadRequestException("fetch failed: $err") } }
+            .first()
 
-        val str = res.fold({ err -> throw BadRequestException("fetching annotation failed: $err") }, { it })
         val result = WebAnnoPage(jsonParser.parse(str))
 
         val after = System.currentTimeMillis()
