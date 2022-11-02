@@ -76,8 +76,8 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         val opening = "%04d".format(configuration.republic.defaultOpening)
         log.info("sample republic id: urn:republic:${naPrefix}_${naArchiefNr}_${naInvNr}_${opening}")
 
-        val annoRepo = CachingAnnoRepo(FetchingAnnoRepo(configuration.annoRepo, configuration.republic))
         val arc = createAnnoRepoClient(configuration.annoRepo)
+        val annoRepo = CachingAnnoRepo(FetchingAnnoRepo(arc, configuration.annoRepo, configuration.republic))
         environment.jersey().apply {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())

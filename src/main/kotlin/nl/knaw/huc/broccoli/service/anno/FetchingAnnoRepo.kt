@@ -3,6 +3,7 @@ package nl.knaw.huc.broccoli.service.anno
 import com.jayway.jsonpath.Configuration.defaultConfiguration
 import com.jayway.jsonpath.JsonPath
 import com.jayway.jsonpath.Option.DEFAULT_PATH_LEAF_TO_NULL
+import nl.knaw.huc.annorepo.client.AnnoRepoClient
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE
 import nl.knaw.huc.broccoli.api.Constants.AR_SEARCH
@@ -17,14 +18,17 @@ import nl.knaw.huc.broccoli.config.RepublicConfiguration
 import nl.knaw.huc.broccoli.config.RepublicVolume
 import org.eclipse.jetty.http.HttpStatus
 import org.slf4j.LoggerFactory
+import javax.ws.rs.BadRequestException
 import javax.ws.rs.NotAcceptableException
 import javax.ws.rs.NotFoundException
 import javax.ws.rs.client.ClientBuilder
 import javax.ws.rs.client.Entity.json
 import javax.ws.rs.core.GenericType
 import javax.ws.rs.core.HttpHeaders
+import kotlin.streams.asSequence
 
 class FetchingAnnoRepo(
+    private val annoRepoClient: AnnoRepoClient,
     private val annoRepoConfig: AnnoRepoConfiguration,
     private val republicConfig: RepublicConfiguration
 ) : AnnoRepo {
@@ -87,24 +91,25 @@ class FetchingAnnoRepo(
         return ScanPageResult(annos, text)
     }
 
-    override fun getBodyId(volume: String, bodyId: String): WebAnnoPage {
+    override fun findByBodyId(volume: String, bodyId: String): WebAnnoPage {
+        log.info("getBodyId: volume=[$volume], bodyId=[$bodyId]")
         val before = System.currentTimeMillis()
         val volumeName = buildVolumeName(volume)
 
-        val webTarget = client.target(annoRepoConfig.uri).path(AR_SERVICES).path(volumeName).path(AR_SEARCH)
+        val query = mapOf("body.id" to bodyId)
+        val res = annoRepoClient.filterContainerAnnotations(volumeName, query)
+            .fold(
+                { err -> throw BadRequestException("query failed: $err") },
+                { (queryId, annotations) ->
+                    log.info("queryId: $queryId")
+                    annotations.asSequence()
+                })
+            .firstOrNull()
+            ?: throw NotFoundException("annotation with body.id $bodyId not found")
 
-        val queryResponse = webTarget.request().post(json(mapOf("body.id" to bodyId)))
-        log.info("code: ${queryResponse.status}")
-
-        val resultLocation = queryResponse.getHeaderString(HttpHeaders.LOCATION)
-        log.info("location header: $resultLocation")
-
-        val queryTarget = client.target(resultLocation)
-        val response = queryTarget.request().get()
-        log.info("code: ${response.status}")
-
-        val body = response.readEntity(String::class.java)
-        val result = WebAnnoPage(jsonParser.parse(body))
+        val str = res.fold({ err -> throw BadRequestException("fetching annotation failed: $err") }, { it })
+//        log.info("str=$str")
+        val result = WebAnnoPage(jsonParser.parse(str))
 
         val after = System.currentTimeMillis()
         log.info("fetching resolution $bodyId took ${after - before} ms")
@@ -121,7 +126,7 @@ class FetchingAnnoRepo(
         }
         val startOfPage = (pageStarts[Pair(volumeName, opening)] ?: throw NotFoundException(bodyId))
 
-        val annoPage = getBodyId(volume.name, bodyId)
+        val annoPage = findByBodyId(volume.name, bodyId)
         val textTargets = annoPage.target<Any>("Text")
         log.info("data: $textTargets")
         if (textTargets.size != 2)

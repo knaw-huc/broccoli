@@ -10,7 +10,7 @@ interface AnnoRepo {
 
     fun getRepublicBodyId(volume: RepublicVolume, opening: Int, bodyId: String): BodyIdResult
 
-    fun getBodyId(volume: String, bodyId: String): WebAnnoPage
+    fun findByBodyId(volume: String, bodyId: String): WebAnnoPage
 
     fun findOffsetRelativeTo(volume: String, source: String, selector: TextSelector, type: String): Pair<Int, String>
 }

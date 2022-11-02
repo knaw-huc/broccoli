@@ -82,7 +82,7 @@ class RepublicResource(
         @QueryParam("relativeTo") @DefaultValue("Origin") relativeTo: String // e.g., "Scan", "Session" -> Enum? Generic?
     ): Response {
         val volume = volumeMapper.byBodyId(bodyId)
-        val annoPage = annoRepo.getBodyId(volume.name, bodyId)
+        val annoPage = annoRepo.findByBodyId(volume.name, bodyId)
         val textTargets = annoPage.target<Any>("Text")
 
         val textTargetWithoutSelector = textTargets.find { it["selector"] == null }
