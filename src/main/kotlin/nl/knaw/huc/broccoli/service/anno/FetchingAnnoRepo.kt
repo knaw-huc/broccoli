@@ -30,9 +30,6 @@ class FetchingAnnoRepo(
 ) : AnnoRepo {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    // replace with AnnoRepoClient later on
-    private val client = ClientBuilder.newClient()
-
     // choose 'null' over throwing exceptions when json paths cannot be found
     private val jsonParser = JsonPath.using(defaultConfiguration().addOptions(DEFAULT_PATH_LEAF_TO_NULL))
 
@@ -80,13 +77,13 @@ class FetchingAnnoRepo(
         val volumeName = buildVolumeName(volume)
 
         val query = mapOf("body.id" to bodyId)
-        val str = annoRepoClient.filterContainerAnnotations(volumeName, query)
+        val result = annoRepoClient.filterContainerAnnotations(volumeName, query)
             .getOrHandle { err -> throw BadRequestException("query failed: $err") }
             .annotations.asSequence()
             .map { it.getOrHandle { err -> throw BadRequestException("fetch failed: $err") } }
+            .map(jsonParser::parse)
+            .map(::WebAnnoPage)
             .first()
-
-        val result = WebAnnoPage(jsonParser.parse(str))
 
         val after = System.currentTimeMillis()
         log.info("fetching resolution $bodyId took ${after - before} ms")
@@ -183,7 +180,7 @@ class FetchingAnnoRepo(
     private fun fetchTextLines(textSourceUrl: String): List<String> {
         log.info("Fetching relevant text segments: $textSourceUrl")
         val startTime = System.currentTimeMillis()
-        val resp = client.target(textSourceUrl).request().get()
+        val resp = ClientBuilder.newClient().target(textSourceUrl).request().get()
         val result = resp.readEntity(object : GenericType<List<String>>() {})
         log.info("fetching took ${System.currentTimeMillis() - startTime} ms")
         return result
@@ -203,7 +200,7 @@ class FetchingAnnoRepo(
             .getOrHandle { err -> throw BadRequestException("query failed: $err") }
             .annotations.asSequence()
             .map { it.getOrHandle { err -> throw BadRequestException("fetch failed: $err") } }
-            .map { jsonParser.parse(it) }
+            .map(jsonParser::parse)
             .map { it.read<Map<String, Any>>("$") }
             .toList()
 
@@ -226,8 +223,8 @@ class FetchingAnnoRepo(
             .getOrHandle { err -> throw BadRequestException("query failed: $err") }
             .annotations.asSequence()
             .map { it.getOrHandle { err -> throw BadRequestException("fetch failed: $err") } }
-            .map { jsonParser.parse(it) }
-            .map { WebAnnoPage(it) }
+            .map(jsonParser::parse)
+            .map(::WebAnnoPage)
             .first()
 
         val start = anno.targetField<Int>("Text", "selector.start")
