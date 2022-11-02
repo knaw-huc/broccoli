@@ -1,5 +1,6 @@
 package nl.knaw.huc.broccoli.service.anno
 
+import arrow.core.getOrHandle
 import com.jayway.jsonpath.Configuration.defaultConfiguration
 import com.jayway.jsonpath.JsonPath
 import com.jayway.jsonpath.Option.DEFAULT_PATH_LEAF_TO_NULL
@@ -45,8 +46,6 @@ class FetchingAnnoRepo(
     override fun getScanAnno(volume: RepublicVolume, opening: Int): ScanPageResult {
         val before = System.currentTimeMillis()
         val volumeName = buildVolumeName(volume.name)
-        val webTarget = client.target(annoRepoConfig.uri).path(AR_SERVICES).path(volumeName).path(AR_SEARCH)
-        log.info("path: ${webTarget.uri}")
 
         val archNr = republicConfig.archiefNr
         val invNr = volume.invNr
@@ -54,24 +53,13 @@ class FetchingAnnoRepo(
         val bodyId = "urn:republic:NL-HaNA_${archNr}_${invNr}_${scanNr}"
         log.info("constructed bodyId: $bodyId")
 
-        val queryResponse = webTarget.request().post(json(mapOf("body.id" to bodyId)))
-        log.info("code: ${queryResponse.status}")
-
-        val resultLocation = queryResponse.getHeaderString(HttpHeaders.LOCATION)
-        log.info("query created: $resultLocation")
-
-        val queryTarget = client.target(resultLocation)
-        val response = queryTarget.request().get()
-        log.info("code: ${response.status}")
-
-        val body = response.readEntity(String::class.java)
-        val json = jsonParser.parse(body)
-        val data = json.read<List<Map<String, *>>>("$.items[0].target[?(@.type == 'Text')]")
-        log.info("data: $data")
+        val anno = findByBodyId(volume.name, bodyId)
+        val textTargets = anno.target<Any>("Text")
+        log.info("data: $textTargets")
 
         val text = ArrayList<String>()
         val annos = ArrayList<Map<String, Any>>()
-        data.forEach {
+        textTargets.forEach {
             val sourceUrl = it["source"] as String
             if (it["selector"] == null) {
                 text.addAll(fetchTextLines(sourceUrl))
@@ -108,7 +96,6 @@ class FetchingAnnoRepo(
             ?: throw NotFoundException("annotation with body.id $bodyId not found")
 
         val str = res.fold({ err -> throw BadRequestException("fetching annotation failed: $err") }, { it })
-//        log.info("str=$str")
         val result = WebAnnoPage(jsonParser.parse(str))
 
         val after = System.currentTimeMillis()
@@ -215,44 +202,25 @@ class FetchingAnnoRepo(
     private fun fetchOverlappingAnnotations(
         volumeName: String, source: String, start: Int, end: Int
     ): List<Map<String, Any>> {
+        val query = mapOf(
+            AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to overlap(source, start, end),
+            AR_BODY_TYPE to isNotIn("Line", "Page", "RepublicParagraph", "TextRegion", "Scan")
+        )
+
         val startTime = System.currentTimeMillis()
-        // initial request without page parameter
-        var webTarget = client.target(annoRepoConfig.uri).path(AR_SERVICES).path(volumeName).path(AR_SEARCH)
-        log.info("webTarget: $webTarget")
 
-        val queryResponse = webTarget.request()
-            .post(
-                json(
-                    mapOf(
-                        AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to overlap(source, start, end),
-                        AR_BODY_TYPE to isNotIn("Line", "Page", "RepublicParagraph", "TextRegion", "Scan")
-                    )
-                )
-            )
-        log.info("code: ${queryResponse.status}")
-        if (queryResponse.status == HttpStatus.BAD_REQUEST_400) {
-            log.info("BAD REQUEST: ${queryResponse.readEntity(String::class.java)}")
-        }
+        val overlappingAnnotations = annoRepoClient.filterContainerAnnotations(volumeName, query)
+            .getOrHandle { err -> throw BadRequestException("query failed: $err") }
+            .annotations.asSequence()
+            .map { it.getOrHandle { err -> throw BadRequestException("fetch failed: $err") } }
+            .map { jsonParser.parse(it) }
+            .map { it.read<Map<String, Any>>("$") }
+            .toList()
 
-        val resultLocation = queryResponse.getHeaderString(HttpHeaders.LOCATION)
-        log.info("query created: $resultLocation")
+        val endTime = System.currentTimeMillis()
+        log.info("fetching overlapping annotations took: ${endTime - startTime} ms")
 
-        webTarget = client.target(resultLocation)
-        val result = ArrayList<Map<String, Any>>()
-        while (result.count() < 1000) { // some arbitrary cap for now
-            log.info("Fetching overlapping annotations page: ${webTarget.uri}")
-            val resp = webTarget.request().get()
-            val annoBody = resp.readEntity(String::class.java)
-            val annoJson = jsonParser.parse(annoBody)
-            result.addAll(annoJson.read<List<Map<String, Any>>>("$.items"))
-
-            // Loop on with request for next page using provided 'next page url'.
-            val nextPageUrl = annoJson.read<String>("$.next") ?: break // If '.next' is absent, we are done
-            webTarget = client.target(nextPageUrl)
-        }
-
-        log.info("fetching overlapping annotations took: ${System.currentTimeMillis() - startTime} ms")
-        return result
+        return overlappingAnnotations
     }
 
     override fun findOffsetRelativeTo(volume: String, source: String, selector: TextSelector, type: String)
