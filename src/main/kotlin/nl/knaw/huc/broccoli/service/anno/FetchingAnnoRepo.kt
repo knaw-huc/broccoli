@@ -7,8 +7,6 @@ import com.jayway.jsonpath.Option.DEFAULT_PATH_LEAF_TO_NULL
 import nl.knaw.huc.annorepo.client.AnnoRepoClient
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE
-import nl.knaw.huc.broccoli.api.Constants.AR_SEARCH
-import nl.knaw.huc.broccoli.api.Constants.AR_SERVICES
 import nl.knaw.huc.broccoli.api.Constants.isEqualTo
 import nl.knaw.huc.broccoli.api.Constants.isNotIn
 import nl.knaw.huc.broccoli.api.Constants.overlap
@@ -17,15 +15,12 @@ import nl.knaw.huc.broccoli.api.WebAnnoPage
 import nl.knaw.huc.broccoli.config.AnnoRepoConfiguration
 import nl.knaw.huc.broccoli.config.RepublicConfiguration
 import nl.knaw.huc.broccoli.config.RepublicVolume
-import org.eclipse.jetty.http.HttpStatus
 import org.slf4j.LoggerFactory
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.NotAcceptableException
 import javax.ws.rs.NotFoundException
 import javax.ws.rs.client.ClientBuilder
-import javax.ws.rs.client.Entity.json
 import javax.ws.rs.core.GenericType
-import javax.ws.rs.core.HttpHeaders
 import kotlin.streams.asSequence
 
 class FetchingAnnoRepo(
@@ -226,35 +221,25 @@ class FetchingAnnoRepo(
     override fun findOffsetRelativeTo(volume: String, source: String, selector: TextSelector, type: String)
             : Pair<Int, String> {
         log.info("findOffsetRelativeTo: volume=[$volume], selector=$selector, type=[$type]")
-        val volumeName = buildVolumeName(volume)
-        var webTarget = client.target(annoRepoConfig.uri).path(AR_SERVICES).path(volumeName).path(AR_SEARCH)
-        val queryResponse = webTarget.request()
-            .post(
-                json(
-                    mapOf(
-                        AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to overlap(source, selector.start(), selector.end()),
-                        AR_BODY_TYPE to isEqualTo(type)
-                    )
-                )
-            )
 
-        log.info("code: ${queryResponse.status}")
-        if (queryResponse.status == HttpStatus.BAD_REQUEST_400) {
-            log.info("BAD REQUEST: ${queryResponse.readEntity(String::class.java)}")
-        }
+        val query = mapOf(
+            AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to overlap(source, selector.start(), selector.end()),
+            AR_BODY_TYPE to isEqualTo(type)
+        )
 
-        val resultLocation = queryResponse.getHeaderString(HttpHeaders.LOCATION)
-        log.info("query created: $resultLocation")
+        val anno = annoRepoClient.filterContainerAnnotations(volume, query)
+            .getOrHandle { err -> throw BadRequestException("query failed: $err") }
+            .annotations.asSequence()
+            .map { it.getOrHandle { err -> throw BadRequestException("fetch failed: $err") } }
+            .map { jsonParser.parse(it) }
+            .map { WebAnnoPage(it) }
+            .first()
 
-        webTarget = client.target(resultLocation)
-        val resp = webTarget.request().get()
-        val body = resp.readEntity(String::class.java)
-        val json = jsonParser.parse(body)
-        val page = WebAnnoPage(json)
-        val start = page.targetField<Int>("Text", "selector.start")
+        val start = anno.targetField<Int>("Text", "selector.start")
             .filter { it <= selector.start() }
             .max()
+
         log.info("closest [$type] starts at $start (absolute)")
-        return Pair(start, page.bodyId().first())
+        return Pair(start, anno.bodyId().first())
     }
 }
