@@ -17,7 +17,6 @@ import nl.knaw.huc.broccoli.config.RepublicConfiguration
 import nl.knaw.huc.broccoli.config.RepublicVolume
 import org.slf4j.LoggerFactory
 import javax.ws.rs.BadRequestException
-import javax.ws.rs.NotAcceptableException
 import javax.ws.rs.NotFoundException
 import javax.ws.rs.client.ClientBuilder
 import javax.ws.rs.core.GenericType
@@ -90,68 +89,6 @@ class FetchingAnnoRepo(
         log.info("fetching resolution $bodyId took ${after - before} ms")
 
         return result
-    }
-
-    override fun getRepublicBodyId(volume: RepublicVolume, opening: Int, bodyId: String): BodyIdResult {
-        val before = System.currentTimeMillis()
-        val volumeName = buildVolumeName(volume.name)
-        if (pageStarts[Pair(volumeName, opening)] == null) {
-            log.info("page starts for ($volumeName, opening) not yet loaded, fetching...")
-            getScanAnno(volume, opening)
-        }
-        val startOfPage = (pageStarts[Pair(volumeName, opening)] ?: throw NotFoundException(bodyId))
-
-        val annoPage = findByBodyId(volume.name, bodyId)
-        val textTargets = annoPage.target<Any>("Text")
-        log.info("data: $textTargets")
-        if (textTargets.size != 2)
-            throw NotAcceptableException("unsupported # of target.type == Text elements: ${textTargets.size}")
-
-        val text = getText(textTargets)
-        log.info("text: $text")
-
-        val markers = getTextMarkers(textTargets, text)
-        log.info("markers: $markers")
-
-        val after = System.currentTimeMillis()
-        log.info("fetching bodyId took ${after - before} ms")
-
-        return BodyIdResult(markers.relativeTo(startOfPage), text)
-    }
-
-    fun getText(annoTargets: List<Map<String, *>>): List<String> {
-        annoTargets.forEach {
-            if (it["selector"] == null) {
-                return fetchTextLines(it["source"] as String)
-            }
-        }
-        log.info("No text found!")
-        return emptyList()
-    }
-
-    private fun getTextMarkers(
-        annoTargets: List<Map<String, *>>,
-        text: List<String>
-    ): TextMarkers {
-        annoTargets.forEach {
-            if (it["selector"] is Map<*, *>) {
-                @Suppress("UNCHECKED_CAST")
-                val selector = TextSelector(it["selector"] as Map<String, Any>)
-
-                val beginCharOffset = selector.beginCharOffset() ?: 0
-                val start = TextMarker(selector.start(), beginCharOffset, text[0].length)
-                log.info("start: $start")
-
-                val lengthOfLastLine = text.last().length
-                val endCharOffset = selector.endCharOffset() ?: (lengthOfLastLine - 1)
-                val end = TextMarker(selector.end(), endCharOffset, lengthOfLastLine)
-                log.info("end: $end")
-
-                return TextMarkers(start, end)
-            }
-        }
-
-        throw NotFoundException("missing start, end and offset markers")
     }
 
     data class TextMarkers(val start: TextMarker, val end: TextMarker) {

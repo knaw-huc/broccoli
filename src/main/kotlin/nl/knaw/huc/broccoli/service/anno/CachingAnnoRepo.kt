@@ -10,7 +10,6 @@ class CachingAnnoRepo(private val delegate: AnnoRepo, capacity: Int = 10) : Anno
     private val log = LoggerFactory.getLogger(javaClass)
 
     private val cachedScanPages = LRUCache<Pair<String, Int>, ScanPageResult>(capacity)
-    private val cachedAnnoDetails = LRUCache<Triple<String, Int, String>, BodyIdResult>(capacity)
     private val cachedResolutions = LRUCache<Pair<String, String>, WebAnnoPage>(capacity)
 
     override fun getScanAnno(volume: RepublicVolume, opening: Int): ScanPageResult {
@@ -24,20 +23,6 @@ class CachingAnnoRepo(private val delegate: AnnoRepo, capacity: Int = 10) : Anno
         log.info("cache miss for [$key]")
         val value = delegate.getScanAnno(volume, opening)
         cachedScanPages.put(key, value)
-        return value
-    }
-
-    override fun getRepublicBodyId(volume: RepublicVolume, opening: Int, bodyId: String): BodyIdResult {
-        val key = Triple(volume.name, opening, bodyId)
-        val cached = cachedAnnoDetails.get(key)
-        if (cached != null) {
-            log.info("cache hit for [$key]")
-            return cached
-        }
-
-        log.info("cache miss for [$key]")
-        val value = delegate.getRepublicBodyId(volume, opening, bodyId)
-        cachedAnnoDetails.put(key, value)
         return value
     }
 
