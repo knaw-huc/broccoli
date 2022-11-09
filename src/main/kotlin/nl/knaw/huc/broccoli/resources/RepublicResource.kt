@@ -6,7 +6,6 @@ import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.config.RepublicVolume
 import nl.knaw.huc.broccoli.service.IIIFStore
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
-import nl.knaw.huc.broccoli.service.anno.FetchingAnnoRepo.TextMarkers
 import nl.knaw.huc.broccoli.service.anno.FetchingAnnoRepo.TextSelector
 import org.slf4j.LoggerFactory
 import java.net.URI
@@ -166,5 +165,13 @@ class RepublicResource(
         log.info("fetching took ${System.currentTimeMillis() - startTime} ms")
         return result
     }
+
+    data class TextMarkers(val start: TextMarker, val end: TextMarker) {
+        fun relativeTo(offset: Int): TextMarkers {
+            return TextMarkers(start.relativeTo(offset), end.relativeTo(offset))
+        }
+    }
+
+
 }
 

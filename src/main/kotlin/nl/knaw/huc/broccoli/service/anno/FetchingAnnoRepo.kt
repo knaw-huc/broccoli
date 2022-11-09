@@ -10,7 +10,6 @@ import nl.knaw.huc.broccoli.api.Constants.AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE
 import nl.knaw.huc.broccoli.api.Constants.isEqualTo
 import nl.knaw.huc.broccoli.api.Constants.isNotIn
 import nl.knaw.huc.broccoli.api.Constants.overlap
-import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.api.WebAnnoPage
 import nl.knaw.huc.broccoli.config.AnnoRepoConfiguration
 import nl.knaw.huc.broccoli.config.RepublicConfiguration
@@ -91,19 +90,6 @@ class FetchingAnnoRepo(
         return result
     }
 
-    data class TextMarkers(val start: TextMarker, val end: TextMarker) {
-        fun relativeTo(offset: Int): TextMarkers {
-            return TextMarkers(start.relativeTo(offset), end.relativeTo(offset))
-        }
-    }
-
-    data class TextSelector(private val context: Map<String, Any>) {
-        fun start(): Int = context["start"] as Int
-        fun beginCharOffset(): Int? = context["beginCharOffset"] as Int?
-        fun end(): Int = context["end"] as Int
-        fun endCharOffset(): Int? = context["endCharOffset"] as Int?
-    }
-
     private fun buildVolumeName(volume: String): String {
         val volumeNameBuilder = StringBuilder("volume-$volume")
         if (annoRepoConfig.rev != null) {
@@ -173,4 +159,12 @@ class FetchingAnnoRepo(
         log.info("closest [$type] starts at $start (absolute)")
         return Pair(start, anno.bodyId().first())
     }
+
+    data class TextSelector(private val context: Map<String, Any>) {
+        fun start(): Int = context["start"] as Int
+        fun beginCharOffset(): Int? = context["beginCharOffset"] as Int?
+        fun end(): Int = context["end"] as Int
+        fun endCharOffset(): Int? = context["endCharOffset"] as Int?
+    }
+
 }
