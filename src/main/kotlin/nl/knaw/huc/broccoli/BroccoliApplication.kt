@@ -32,7 +32,7 @@ import javax.servlet.DispatcherType
 class BroccoliApplication : Application<BroccoliConfiguration>() {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    private val appVersion = javaClass.`package`.implementationVersion
+    private val appVersion = javaClass.`package`.implementationVersion ?: "unknown version"
 
     override fun getName(): String = APP_NAME
 
@@ -71,16 +71,13 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         log.info("using IIIFRepo located at: ${configuration.iiifUri}")
         log.info("using TextRepo located at: ${configuration.textUri}")
 
-        val naPrefix = "NL-HaNA"
-        val naArchiefNr = configuration.republic.archiefNr
-        val naInvNr = configuration.republic.volumes[0].invNr
-        val opening = "%04d".format(configuration.republic.defaultOpening)
-        log.info("sample republic id: urn:republic:${naPrefix}_${naArchiefNr}_${naInvNr}_${opening}")
+        val annoRepoClient = createAnnoRepoClient(configuration.annoRepo)
+        val annoRepo = CachingAnnoRepo(FetchingAnnoRepo(annoRepoClient, configuration.annoRepo.rev))
 
-        val arc = createAnnoRepoClient(configuration.annoRepo)
-        val annoRepo = CachingAnnoRepo(FetchingAnnoRepo(arc, configuration.annoRepo, configuration.republic))
         val volumeMapper = RepublicVolumeMapper(configuration.republic)
+
         val iiifStore = MockIIIFStore(configuration.iiifUri, client)
+
         environment.jersey().apply {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())

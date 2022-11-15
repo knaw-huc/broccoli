@@ -1,7 +1,6 @@
 package nl.knaw.huc.broccoli.service.anno
 
 import nl.knaw.huc.broccoli.api.WebAnnoPage
-import nl.knaw.huc.broccoli.config.RepublicVolume
 import nl.knaw.huc.broccoli.service.anno.FetchingAnnoRepo.TextSelector
 import nl.knaw.huc.broccoli.service.cache.LRUCache
 import org.slf4j.LoggerFactory
@@ -9,11 +8,11 @@ import org.slf4j.LoggerFactory
 class CachingAnnoRepo(private val delegate: AnnoRepo, capacity: Int = 10) : AnnoRepo {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    private val cachedScanPages = LRUCache<Pair<String, Int>, ScanPageResult>(capacity)
+    private val cachedScanPages = LRUCache<Pair<String, String>, ScanPageResult>(capacity)
     private val cachedResolutions = LRUCache<Pair<String, String>, WebAnnoPage>(capacity)
 
-    override fun getScanAnno(volume: RepublicVolume, opening: Int): ScanPageResult {
-        val key = Pair(volume.name, opening)
+    override fun getScanAnno(volumeName: String, bodyId: String): ScanPageResult {
+        val key = Pair(volumeName, bodyId)
         val cached = cachedScanPages.get(key)
         if (cached != null) {
             log.info("cache hit for [$key]")
@@ -21,7 +20,7 @@ class CachingAnnoRepo(private val delegate: AnnoRepo, capacity: Int = 10) : Anno
         }
 
         log.info("cache miss for [$key]")
-        val value = delegate.getScanAnno(volume, opening)
+        val value = delegate.getScanAnno(volumeName, bodyId)
         cachedScanPages.put(key, value)
         return value
     }

@@ -11,9 +11,6 @@ import nl.knaw.huc.broccoli.api.Constants.isEqualTo
 import nl.knaw.huc.broccoli.api.Constants.isNotIn
 import nl.knaw.huc.broccoli.api.Constants.overlap
 import nl.knaw.huc.broccoli.api.WebAnnoPage
-import nl.knaw.huc.broccoli.config.AnnoRepoConfiguration
-import nl.knaw.huc.broccoli.config.RepublicConfiguration
-import nl.knaw.huc.broccoli.config.RepublicVolume
 import org.slf4j.LoggerFactory
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.NotFoundException
@@ -23,25 +20,16 @@ import kotlin.streams.asSequence
 
 class FetchingAnnoRepo(
     private val annoRepoClient: AnnoRepoClient,
-    private val annoRepoConfig: AnnoRepoConfiguration,
-    private val republicConfig: RepublicConfiguration
+    private val revision: String?
 ) : AnnoRepo {
     private val log = LoggerFactory.getLogger(javaClass)
 
     // choose 'null' over throwing exceptions when json paths cannot be found
     private val jsonParser = JsonPath.using(defaultConfiguration().addOptions(DEFAULT_PATH_LEAF_TO_NULL))
 
-    private val pageStarts = HashMap<Pair<String, Int>, Int>()
-
-    override fun getScanAnno(volume: RepublicVolume, opening: Int): ScanPageResult {
+    override fun getScanAnno(volumeName: String, bodyId: String): ScanPageResult {
+        log.info("getScanAnno: volumeName=[$volumeName], bodyId=[$bodyId]")
         val before = System.currentTimeMillis()
-        val volumeName = buildVolumeName(volume.name)
-
-        val archNr = republicConfig.archiefNr
-        val invNr = volume.invNr
-        val scanNr = "%04d".format(opening)
-        val bodyId = "urn:republic:NL-HaNA_${archNr}_${invNr}_${scanNr}"
-        log.info("constructed bodyId: $bodyId")
 
         val anno = findByBodyId(volumeName, bodyId)
         val textTargets = anno.target<Any>("Text")
@@ -58,7 +46,6 @@ class FetchingAnnoRepo(
                 val start = selector["start"] as Int
                 val end = selector["end"] as Int
                 log.info("start: $start, end: $end")
-                pageStarts[Pair(volumeName, opening)] = start
                 annos.addAll(fetchOverlappingAnnotations(volumeName, sourceUrl, start, end))
             }
         }
@@ -70,11 +57,12 @@ class FetchingAnnoRepo(
     }
 
     override fun findByBodyId(volumeName: String, bodyId: String): WebAnnoPage {
-        log.info("getBodyId: volume=[$volumeName], bodyId=[$bodyId]")
+        log.info("getBodyId: volumeName=[$volumeName], bodyId=[$bodyId]")
         val before = System.currentTimeMillis()
 
         val query = mapOf("body.id" to bodyId)
-        val result = annoRepoClient.filterContainerAnnotations(volumeName, query)
+        val containerName = buildContainerName(volumeName)
+        val result = annoRepoClient.filterContainerAnnotations(containerName, query)
             .getOrHandle { err -> throw BadRequestException("query failed: $err") }
             .annotations.asSequence()
             .map { it.getOrHandle { err -> throw BadRequestException("fetch failed: $err") } }
@@ -89,15 +77,15 @@ class FetchingAnnoRepo(
         return result
     }
 
-    private fun buildVolumeName(volume: String): String {
-        val volumeNameBuilder = StringBuilder("volume-$volume")
-        if (annoRepoConfig.rev != null) {
-            volumeNameBuilder.append('-')
-            volumeNameBuilder.append(annoRepoConfig.rev)
+    private fun buildContainerName(volume: String): String {
+        val builder = StringBuilder("volume-$volume")
+        if (revision != null) {
+            builder.append('-')
+            builder.append(revision)
         }
-        val volumeName = volumeNameBuilder.toString()
-        log.info("volumeName: $volumeName")
-        return volumeName
+        val containerName = builder.toString()
+        log.info("containerName: $containerName")
+        return containerName
     }
 
     private fun fetchTextLines(textSourceUrl: String): List<String> {
@@ -119,7 +107,8 @@ class FetchingAnnoRepo(
 
         val startTime = System.currentTimeMillis()
 
-        val overlappingAnnotations = annoRepoClient.filterContainerAnnotations(volumeName, query)
+        val containerName = buildContainerName(volumeName)
+        val overlappingAnnotations = annoRepoClient.filterContainerAnnotations(containerName, query)
             .getOrHandle { err -> throw BadRequestException("query failed: $err") }
             .annotations.asSequence()
             .map { it.getOrHandle { err -> throw BadRequestException("fetch failed: $err") } }

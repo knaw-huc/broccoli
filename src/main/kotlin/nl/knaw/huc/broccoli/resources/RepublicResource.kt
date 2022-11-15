@@ -36,7 +36,8 @@ class RepublicResource(
             throw BadRequestException("Path parameter 'openingNr' must be >= 1")
         }
 
-        val scan = annoRepo.getScanAnno(volume, openingNr)
+        val bodyId = volumeMapper.buildBodyId(volume, openingNr)
+        val scan = annoRepo.getScanAnno(volume.name, bodyId)
         return Response.ok(
             mapOf(
                 "type" to "AnnoTextResult",
