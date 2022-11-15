@@ -4,25 +4,24 @@ import nl.knaw.huc.annorepo.client.AnnoRepoClient
 import nl.knaw.huc.broccoli.config.RepublicConfiguration
 import nl.knaw.huc.broccoli.resources.RepublicVolumeMapper
 import org.junit.jupiter.api.Test
-import org.slf4j.LoggerFactory
 import java.net.URI
 import kotlin.test.assertEquals
 
-class FetchingAnnoRepoTest {
-    private val log = LoggerFactory.getLogger(javaClass)
+class AnnoRepoTest {
+//    private val log = LoggerFactory.getLogger(javaClass)
 
     private var republicConfig = RepublicConfiguration()
     private var annoRepoClient: AnnoRepoClient
     private var volumeMapper: RepublicVolumeMapper
 
-    private var sut: FetchingAnnoRepo
+    private var sut: AnnoRepo
 
     init {
         republicConfig.archiefNr = "1.01.02"
         volumeMapper = RepublicVolumeMapper(republicConfig, revision = "7")
 
         annoRepoClient = AnnoRepoClient(serverURI = URI.create("https://annorepo.republic-caf.diginfra.org"))
-        sut = FetchingAnnoRepo(annoRepoClient)
+        sut = AnnoRepo(annoRepoClient)
     }
 
     @Test

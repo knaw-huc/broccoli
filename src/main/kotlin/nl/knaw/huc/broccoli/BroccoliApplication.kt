@@ -17,8 +17,7 @@ import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
 import nl.knaw.huc.broccoli.resources.RepublicResource
 import nl.knaw.huc.broccoli.resources.RepublicVolumeMapper
-import nl.knaw.huc.broccoli.service.anno.CachingAnnoRepo
-import nl.knaw.huc.broccoli.service.anno.FetchingAnnoRepo
+import nl.knaw.huc.broccoli.service.anno.AnnoRepo
 import nl.knaw.huc.broccoli.service.mock.MockIIIFStore
 import org.eclipse.jetty.servlets.CrossOriginFilter
 import org.eclipse.jetty.servlets.CrossOriginFilter.*
@@ -72,7 +71,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         log.info("using TextRepo located at: ${configuration.textUri}")
 
         val annoRepoClient = createAnnoRepoClient(configuration.annoRepo)
-        val annoRepo = CachingAnnoRepo(FetchingAnnoRepo(annoRepoClient))
+        val annoRepo = AnnoRepo(annoRepoClient)
 
         val volumeMapper = RepublicVolumeMapper(configuration.republic, configuration.annoRepo.rev)
 

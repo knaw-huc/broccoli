@@ -13,8 +13,8 @@ object Constants {
 
     fun isEqualTo(it: String) = mapOf(":=" to it)
     fun isNotEqualTo(it: String) = mapOf(":!=" to it)
-    fun isIn(vararg included: String) = mapOf(":isIn" to included)
-    fun isNotIn(vararg excluded: String) = mapOf(":isNotIn" to excluded)
+    fun isIn(included: List<String>) = mapOf(":isIn" to included)
+    fun isNotIn(excluded: List<String>) = mapOf(":isNotIn" to excluded)
 
     enum class EnvironmentVariable {
         BR_SERVER_PORT,
