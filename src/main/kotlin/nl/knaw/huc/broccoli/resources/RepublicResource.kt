@@ -30,14 +30,14 @@ class RepublicResource(
     ): Response {
         log.info("volumeId: $volumeId, openingNr: $openingNr")
 
-        val volume = volumeMapper.byVolumeName(volumeId)
-        val containerName = volumeMapper.buildContainerName(volume.name)
-
         if (openingNr < 1) {
             throw BadRequestException("Path parameter 'openingNr' must be >= 1")
         }
 
+        val volume = volumeMapper.byVolumeName(volumeId)
+        val containerName = volumeMapper.buildContainerName(volume.name)
         val bodyId = volumeMapper.buildBodyId(volume, openingNr)
+
         val scan = annoRepo.getScanAnno(containerName, bodyId)
         return Response.ok(
             mapOf(
