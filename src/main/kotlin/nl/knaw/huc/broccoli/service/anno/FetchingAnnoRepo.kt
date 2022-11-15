@@ -43,7 +43,7 @@ class FetchingAnnoRepo(
         val bodyId = "urn:republic:NL-HaNA_${archNr}_${invNr}_${scanNr}"
         log.info("constructed bodyId: $bodyId")
 
-        val anno = findByBodyId(volume.name, bodyId)
+        val anno = findByBodyId(volumeName, bodyId)
         val textTargets = anno.target<Any>("Text")
         log.info("data: $textTargets")
 
@@ -69,10 +69,9 @@ class FetchingAnnoRepo(
         return ScanPageResult(annos, text)
     }
 
-    override fun findByBodyId(volume: String, bodyId: String): WebAnnoPage {
-        log.info("getBodyId: volume=[$volume], bodyId=[$bodyId]")
+    override fun findByBodyId(volumeName: String, bodyId: String): WebAnnoPage {
+        log.info("getBodyId: volume=[$volumeName], bodyId=[$bodyId]")
         val before = System.currentTimeMillis()
-        val volumeName = buildVolumeName(volume)
 
         val query = mapOf("body.id" to bodyId)
         val result = annoRepoClient.filterContainerAnnotations(volumeName, query)

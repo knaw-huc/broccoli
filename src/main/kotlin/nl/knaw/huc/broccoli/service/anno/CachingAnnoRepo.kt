@@ -26,8 +26,8 @@ class CachingAnnoRepo(private val delegate: AnnoRepo, capacity: Int = 10) : Anno
         return value
     }
 
-    override fun findByBodyId(volume: String, bodyId: String): WebAnnoPage {
-        val key = Pair(volume, bodyId)
+    override fun findByBodyId(volumeName: String, bodyId: String): WebAnnoPage {
+        val key = Pair(volumeName, bodyId)
         val cached = cachedResolutions.get(key)
         if (cached != null) {
             log.info("cache hit for [$key]")
@@ -35,7 +35,7 @@ class CachingAnnoRepo(private val delegate: AnnoRepo, capacity: Int = 10) : Anno
         }
 
         log.info("cache miss for [$key]")
-        val value = delegate.findByBodyId(volume, bodyId)
+        val value = delegate.findByBodyId(volumeName, bodyId)
         cachedResolutions.put(key, value)
         return value
     }
