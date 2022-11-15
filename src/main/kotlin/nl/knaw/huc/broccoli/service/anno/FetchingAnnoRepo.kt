@@ -68,7 +68,7 @@ class FetchingAnnoRepo(private val annoRepoClient: AnnoRepoClient) : AnnoRepo {
             ?: throw NotFoundException("bodyId not found: $bodyId")
 
         val after = System.currentTimeMillis()
-        log.info("fetching resolution $bodyId took ${after - before} ms")
+        log.info("fetching bodyId $bodyId took ${after - before} ms")
 
         return result
     }
