@@ -129,7 +129,7 @@ class FetchingAnnoRepo(private val annoRepoClient: AnnoRepoClient) : AnnoRepo {
             .max()
 
         log.info("closest [$type] starts at $start (absolute)")
-        return Pair(start, anno.bodyId().first())
+        return Pair(start, anno.bodyId())
     }
 
     data class TextSelector(private val context: Map<String, Any>) {

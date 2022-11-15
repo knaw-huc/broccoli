@@ -7,7 +7,7 @@ class WebAnnoPage(val context: DocumentContext) {
         return listOf(context.read("$"))
     }
 
-    fun bodyId(): List<String> = context.read("$.body.id")
+    fun bodyId(): String = context.read("$.body.id")
 
     fun <T> target(type: String): List<Map<String, T>> = context.read("$.target[?(@.type == '$type')]")
 
