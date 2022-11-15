@@ -2,13 +2,10 @@ package nl.knaw.huc.broccoli.resources
 
 import nl.knaw.huc.broccoli.api.*
 import nl.knaw.huc.broccoli.api.ResourcePaths.REPUBLIC
-import nl.knaw.huc.broccoli.config.BroccoliConfiguration
-import nl.knaw.huc.broccoli.config.RepublicVolume
 import nl.knaw.huc.broccoli.service.IIIFStore
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
 import nl.knaw.huc.broccoli.service.anno.FetchingAnnoRepo.TextSelector
 import org.slf4j.LoggerFactory
-import java.net.URI
 import javax.ws.rs.*
 import javax.ws.rs.client.Client
 import javax.ws.rs.core.GenericType
@@ -18,20 +15,12 @@ import javax.ws.rs.core.Response
 @Path(REPUBLIC)
 @Produces(MediaType.APPLICATION_JSON)
 class RepublicResource(
-    private val configuration: BroccoliConfiguration,
+    private val volumeMapper: RepublicVolumeMapper,
     private val annoRepo: AnnoRepo,
     private val iiifStore: IIIFStore,
     private val client: Client
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
-
-    private val volumeMapper = VolumeMapper(configuration.republic)
-
-    private fun manifest(volume: RepublicVolume): URI =
-        client.target(configuration.iiifUri)
-            .path("imageset")
-            .path(volume.imageset)
-            .path("manifest").uri
 
     @GET
     @Path("/v3/volumes/{volumeId}/openings/{openingNr}")
@@ -65,7 +54,7 @@ class RepublicResource(
                     "lines" to scan.text
                 ),
                 "iiif" to mapOf(
-                    "manifest" to manifest(volume),
+                    "manifest" to iiifStore.manifest(volume.imageset),
                     "canvasIds" to listOf(iiifStore.getCanvasId(volume.name, openingNr))
                 )
             )
@@ -140,7 +129,7 @@ class RepublicResource(
                     "lines" to getTextLines(annoPage),
                 ),
                 "iiif" to mapOf(
-                    "manifest" to manifest(volume),
+                    "manifest" to iiifStore.manifest(volume.imageset),
                     "canvasIds" to extractCanvasIds(annoPage)
                 )
             )

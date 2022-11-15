@@ -16,6 +16,7 @@ import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
 import nl.knaw.huc.broccoli.resources.RepublicResource
+import nl.knaw.huc.broccoli.resources.RepublicVolumeMapper
 import nl.knaw.huc.broccoli.service.anno.CachingAnnoRepo
 import nl.knaw.huc.broccoli.service.anno.FetchingAnnoRepo
 import nl.knaw.huc.broccoli.service.mock.MockIIIFStore
@@ -78,10 +79,12 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
 
         val arc = createAnnoRepoClient(configuration.annoRepo)
         val annoRepo = CachingAnnoRepo(FetchingAnnoRepo(arc, configuration.annoRepo, configuration.republic))
+        val volumeMapper = RepublicVolumeMapper(configuration.republic)
+        val iiifStore = MockIIIFStore(configuration.iiifUri, client)
         environment.jersey().apply {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())
-            register(RepublicResource(configuration, annoRepo, MockIIIFStore(), client))
+            register(RepublicResource(volumeMapper, annoRepo, iiifStore, client))
 //            register(RuntimeExceptionMapper())
         }
 

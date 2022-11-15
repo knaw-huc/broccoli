@@ -7,7 +7,7 @@ import javax.ws.rs.NotFoundException
 
 private const val REPUBLIC_NS = "urn:republic:"
 
-class VolumeMapper(private val config: RepublicConfiguration) {
+class RepublicVolumeMapper(private val config: RepublicConfiguration) {
     fun byBodyId(bodyId: String): RepublicVolume {
         if (bodyId.startsWith(REPUBLIC_NS)) {
             val remainderOfId = bodyId.substringAfter(REPUBLIC_NS)

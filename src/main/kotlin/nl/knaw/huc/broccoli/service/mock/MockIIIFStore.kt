@@ -4,10 +4,18 @@ import com.jayway.jsonpath.JsonPath
 import nl.knaw.huc.broccoli.service.IIIFStore
 import nl.knaw.huc.broccoli.service.ResourceLoader
 import org.slf4j.LoggerFactory
+import java.net.URI
 import javax.ws.rs.NotFoundException
+import javax.ws.rs.client.Client
 
-class MockIIIFStore : IIIFStore {
+class MockIIIFStore(val iiifUri: String, val client: Client) : IIIFStore {
     private val log = LoggerFactory.getLogger(javaClass)
+
+    override fun manifest(imageset: String): URI =
+        client.target(iiifUri)
+            .path("imageset")
+            .path(imageset)
+            .path("manifest").uri
 
     override fun getCanvasId(volume: String, opening: Int): String {
         try {
