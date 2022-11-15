@@ -3,9 +3,6 @@ package nl.knaw.huc.broccoli.api
 object Constants {
     const val APP_NAME = "Broccoli"
 
-    const val AR_SERVICES = "services"
-    const val AR_SEARCH = "search"
-
     const val AR_BODY_TYPE = "body.type"
     const val AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE = ":overlapsWithTextAnchorRange"
     const val AR_OVERLAP_SOURCE = "source"

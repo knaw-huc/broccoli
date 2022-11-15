@@ -14,8 +14,6 @@ import nl.knaw.huc.broccoli.api.WebAnnoPage
 import org.slf4j.LoggerFactory
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.NotFoundException
-import javax.ws.rs.client.ClientBuilder
-import javax.ws.rs.core.GenericType
 import kotlin.streams.asSequence
 
 class FetchingAnnoRepo(private val annoRepoClient: AnnoRepoClient) : AnnoRepo {
@@ -23,35 +21,6 @@ class FetchingAnnoRepo(private val annoRepoClient: AnnoRepoClient) : AnnoRepo {
 
     // choose 'null' over throwing exceptions when json paths cannot be found
     private val jsonParser = JsonPath.using(defaultConfiguration().addOptions(DEFAULT_PATH_LEAF_TO_NULL))
-
-    override fun getScanAnno(containerName: String, bodyId: String): ScanPageResult {
-        log.info("getScanAnno: containerName=[$containerName], bodyId=[$bodyId]")
-        val before = System.currentTimeMillis()
-
-        val anno = findByBodyId(containerName, bodyId)
-        val textTargets = anno.target<Any>("Text")
-        log.info("data: $textTargets")
-
-        val text = ArrayList<String>()
-        val annos = ArrayList<Map<String, Any>>()
-        textTargets.forEach {
-            val sourceUrl = it["source"] as String
-            if (it["selector"] == null) {
-                text.addAll(fetchTextLines(sourceUrl))
-            } else {
-                @Suppress("UNCHECKED_CAST") val selector = it["selector"] as Map<String, Any>
-                val start = selector["start"] as Int
-                val end = selector["end"] as Int
-                log.info("start: $start, end: $end")
-                annos.addAll(fetchOverlappingAnnotations(containerName, sourceUrl, start, end))
-            }
-        }
-
-        val after = System.currentTimeMillis()
-        log.info("fetching scan page took ${after - before} ms")
-
-        return ScanPageResult(annos, text)
-    }
 
     override fun findByBodyId(containerName: String, bodyId: String): WebAnnoPage {
         log.info("getBodyId: containerName=[$containerName], bodyId=[$bodyId]")
@@ -73,16 +42,7 @@ class FetchingAnnoRepo(private val annoRepoClient: AnnoRepoClient) : AnnoRepo {
         return result
     }
 
-    private fun fetchTextLines(textSourceUrl: String): List<String> {
-        log.info("Fetching relevant text segments: $textSourceUrl")
-        val startTime = System.currentTimeMillis()
-        val resp = ClientBuilder.newClient().target(textSourceUrl).request().get()
-        val result = resp.readEntity(object : GenericType<List<String>>() {})
-        log.info("fetching took ${System.currentTimeMillis() - startTime} ms")
-        return result
-    }
-
-    private fun fetchOverlappingAnnotations(
+    override fun fetchOverlappingAnnotations(
         containerName: String, source: String, start: Int, end: Int
     ): List<Map<String, Any>> {
         val query = mapOf(

@@ -41,9 +41,9 @@ class FetchingAnnoRepoTest {
         val scanNr = "%04d".format(285)
         val bodyId = "urn:republic:NL-HaNA_${archNr}_${invNr}_${scanNr}"
 
-        val containerName = volumeMapper.buildContainerName("1728")
-        val scanPageResult = sut.getScanAnno(containerName, bodyId = bodyId)
-        log.info("scanPageResult.size: ${scanPageResult.anno.size}")
+//        val containerName = volumeMapper.buildContainerName("1728")
+//        val scanPageResult = sut.getScanAnno(containerName, bodyId = bodyId)
+//        log.info("scanPageResult.size: ${scanPageResult.anno.size}")
     }
 
     @Test

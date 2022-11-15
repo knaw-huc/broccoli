@@ -38,7 +38,25 @@ class RepublicResource(
         val containerName = volumeMapper.buildContainerName(volume.name)
         val bodyId = volumeMapper.buildBodyId(volume, openingNr)
 
-        val scan = annoRepo.getScanAnno(containerName, bodyId)
+        val anno = annoRepo.findByBodyId(containerName, bodyId)
+        val textTargets = anno.target<Any>("Text")
+        log.info("textTargets: $textTargets")
+
+        val textLines = ArrayList<String>()
+        val annotations = ArrayList<Map<String, Any>>()
+        textTargets.forEach {
+            val sourceUrl = it["source"] as String
+            if (it["selector"] == null) {
+                textLines.addAll(fetchTextLines(sourceUrl))
+            } else {
+                @Suppress("UNCHECKED_CAST") val selector = it["selector"] as Map<String, Any>
+                val start = selector["start"] as Int
+                val end = selector["end"] as Int
+                log.info("start: $start, end: $end")
+                annotations.addAll(annoRepo.fetchOverlappingAnnotations(containerName, sourceUrl, start, end))
+            }
+        }
+
         return Response.ok(
             mapOf(
                 "type" to "AnnoTextResult",
@@ -46,14 +64,14 @@ class RepublicResource(
                     "volumeId" to volumeId,
                     "openingNr" to openingNr
                 ),
-                "anno" to scan.anno,
+                "anno" to annotations,
                 "text" to mapOf(
                     "location" to mapOf(
                         "relativeTo" to "TODO",
                         "start" to TextMarker(-1, -1, -1),
                         "end" to TextMarker(-1, -1, -1)
                     ),
-                    "lines" to scan.text
+                    "lines" to textLines
                 ),
                 "iiif" to mapOf(
                     "manifest" to iiifStore.manifest(volume.imageset),

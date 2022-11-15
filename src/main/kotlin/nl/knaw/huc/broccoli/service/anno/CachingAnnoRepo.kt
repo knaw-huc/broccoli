@@ -8,22 +8,7 @@ import org.slf4j.LoggerFactory
 class CachingAnnoRepo(private val delegate: AnnoRepo, capacity: Int = 10) : AnnoRepo {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    private val cachedScanPages = LRUCache<Pair<String, String>, ScanPageResult>(capacity)
     private val cachedResolutions = LRUCache<Pair<String, String>, WebAnnoPage>(capacity)
-
-    override fun getScanAnno(containerName: String, bodyId: String): ScanPageResult {
-        val key = Pair(containerName, bodyId)
-        val cached = cachedScanPages.get(key)
-        if (cached != null) {
-            log.info("cache hit for [$key]")
-            return cached
-        }
-
-        log.info("cache miss for [$key]")
-        val value = delegate.getScanAnno(containerName, bodyId)
-        cachedScanPages.put(key, value)
-        return value
-    }
 
     override fun findByBodyId(containerName: String, bodyId: String): WebAnnoPage {
         val key = Pair(containerName, bodyId)
@@ -38,6 +23,10 @@ class CachingAnnoRepo(private val delegate: AnnoRepo, capacity: Int = 10) : Anno
         cachedResolutions.put(key, value)
         return value
     }
+
+    override fun fetchOverlappingAnnotations(
+        containerName: String, source: String, start: Int, end: Int
+    ): List<Map<String, Any>> = delegate.fetchOverlappingAnnotations(containerName, source, start, end)
 
     override fun findOffsetRelativeTo(
         containerName: String,
