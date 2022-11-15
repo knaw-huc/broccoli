@@ -120,22 +120,23 @@ class RepublicResource(
         var markers = TextMarkers(start, end)
         log.info("markers (absolute): $markers")
 
-        val location = HashMap<String, Any>()
-        if (relativeTo == "Origin") {
-            location["relativeTo"] = mapOf("type" to "Origin", "id" to "")
-        } else {
-            val (offset, offsetId) = annoRepo.findOffsetRelativeTo(
-                containerName,
-                textSegmentsSource,
-                selector,
-                relativeTo
-            )
-            markers = markers.relativeTo(offset)
-            log.info("markers (relative to $offsetId): $markers")
-            location["relativeTo"] = mapOf("type" to relativeTo, "bodyId" to offsetId)
-        }
-        location["start"] = markers.start
-        location["end"] = markers.end
+        val location = mapOf(
+            "location" to if (relativeTo == "Origin") {
+                mapOf("type" to "Origin", "id" to "")
+            } else {
+                val (offset, offsetId) = annoRepo.findOffsetRelativeTo(
+                    containerName,
+                    textSegmentsSource,
+                    selector,
+                    relativeTo
+                )
+                markers = markers.relativeTo(offset)
+                log.info("markers (relative to $offsetId): $markers")
+                mapOf("type" to relativeTo, "bodyId" to offsetId)
+            },
+            "start" to markers.start,
+            "end" to markers.end
+        )
 
         return Response.ok(
             mapOf(
