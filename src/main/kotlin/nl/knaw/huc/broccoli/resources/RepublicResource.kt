@@ -30,14 +30,15 @@ class RepublicResource(
     ): Response {
         log.info("volumeId: $volumeId, openingNr: $openingNr")
 
-        val volume = volumeMapper.byVolumeId(volumeId)
+        val volume = volumeMapper.byVolumeName(volumeId)
+        val containerName = volumeMapper.buildContainerName(volume.name)
 
         if (openingNr < 1) {
             throw BadRequestException("Path parameter 'openingNr' must be >= 1")
         }
 
         val bodyId = volumeMapper.buildBodyId(volume, openingNr)
-        val scan = annoRepo.getScanAnno(volume.name, bodyId)
+        val scan = annoRepo.getScanAnno(containerName, bodyId)
         return Response.ok(
             mapOf(
                 "type" to "AnnoTextResult",
@@ -71,7 +72,8 @@ class RepublicResource(
         @QueryParam("relativeTo") @DefaultValue("Origin") relativeTo: String // e.g., "Scan", "Session" -> Enum? Generic?
     ): Response {
         val volume = volumeMapper.byBodyId(bodyId)
-        val annoPage = annoRepo.findByBodyId(volume.name, bodyId)
+        val containerName = volumeMapper.buildContainerName(volume.name)
+        val annoPage = annoRepo.findByBodyId(containerName, bodyId)
         val textTargets = annoPage.target<Any>("Text")
 
         val textTargetWithoutSelector = textTargets.find { it["selector"] == null }
@@ -105,7 +107,7 @@ class RepublicResource(
             location["relativeTo"] = mapOf("type" to "Origin", "id" to "")
         } else {
             val (offset, offsetId) = annoRepo.findOffsetRelativeTo(
-                volume.name,
+                containerName,
                 textSegmentsSource,
                 selector,
                 relativeTo

@@ -11,8 +11,8 @@ class CachingAnnoRepo(private val delegate: AnnoRepo, capacity: Int = 10) : Anno
     private val cachedScanPages = LRUCache<Pair<String, String>, ScanPageResult>(capacity)
     private val cachedResolutions = LRUCache<Pair<String, String>, WebAnnoPage>(capacity)
 
-    override fun getScanAnno(volumeName: String, bodyId: String): ScanPageResult {
-        val key = Pair(volumeName, bodyId)
+    override fun getScanAnno(containerName: String, bodyId: String): ScanPageResult {
+        val key = Pair(containerName, bodyId)
         val cached = cachedScanPages.get(key)
         if (cached != null) {
             log.info("cache hit for [$key]")
@@ -20,13 +20,13 @@ class CachingAnnoRepo(private val delegate: AnnoRepo, capacity: Int = 10) : Anno
         }
 
         log.info("cache miss for [$key]")
-        val value = delegate.getScanAnno(volumeName, bodyId)
+        val value = delegate.getScanAnno(containerName, bodyId)
         cachedScanPages.put(key, value)
         return value
     }
 
-    override fun findByBodyId(volumeName: String, bodyId: String): WebAnnoPage {
-        val key = Pair(volumeName, bodyId)
+    override fun findByBodyId(containerName: String, bodyId: String): WebAnnoPage {
+        val key = Pair(containerName, bodyId)
         val cached = cachedResolutions.get(key)
         if (cached != null) {
             log.info("cache hit for [$key]")
@@ -34,18 +34,18 @@ class CachingAnnoRepo(private val delegate: AnnoRepo, capacity: Int = 10) : Anno
         }
 
         log.info("cache miss for [$key]")
-        val value = delegate.findByBodyId(volumeName, bodyId)
+        val value = delegate.findByBodyId(containerName, bodyId)
         cachedResolutions.put(key, value)
         return value
     }
 
     override fun findOffsetRelativeTo(
-        volume: String,
+        containerName: String,
         source: String,
         selector: TextSelector,
         type: String
     ): Pair<Int, String> {
         log.info("TODO: cache findOffsetRelativeTo")
-        return delegate.findOffsetRelativeTo(volume, source, selector, type)
+        return delegate.findOffsetRelativeTo(containerName, source, selector, type)
     }
 }

@@ -7,17 +7,17 @@ import javax.ws.rs.NotFoundException
 
 private const val REPUBLIC_NS = "urn:republic:"
 
-class RepublicVolumeMapper(private val config: RepublicConfiguration) {
+class RepublicVolumeMapper(private val config: RepublicConfiguration, private val revision: String?) {
     fun byBodyId(bodyId: String): RepublicVolume {
         if (bodyId.startsWith(REPUBLIC_NS)) {
             val remainderOfId = bodyId.substringAfter(REPUBLIC_NS)
 
             // urn:republic:session-1728-06-19-ordinaris-num-1-resolution-11 -> 1728
             if (remainderOfId.startsWith("session")) {
-                val volumeId = remainderOfId
+                val volumeName = remainderOfId
                     .substringAfter("session-")
                     .substringBefore('-')
-                return byVolumeId(volumeId)
+                return byVolumeName(volumeName)
             }
 
             // urn:republic:NL-HaNA_1.01.02_3783_0331 -> [invnr 3783] -> 1728
@@ -39,9 +39,9 @@ class RepublicVolumeMapper(private val config: RepublicConfiguration) {
             ?: throw NotFoundException("Inventarisnummer [$invNr] not found in republic configuration")
     }
 
-    fun byVolumeId(volumeId: String): RepublicVolume {
-        return config.volumes.find { it.name == volumeId }
-            ?: throw NotFoundException("Volume [$volumeId] not found in republic configuration")
+    fun byVolumeName(volumeName: String): RepublicVolume {
+        return config.volumes.find { it.name == volumeName }
+            ?: throw NotFoundException("Volume [$volumeName] not found in republic configuration")
     }
 
     fun buildBodyId(volume: RepublicVolume, openingNr: Int): String {
@@ -50,5 +50,15 @@ class RepublicVolumeMapper(private val config: RepublicConfiguration) {
         val scanNr = "%04d".format(openingNr)
         return "${REPUBLIC_NS}NL-HaNA_${archNr}_${invNr}_${scanNr}"
     }
+
+    fun buildContainerName(volumeName: String): String {
+        val builder = StringBuilder("volume-$volumeName")
+        if (revision != null) {
+            builder.append('-')
+            builder.append(revision)
+        }
+        return builder.toString()
+    }
+
 
 }

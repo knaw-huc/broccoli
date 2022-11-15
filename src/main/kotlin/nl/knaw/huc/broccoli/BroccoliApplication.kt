@@ -72,9 +72,9 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         log.info("using TextRepo located at: ${configuration.textUri}")
 
         val annoRepoClient = createAnnoRepoClient(configuration.annoRepo)
-        val annoRepo = CachingAnnoRepo(FetchingAnnoRepo(annoRepoClient, configuration.annoRepo.rev))
+        val annoRepo = CachingAnnoRepo(FetchingAnnoRepo(annoRepoClient))
 
-        val volumeMapper = RepublicVolumeMapper(configuration.republic)
+        val volumeMapper = RepublicVolumeMapper(configuration.republic, configuration.annoRepo.rev)
 
         val iiifStore = MockIIIFStore(configuration.iiifUri, client)
 
