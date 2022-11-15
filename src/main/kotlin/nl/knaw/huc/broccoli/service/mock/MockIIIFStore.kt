@@ -8,7 +8,7 @@ import java.net.URI
 import javax.ws.rs.NotFoundException
 import javax.ws.rs.client.Client
 
-class MockIIIFStore(val iiifUri: String, val client: Client) : IIIFStore {
+class MockIIIFStore(private val iiifUri: String, private val client: Client) : IIIFStore {
     private val log = LoggerFactory.getLogger(javaClass)
 
     override fun manifest(imageset: String): URI =
