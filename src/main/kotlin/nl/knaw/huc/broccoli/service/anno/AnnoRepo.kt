@@ -121,8 +121,8 @@ class AnnoRepo(private val annoRepoClient: AnnoRepoClient) {
     }
 
     companion object {
-        val CACHE_CAPACITY = 100
-        val CACHE_RESULT_SET_SIZE_THRESHOLD = 100
+        const val CACHE_CAPACITY = 100
+        const val CACHE_RESULT_SET_SIZE_THRESHOLD = 100
     }
 
 }
