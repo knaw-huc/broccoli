@@ -35,10 +35,7 @@ class AnnoRepo(private val annoRepoClient: AnnoRepoClient) {
             .map(jsonParser::parse)
             .toList()
 
-    private fun cacheAnnoRepoQuery(
-        containerName: String,
-        query: Map<String, Any>
-    ): List<DocumentContext> {
+    private fun cacheQuery(containerName: String, query: Map<String, Any>): List<DocumentContext> {
         val key = Pair(containerName, query)
         val cached = cachedQueryResults.get(key)
         if (cached != null) {
@@ -60,7 +57,7 @@ class AnnoRepo(private val annoRepoClient: AnnoRepoClient) {
         val before = System.currentTimeMillis()
 
         val query = mapOf("body.id" to bodyId)
-        val result = cacheAnnoRepoQuery(containerName, query)
+        val result = cacheQuery(containerName, query)
             .map(::WebAnnoPage)
             .firstOrNull()
             ?: throw NotFoundException("bodyId not found: $bodyId")
@@ -71,17 +68,16 @@ class AnnoRepo(private val annoRepoClient: AnnoRepoClient) {
         return result
     }
 
-    fun fetchOverlappingAnnotations(
-        containerName: String, source: String, start: Int, end: Int
-    ): List<Map<String, Any>> {
+    fun fetchOverlappingAnnotations(containerName: String, source: String, start: Int, end: Int)
+            : List<Map<String, Any>> {
         val query = mapOf(
             AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to overlap(source, start, end),
-            AR_BODY_TYPE to isNotIn(listOf("Line", "Page", "RepublicParagraph", "TextRegion", "Scan"))
+            AR_BODY_TYPE to isNotIn(setOf("Line", "Page", "RepublicParagraph", "TextRegion", "Scan"))
         )
 
         val startTime = System.currentTimeMillis()
 
-        val overlappingAnnotations = cacheAnnoRepoQuery(containerName, query)
+        val overlappingAnnotations = cacheQuery(containerName, query)
             .map { it.read<Map<String, Any>>("$") }
             .toList()
 
@@ -100,7 +96,7 @@ class AnnoRepo(private val annoRepoClient: AnnoRepoClient) {
             AR_BODY_TYPE to isEqualTo(type)
         )
 
-        val anno = cacheAnnoRepoQuery(containerName, query)
+        val anno = cacheQuery(containerName, query)
             .map(::WebAnnoPage)
             .firstOrNull()
             ?: throw NotFoundException("overlap not found ($containerName,$source,$selector)")
@@ -124,5 +120,4 @@ class AnnoRepo(private val annoRepoClient: AnnoRepoClient) {
         const val CACHE_CAPACITY = 100
         const val CACHE_RESULT_SET_SIZE_THRESHOLD = 100
     }
-
 }
