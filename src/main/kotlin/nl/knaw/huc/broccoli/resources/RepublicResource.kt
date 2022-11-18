@@ -1,6 +1,10 @@
 package nl.knaw.huc.broccoli.resources
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import nl.knaw.huc.broccoli.api.*
+import nl.knaw.huc.broccoli.api.Constants.isIn
+import nl.knaw.huc.broccoli.api.Constants.isNotIn
 import nl.knaw.huc.broccoli.api.ResourcePaths.REPUBLIC
 import nl.knaw.huc.broccoli.service.IIIFStore
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
@@ -18,20 +22,36 @@ class RepublicResource(
     private val volumeMapper: RepublicVolumeMapper,
     private val annoRepo: AnnoRepo,
     private val iiifStore: IIIFStore,
-    private val client: Client
+    private val client: Client,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
+
+    val objectMapper = ObjectMapper()
 
     @GET
     @Path("/v3/volumes/{volumeId}/openings/{openingNr}")
     fun getVolumeOpening(
         @PathParam("volumeId") volumeId: String,
-        @PathParam("openingNr") openingNr: Int
+        @PathParam("openingNr") openingNr: Int,
+        @QueryParam("includeType") includeTypesSet: Set<String>,
+        @QueryParam("includeTypes") includeTypesString: String?,
+        @QueryParam("excludeType") excludeTypesSet: Set<String>,
+        @QueryParam("excludeTypes") excludeTypesString: String?,
     ): Response {
         log.info("volumeId: $volumeId, openingNr: $openingNr")
 
         if (openingNr < 1) {
             throw BadRequestException("Path parameter 'openingNr' must be >= 1")
+        }
+
+        val typesToInclude = gatherTypes(includeTypesSet, includeTypesString)
+        log.info("‣include: $includeTypesSet ∪ $includeTypesString = $typesToInclude (${typesToInclude.size})")
+
+        val typesToExclude = gatherTypes(excludeTypesSet, excludeTypesString)
+        log.info("‣exclude: $excludeTypesSet ∪ $excludeTypesString = $typesToExclude (${typesToExclude.size})")
+
+        if (typesToInclude.isNotEmpty() && typesToExclude.isNotEmpty()) {
+            throw BadRequestException("Use either 'includeType(s)' or 'excludeType(s)', but not both")
         }
 
         val volume = volumeMapper.byVolumeName(volumeId)
@@ -53,7 +73,15 @@ class RepublicResource(
                 val start = selector["start"] as Int
                 val end = selector["end"] as Int
                 log.info("start: $start, end: $end")
-                annotations.addAll(annoRepo.fetchOverlappingAnnotations(containerName, sourceUrl, start, end))
+                val overlappingAnnotations = if (includeTypesSet.isNotEmpty()) {
+                    annoRepo.fetchOverlap(containerName, sourceUrl, start, end, isIn(typesToInclude))
+                } else if (excludeTypesSet.isNotEmpty()) {
+                    annoRepo.fetchOverlap(containerName, sourceUrl, start, end, isNotIn(typesToExclude))
+                } else /* both are empty */ {
+                    val defaultTypesToExclude = setOf("Line", "Page", "RepublicParagraph", "TextRegion", "Scan")
+                    annoRepo.fetchOverlap(containerName, sourceUrl, start, end, isNotIn(defaultTypesToExclude))
+                }
+                annotations.addAll(overlappingAnnotations)
             }
         }
 
@@ -81,13 +109,26 @@ class RepublicResource(
         ).build()
     }
 
+    private fun gatherTypes(typesAsSet: Set<String>, typesAsString: String?) =
+        if (typesAsString == null) {
+            typesAsSet
+        } else if (typesAsString.startsWith('[')) {
+            typesAsSet.union(objectMapper.readValue<Set<String>>(typesAsString))
+        } else {
+            typesAsSet.union(
+                typesAsString
+                    .removeSurrounding("\"")
+                    .split(',')
+                    .map { it.trim() })
+        }
+
     @GET
     @Path("/v3/bodies/{bodyId}")
     // Both.../v3/bodies/urn:republic:session-1728-06-19-ordinaris-num-1-resolution-11?relativeTo=Session
     // and /v3/bodies/urn:republic:NL-HaNA_1.01.02_3783_0331 (Either NO ?relativeTo or MUST BE: relativeTo=Volume)
     fun getBodyIdRelativeTo(
         @PathParam("bodyId") bodyId: String, // could be resolutionId, sessionId, ...
-        @QueryParam("relativeTo") @DefaultValue("Origin") relativeTo: String // e.g., "Scan", "Session" -> Enum? Generic?
+        @QueryParam("relativeTo") @DefaultValue("Origin") relativeTo: String, // e.g., "Scan", "Session" -> Enum? Generic?
     ): Response {
         val volume = volumeMapper.byBodyId(bodyId)
         val containerName = volumeMapper.buildContainerName(volume.name)
@@ -185,4 +226,3 @@ class RepublicResource(
 
 
 }
-

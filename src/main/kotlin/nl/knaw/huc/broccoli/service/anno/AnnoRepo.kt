@@ -9,7 +9,6 @@ import nl.knaw.huc.annorepo.client.AnnoRepoClient
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE
 import nl.knaw.huc.broccoli.api.Constants.isEqualTo
-import nl.knaw.huc.broccoli.api.Constants.isNotIn
 import nl.knaw.huc.broccoli.api.Constants.overlap
 import nl.knaw.huc.broccoli.api.WebAnnoPage
 import nl.knaw.huc.broccoli.service.cache.LRUCache
@@ -68,24 +67,16 @@ class AnnoRepo(private val annoRepoClient: AnnoRepoClient) {
         return result
     }
 
-    fun fetchOverlappingAnnotations(containerName: String, source: String, start: Int, end: Int)
-            : List<Map<String, Any>> {
-        val query = mapOf(
+    fun fetchOverlap(
+        containerName: String, source: String, start: Int, end: Int,
+        bodyTypes: Map<String, Any>,
+    ): List<Map<String, Any>> = cacheQuery(
+        containerName = containerName,
+        query = mapOf(
             AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to overlap(source, start, end),
-            AR_BODY_TYPE to isNotIn(setOf("Line", "Page", "RepublicParagraph", "TextRegion", "Scan"))
+            AR_BODY_TYPE to bodyTypes
         )
-
-        val startTime = System.currentTimeMillis()
-
-        val overlappingAnnotations = cacheQuery(containerName, query)
-            .map { it.read<Map<String, Any>>("$") }
-            .toList()
-
-        val endTime = System.currentTimeMillis()
-        log.info("fetching overlapping annotations took: ${endTime - startTime} ms")
-
-        return overlappingAnnotations
-    }
+    ).map { it.read<Map<String, Any>>("$") }.toList()
 
     fun findOffsetRelativeTo(containerName: String, source: String, selector: TextSelector, type: String)
             : Pair<Int, String> {
