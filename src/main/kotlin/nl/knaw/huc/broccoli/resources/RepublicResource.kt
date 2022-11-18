@@ -9,6 +9,7 @@ import nl.knaw.huc.broccoli.api.ResourcePaths.REPUBLIC
 import nl.knaw.huc.broccoli.service.IIIFStore
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo.TextSelector
+import nl.knaw.huc.broccoli.service.anno.BodyIdSearchResult
 import org.slf4j.LoggerFactory
 import javax.ws.rs.*
 import javax.ws.rs.client.Client
@@ -57,15 +58,16 @@ class RepublicResource(
         val volume = volumeMapper.byVolumeName(volumeId)
         val containerName = volumeMapper.buildContainerName(volume.name)
         val bodyId = volumeMapper.buildBodyId(volume, openingNr)
-
         val anno = annoRepo.findByBodyId(containerName, bodyId)
-        val textTargets = anno.target<Any>("Text")
-        log.info("textTargets: $textTargets")
 
-        val textLines = fetchTextLines(textTargets.first { it["selector"] == null }["source"] as String)
+        val resultText = anno.withoutField<String>("Text", "selector")
+            .also { if (it.size > 1) log.warn("multiple Text without selector: $it") }
+            .first()
+            .let { fetchTextLines(it["source"] as String) }
 
-        val annotations = textTargets
-            .first { it["selector"] != null }
+        val resultAnno = anno.withField<Any>("Text", "selector")
+            .also { if (it.size > 1) log.warn("multiple Text with selector: $it") }
+            .first()
             .let {
                 @Suppress("UNCHECKED_CAST")
                 val selector = it["selector"] as Map<String, Any>
@@ -91,14 +93,14 @@ class RepublicResource(
                     "volumeId" to volumeId,
                     "openingNr" to openingNr
                 ),
-                "anno" to annotations,
+                "anno" to resultAnno,
                 "text" to mapOf(
                     "location" to mapOf(
                         "relativeTo" to "TODO",
                         "start" to TextMarker(-1, -1, -1),
                         "end" to TextMarker(-1, -1, -1)
                     ),
-                    "lines" to textLines
+                    "lines" to resultText
                 ),
                 "iiif" to mapOf(
                     "manifest" to iiifStore.manifest(volume.imageset),
@@ -198,9 +200,9 @@ class RepublicResource(
         ).build()
     }
 
-    private fun extractCanvasIds(annoPage: WebAnnoPage) = annoPage.targetField<String>("Canvas", "source")
+    private fun extractCanvasIds(annoPage: BodyIdSearchResult) = annoPage.targetField<String>("Canvas", "source")
 
-    private fun getTextLines(annoPage: WebAnnoPage): List<String> {
+    private fun getTextLines(annoPage: BodyIdSearchResult): List<String> {
         val textTargets = annoPage.target<String>("Text").filter { !it.containsKey("selector") }
         if (textTargets.size > 1) {
             log.warn("Multiple text targets (without selector) found, arbitrarily using the first: $textTargets")

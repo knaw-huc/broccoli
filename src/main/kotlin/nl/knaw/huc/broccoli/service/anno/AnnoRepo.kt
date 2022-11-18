@@ -10,7 +10,6 @@ import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE
 import nl.knaw.huc.broccoli.api.Constants.isEqualTo
 import nl.knaw.huc.broccoli.api.Constants.overlap
-import nl.knaw.huc.broccoli.api.WebAnnoPage
 import nl.knaw.huc.broccoli.service.cache.LRUCache
 import org.slf4j.LoggerFactory
 import javax.ws.rs.BadRequestException
@@ -51,13 +50,13 @@ class AnnoRepo(private val annoRepoClient: AnnoRepoClient) {
         return value
     }
 
-    fun findByBodyId(containerName: String, bodyId: String): WebAnnoPage {
+    fun findByBodyId(containerName: String, bodyId: String): BodyIdSearchResult {
         log.info("getBodyId: containerName=[$containerName], bodyId=[$bodyId]")
         val before = System.currentTimeMillis()
 
         val query = mapOf("body.id" to bodyId)
         val result = cacheQuery(containerName, query)
-            .map(::WebAnnoPage)
+            .map(::BodyIdSearchResult)
             .firstOrNull()
             ?: throw NotFoundException("bodyId not found: $bodyId")
 
@@ -88,7 +87,7 @@ class AnnoRepo(private val annoRepoClient: AnnoRepoClient) {
         )
 
         val anno = cacheQuery(containerName, query)
-            .map(::WebAnnoPage)
+            .map(::BodyIdSearchResult)
             .firstOrNull()
             ?: throw NotFoundException("overlap not found ($containerName,$source,$selector)")
 
