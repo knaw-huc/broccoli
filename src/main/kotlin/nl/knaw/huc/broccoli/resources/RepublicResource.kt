@@ -45,10 +45,10 @@ class RepublicResource(
         }
 
         val typesToInclude = gatherTypes(includeTypesSet, includeTypesString)
-        log.info("‣include: $includeTypesSet ∪ $includeTypesString = $typesToInclude (${typesToInclude.size})")
+        log.info("‣include: $includeTypesSet ∪ ${includeTypesString ?: "∅"} = $typesToInclude (${typesToInclude.size})")
 
         val typesToExclude = gatherTypes(excludeTypesSet, excludeTypesString)
-        log.info("‣exclude: $excludeTypesSet ∪ $excludeTypesString = $typesToExclude (${typesToExclude.size})")
+        log.info("‣exclude: $excludeTypesSet ∪ ${excludeTypesString ?: "∅"} = $typesToExclude (${typesToExclude.size})")
 
         if (typesToInclude.isNotEmpty() && typesToExclude.isNotEmpty()) {
             throw BadRequestException("Use either 'includeType(s)' or 'excludeType(s)', but not both")
@@ -62,28 +62,27 @@ class RepublicResource(
         val textTargets = anno.target<Any>("Text")
         log.info("textTargets: $textTargets")
 
-        val textLines = ArrayList<String>()
-        val annotations = ArrayList<Map<String, Any>>()
-        textTargets.forEach {
-            val sourceUrl = it["source"] as String
-            if (it["selector"] == null) {
-                textLines.addAll(fetchTextLines(sourceUrl))
-            } else {
-                @Suppress("UNCHECKED_CAST") val selector = it["selector"] as Map<String, Any>
+        val textLines = fetchTextLines(textTargets.first { it["selector"] == null }["source"] as String)
+
+        val annotations = textTargets
+            .first { it["selector"] != null }
+            .let {
+                @Suppress("UNCHECKED_CAST")
+                val selector = it["selector"] as Map<String, Any>
+                val sourceUrl = it["source"] as String
                 val start = selector["start"] as Int
                 val end = selector["end"] as Int
-                log.info("start: $start, end: $end")
-                val overlappingAnnotations = if (includeTypesSet.isNotEmpty()) {
-                    annoRepo.fetchOverlap(containerName, sourceUrl, start, end, isIn(typesToInclude))
-                } else if (excludeTypesSet.isNotEmpty()) {
-                    annoRepo.fetchOverlap(containerName, sourceUrl, start, end, isNotIn(typesToExclude))
-                } else /* both are empty */ {
-                    val defaultTypesToExclude = setOf("Line", "Page", "RepublicParagraph", "TextRegion", "Scan")
-                    annoRepo.fetchOverlap(containerName, sourceUrl, start, end, isNotIn(defaultTypesToExclude))
-                }
-                annotations.addAll(overlappingAnnotations)
+                val bodyTypes =
+                    if (includeTypesSet.isNotEmpty()) {
+                        isIn(typesToInclude)
+                    } else if (excludeTypesSet.isNotEmpty()) {
+                        isNotIn(typesToExclude)
+                    } else /* both are empty */ {
+                        isNotIn(setOf("Line", "Page", "RepublicParagraph", "TextRegion", "Scan"))
+                    }
+
+                annoRepo.fetchOverlap(containerName, sourceUrl, start, end, bodyTypes)
             }
-        }
 
         return Response.ok(
             mapOf(
