@@ -5,8 +5,6 @@ import nl.knaw.huc.broccoli.config.RepublicVolume
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.NotFoundException
 
-private const val REPUBLIC_NS = "urn:republic:"
-
 class RepublicVolumeMapper(private val config: RepublicConfiguration, private val revision: String?) {
     fun byBodyId(bodyId: String): RepublicVolume {
         if (bodyId.startsWith(REPUBLIC_NS)) {
@@ -60,5 +58,7 @@ class RepublicVolumeMapper(private val config: RepublicConfiguration, private va
         return builder.toString()
     }
 
-
+    companion object {
+        private const val REPUBLIC_NS = "urn:republic:"
+    }
 }
