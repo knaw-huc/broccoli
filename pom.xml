@@ -25,7 +25,6 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-    <!--0.3.4-beta yields Map<String,Any>, 0.3.5-beta yields Json String-->
     <annorepo-client.version>0.3.6-beta</annorepo-client.version>
 
     <assertj-core.version>3.23.1</assertj-core.version>
