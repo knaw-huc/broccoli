@@ -131,9 +131,7 @@ class RepublicResource(
         @PathParam("bodyId") bodyId: String, // could be resolutionId, sessionId, ...
         @QueryParam("relativeTo") @DefaultValue("Origin") relativeTo: String, // e.g., "Scan", "Session" -> Enum? Generic?
     ): Response {
-        val volume = volumeMapper.byBodyId(bodyId)
-        val containerName = volumeMapper.buildContainerName(volume.name)
-        val annoPage = annoRepo.findByBodyId(containerName, bodyId)
+        val annoPage = annoRepo.findByBodyId(bodyId)
         val textTargets = annoPage.target<Any>("Text")
 
         val textTargetWithoutSelector = textTargets.find { it["selector"] == null }
@@ -167,7 +165,6 @@ class RepublicResource(
                 mapOf("type" to "Origin", "id" to "")
             } else {
                 val (offset, offsetId) = annoRepo.findOffsetRelativeTo(
-                    containerName,
                     textSegmentsSource,
                     selector,
                     relativeTo
@@ -193,7 +190,7 @@ class RepublicResource(
                     "lines" to getTextLines(annoPage),
                 ),
                 "iiif" to mapOf(
-                    "manifest" to iiifStore.manifest(volume.imageset),
+                    "manifest" to iiifStore.manifest(volumeMapper.byBodyId(bodyId).imageset),
                     "canvasIds" to extractCanvasIds(annoPage)
                 )
             )

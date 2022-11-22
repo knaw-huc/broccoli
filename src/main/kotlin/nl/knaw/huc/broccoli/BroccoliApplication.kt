@@ -11,7 +11,6 @@ import io.dropwizard.setup.Environment
 import nl.knaw.huc.annorepo.client.AnnoRepoClient
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.Constants.APP_NAME
-import nl.knaw.huc.broccoli.config.AnnoRepoConfiguration
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
@@ -66,22 +65,30 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         log.info("client.readTimeout (after setting): ${client.configuration.getProperty(READ_TIMEOUT)}")
         log.info("client.connectTimeout (after setting): ${client.configuration.getProperty(CONNECT_TIMEOUT)}")
 
-        log.info("using AnnoRepo located at: ${configuration.annoRepo.uri}, api-key=${configuration.annoRepo.key}")
+        log.info("registered projects: ")
+        log.info(" +- globalise: ${configuration.globalise.annoRepo.uri}")
+        log.info(" +- republic: ${configuration.republic.annoRepo.uri}")
         log.info("using IIIFRepo located at: ${configuration.iiifUri}")
         log.info("using TextRepo located at: ${configuration.textUri}")
 
-        val annoRepoClient = createAnnoRepoClient(configuration.annoRepo)
-        val annoRepo = AnnoRepo(annoRepoClient)
+        val republicAnnoRepoClient = configuration.republic.annoRepo.run {
+            AnnoRepo(
+                AnnoRepoClient(
+                    serverURI = URI.create(uri),
+                    apiKey = apiKey,
+                    userAgent = "$name (${this@BroccoliApplication.javaClass.name}/$appVersion)"
+                ), containerName
+            )
+        }
 
-        val volumeMapper = RepublicVolumeMapper(configuration.republic, configuration.annoRepo.rev)
+        val volumeMapper = RepublicVolumeMapper(configuration.republic)
 
         val iiifStore = MockIIIFStore(configuration.iiifUri, client)
 
         environment.jersey().apply {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())
-            register(RepublicResource(volumeMapper, annoRepo, iiifStore, client))
-//            register(RuntimeExceptionMapper())
+            register(RepublicResource(volumeMapper, republicAnnoRepoClient, iiifStore, client))
         }
 
         environment.servlets().apply {
@@ -101,14 +108,6 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             "\n\n  Starting $name (v$appVersion)\n" +
                     "       locally accessible at http://localhost:${System.getenv(Constants.EnvironmentVariable.BR_SERVER_PORT.name) ?: 8080}\n" +
                     "    externally accessible at ${configuration.externalBaseUrl}\n"
-        )
-    }
-
-    private fun createAnnoRepoClient(config: AnnoRepoConfiguration): AnnoRepoClient {
-        return AnnoRepoClient(
-            serverURI = URI.create(config.uri),
-            apiKey = config.key,
-            userAgent = "${name} (${javaClass.name}/$appVersion)"
         )
     }
 

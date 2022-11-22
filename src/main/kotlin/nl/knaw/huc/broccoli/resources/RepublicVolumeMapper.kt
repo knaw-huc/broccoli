@@ -5,7 +5,7 @@ import nl.knaw.huc.broccoli.config.RepublicVolume
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.NotFoundException
 
-class RepublicVolumeMapper(private val config: RepublicConfiguration, private val revision: String?) {
+class RepublicVolumeMapper(private val config: RepublicConfiguration) {
     fun byBodyId(bodyId: String): RepublicVolume {
         if (bodyId.startsWith(REPUBLIC_NS)) {
             val remainderOfId = bodyId.substringAfter(REPUBLIC_NS)
@@ -49,14 +49,7 @@ class RepublicVolumeMapper(private val config: RepublicConfiguration, private va
         return "${REPUBLIC_NS}NL-HaNA_${archNr}_${invNr}_${scanNr}"
     }
 
-    fun buildContainerName(volumeName: String): String {
-        val builder = StringBuilder("volume-$volumeName")
-        if (revision != null) {
-            builder.append('-')
-            builder.append(revision)
-        }
-        return builder.toString()
-    }
+    fun buildContainerName(volumeName: String) = config.annoRepo.containerName
 
     companion object {
         private const val REPUBLIC_NS = "urn:republic:"

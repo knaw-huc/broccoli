@@ -11,21 +11,15 @@ import javax.validation.constraints.Min
 import javax.validation.constraints.NotNull
 
 class BroccoliConfiguration : Configuration() {
+    @Valid
+    @NotNull
+    @JsonProperty
+    var textUri = "textrepo"
 
     @Valid
     @NotNull
     @JsonProperty
-    var textUri: String = "textrepo"
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    var annoRepo: AnnoRepoConfiguration = AnnoRepoConfiguration()
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    var iiifUri: String = "iiif"
+    var iiifUri = "iiif"
 
     @Valid
     @NotNull
@@ -39,35 +33,52 @@ class BroccoliConfiguration : Configuration() {
     @Valid
     @NotNull
     @JsonProperty
-    val externalBaseUrl: String = ""
+    val externalBaseUrl = ""
 
     @Valid
     @NotNull
     @JsonProperty
-    var jerseyClient: JerseyClientConfiguration = JerseyClientConfiguration()
+    var jerseyClient = JerseyClientConfiguration()
 
     @Valid
     @NotNull
     @JsonProperty
-    val republic: RepublicConfiguration = RepublicConfiguration()
+    var globalise = GlobaliseConfiguration()
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    var republic = RepublicConfiguration()
 }
 
 class AnnoRepoConfiguration {
     @Valid
     @NotNull
     @JsonProperty
-    var uri: String = "annorepo"
+    var uri: String = "https://annorepo.example.com"
 
     @Valid
     @JsonProperty
-    var key: String? = null
+    var containerName: String = "annorepo-container-name"
 
     @Valid
     @JsonProperty
-    var rev: String? = null
+    var apiKey: String? = null
+}
+
+class GlobaliseConfiguration {
+    @Valid
+    @NotNull
+    @JsonProperty
+    val annoRepo: AnnoRepoConfiguration = AnnoRepoConfiguration()
 }
 
 class RepublicConfiguration {
+    @Valid
+    @NotNull
+    @JsonProperty
+    val annoRepo: AnnoRepoConfiguration = AnnoRepoConfiguration()
+
     @Valid
     @NotNull
     @JsonProperty

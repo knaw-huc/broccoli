@@ -18,18 +18,16 @@ class AnnoRepoTest {
 
     init {
         republicConfig.archiefNr = "1.01.02"
-        volumeMapper = RepublicVolumeMapper(republicConfig, revision = "7")
+        volumeMapper = RepublicVolumeMapper(republicConfig)
 
         annoRepoClient = AnnoRepoClient(serverURI = URI.create("https://annorepo.republic-caf.diginfra.org"))
-        sut = AnnoRepo(annoRepoClient)
+        sut = AnnoRepo(annoRepoClient, "volume-1728-7")
     }
 
     @Test
     fun `Anno fetcher should fetch bodyId`() {
-        val containerName = volumeMapper.buildContainerName("1728")
         sut.findByBodyId(
             bodyId = "urn:republic:session-1728-06-19-ordinaris-num-1-resolution-16",
-            containerName = containerName
         )
     }
 
@@ -47,9 +45,8 @@ class AnnoRepoTest {
 
     @Test
     fun `Received bodyId should equal search key`() {
-        val containerName = volumeMapper.buildContainerName("1728")
         val expectedBodyId = "urn:republic:NL-HaNA_1.01.02_3783_0331"
-        val result = sut.findByBodyId(containerName, expectedBodyId)
+        val result = sut.findByBodyId(expectedBodyId)
         assertEquals(expectedBodyId, result.bodyId())
     }
 }

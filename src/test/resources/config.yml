@@ -5,27 +5,32 @@ server:
 
 externalBaseUrl: ${BR_EXTERNAL_BASE_URL:-http://localhost:8080}
 
-annoRepo:
-  uri: https://annorepo.republic-caf.diginfra.org
-  key: ${AR_API_KEY:-}
-  rev: 7
-
 iiifUri: https://images.diginfra.net/api/pim
 textUri: https://textrepo.republic-caf.diginfra.org/api
 
+globalise:
+  annoRepo:
+    uri: https://globalise-annorepo.tt.di.huc.knaw.nl
+    apiKey: ${AR_API_KEY:-}
+    containerName: globalise
+
 republic:
-  #  na_prefix: NL-HaNA
-  #  na_archiefnummer: 1.01.02
-  #  na_inventarisnummer: 3783
-  #  na_opening 0285
-  #  na_format: "{$na_prefix}_{$na_archiefnummer}_{$na_inventarisnummer}_{$opening}"
-  archiefNr: 1.01.02
-  defaultVolume: 1728
-  defaultOpening: 0285
-  volumes:
-    - name: 1728
-      invNr: 3783
-      imageset: 67533019-4ca0-4b08-b87e-fd5590e7a077
+  annoRepo:
+    uri: https://annorepo.republic-caf.diginfra.org
+    apiKey: ${AR_API_KEY:-}
+    containerName: volume-1728-7
+    #  na_prefix: NL-HaNA
+    #  na_archiefnummer: 1.01.02
+    #  na_inventarisnummer: 3783
+    #  na_opening 0285
+    #  na_format: "{$na_prefix}_{$na_archiefnummer}_{$na_inventarisnummer}_{$opening}"
+    archiefNr: 1.01.02
+    defaultVolume: 1728
+    defaultOpening: 0285
+    volumes:
+      - name: 1728
+        invNr: 3783
+        imageset: 67533019-4ca0-4b08-b87e-fd5590e7a077
 
 logging:
   level: INFO

@@ -16,8 +16,15 @@ import javax.ws.rs.BadRequestException
 import javax.ws.rs.NotFoundException
 import kotlin.streams.asSequence
 
-class AnnoRepo(private val annoRepoClient: AnnoRepoClient) {
+class AnnoRepo(
+    private val annoRepoClient: AnnoRepoClient,
+    private val defaultContainerName: String,
+) {
     private val log = LoggerFactory.getLogger(javaClass)
+
+    init {
+        log.info("defaultContainerName: $defaultContainerName")
+    }
 
     private val cachedQueryResults =
         LRUCache<Pair<String, Map<String, Any>>, List<DocumentContext>>(capacity = CACHE_CAPACITY)
@@ -50,6 +57,7 @@ class AnnoRepo(private val annoRepoClient: AnnoRepoClient) {
         return value
     }
 
+    fun findByBodyId(bodyId: String): BodyIdSearchResult = findByBodyId(defaultContainerName, bodyId)
     fun findByBodyId(containerName: String, bodyId: String): BodyIdSearchResult {
         log.info("getBodyId: containerName=[$containerName], bodyId=[$bodyId]")
         val before = System.currentTimeMillis()
@@ -66,6 +74,9 @@ class AnnoRepo(private val annoRepoClient: AnnoRepoClient) {
         return result
     }
 
+    fun fetchOverlap(source: String, start: Int, end: Int, bodyTypes: Map<String, Any>) =
+        fetchOverlap(defaultContainerName, source, start, end, bodyTypes)
+
     fun fetchOverlap(
         containerName: String, source: String, start: Int, end: Int,
         bodyTypes: Map<String, Any>,
@@ -76,6 +87,9 @@ class AnnoRepo(private val annoRepoClient: AnnoRepoClient) {
             AR_BODY_TYPE to bodyTypes
         )
     ).map { it.read<Map<String, Any>>("$") }.toList()
+
+    fun findOffsetRelativeTo(source: String, selector: TextSelector, type: String) =
+        findOffsetRelativeTo(defaultContainerName, source, selector, type)
 
     fun findOffsetRelativeTo(containerName: String, source: String, selector: TextSelector, type: String)
             : Pair<Int, String> {
