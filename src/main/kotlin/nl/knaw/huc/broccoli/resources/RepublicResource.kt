@@ -6,11 +6,13 @@ import nl.knaw.huc.broccoli.api.*
 import nl.knaw.huc.broccoli.api.Constants.isIn
 import nl.knaw.huc.broccoli.api.Constants.isNotIn
 import nl.knaw.huc.broccoli.api.ResourcePaths.REPUBLIC
+import nl.knaw.huc.broccoli.config.RepublicConfiguration
 import nl.knaw.huc.broccoli.service.IIIFStore
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo.TextSelector
 import nl.knaw.huc.broccoli.service.anno.BodyIdSearchResult
 import org.slf4j.LoggerFactory
+import java.net.URI
 import javax.ws.rs.*
 import javax.ws.rs.client.Client
 import javax.ws.rs.core.GenericType
@@ -20,6 +22,7 @@ import javax.ws.rs.core.Response
 @Path(REPUBLIC)
 @Produces(MediaType.APPLICATION_JSON)
 class RepublicResource(
+    config: RepublicConfiguration,
     private val volumeMapper: RepublicVolumeMapper,
     private val annoRepo: AnnoRepo,
     private val iiifStore: IIIFStore,
@@ -29,8 +32,17 @@ class RepublicResource(
 
     private val objectMapper = ObjectMapper()
 
+    private val defaultURI =
+        URI.create("$REPUBLIC/v3/volumes/${config.defaultVolume}/openings/${config.defaultOpening}")
+
     @GET
-    @Path("/v3/volumes/{volumeId}/openings/{openingNr}")
+    @Path("v3")
+    fun redirectToDefaultVolumeAndOpening(): Response {
+        return Response.seeOther(defaultURI).build()
+    }
+
+    @GET
+    @Path("v3/volumes/{volumeId}/openings/{openingNr}")
     fun getVolumeOpening(
         @PathParam("volumeId") volumeId: String,
         @PathParam("openingNr") openingNr: Int,
@@ -123,7 +135,7 @@ class RepublicResource(
         }
 
     @GET
-    @Path("/v3/bodies/{bodyId}")
+    @Path("v3/bodies/{bodyId}")
     // Both.../v3/bodies/urn:republic:session-1728-06-19-ordinaris-num-1-resolution-11?relativeTo=Session
     // and /v3/bodies/urn:republic:NL-HaNA_1.01.02_3783_0331 (Either NO ?relativeTo or MUST BE: relativeTo=Volume)
     fun getBodyIdRelativeTo(

@@ -88,7 +88,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         environment.jersey().apply {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())
-            register(RepublicResource(volumeMapper, republicAnnoRepoClient, iiifStore, client))
+            register(RepublicResource(configuration.republic, volumeMapper, republicAnnoRepoClient, iiifStore, client))
         }
 
         environment.servlets().apply {
