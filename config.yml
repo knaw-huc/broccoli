@@ -10,13 +10,12 @@ textUri: https://textrepo.republic-caf.diginfra.org/api
 
 globalise:
   annoRepo:
-    uri: https://globalise-annorepo.tt.di.huc.knaw.nl
     apiKey: ${AR_API_KEY:-}
     containerName: globalise
+    uri: https://globalise-annorepo.tt.di.huc.knaw.nl
 
 republic:
   annoRepo:
-    uri: https://annorepo.republic-caf.diginfra.org
     apiKey: ${AR_API_KEY:-}
     containerName: volume-1728-7
   #  na_prefix: NL-HaNA
