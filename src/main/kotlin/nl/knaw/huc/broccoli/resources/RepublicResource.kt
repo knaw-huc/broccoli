@@ -27,7 +27,7 @@ class RepublicResource(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    val objectMapper = ObjectMapper()
+    private val objectMapper = ObjectMapper()
 
     @GET
     @Path("/v3/volumes/{volumeId}/openings/{openingNr}")
@@ -56,9 +56,8 @@ class RepublicResource(
         }
 
         val volume = volumeMapper.byVolumeName(volumeId)
-        val containerName = volumeMapper.buildContainerName(volume.name)
         val bodyId = volumeMapper.buildBodyId(volume, openingNr)
-        val anno = annoRepo.findByBodyId(containerName, bodyId)
+        val anno = annoRepo.findByBodyId(bodyId)
 
         val resultText = anno.withoutField<String>("Text", "selector")
             .also { if (it.size > 1) log.warn("multiple Text without selector: $it") }
@@ -83,7 +82,7 @@ class RepublicResource(
                         isNotIn(setOf("Line", "Page", "RepublicParagraph", "TextRegion", "Scan"))
                     }
 
-                annoRepo.fetchOverlap(containerName, sourceUrl, start, end, bodyTypes)
+                annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes)
             }
 
         return Response.ok(
