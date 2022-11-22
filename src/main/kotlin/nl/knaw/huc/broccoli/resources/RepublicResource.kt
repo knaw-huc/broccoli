@@ -37,9 +37,7 @@ class RepublicResource(
 
     @GET
     @Path("v3")
-    fun redirectToDefaultVolumeAndOpening(): Response {
-        return Response.seeOther(defaultURI).build()
-    }
+    fun redirectToDefaultVolumeAndOpening(): Response = Response.seeOther(defaultURI).build()
 
     @GET
     @Path("v3/volumes/{volumeId}/openings/{openingNr}")
