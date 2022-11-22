@@ -49,8 +49,6 @@ class RepublicVolumeMapper(private val config: RepublicConfiguration) {
         return "${REPUBLIC_NS}NL-HaNA_${archNr}_${invNr}_${scanNr}"
     }
 
-    fun buildContainerName(volumeName: String) = config.annoRepo.containerName
-
     companion object {
         private const val REPUBLIC_NS = "urn:republic:"
     }
