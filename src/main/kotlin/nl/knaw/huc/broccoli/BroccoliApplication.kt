@@ -15,6 +15,7 @@ import nl.knaw.huc.broccoli.api.Constants.APP_NAME
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
+import nl.knaw.huc.broccoli.resources.globalise.GlobaliseResource
 import nl.knaw.huc.broccoli.resources.republic.RepublicResource
 import nl.knaw.huc.broccoli.resources.republic.RepublicVolumeMapper
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
@@ -99,6 +100,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         with(environment.jersey()) {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())
+            register(GlobaliseResource())
             register(RepublicResource(configuration.republic, volumeMapper, republicAnnoRepoClient, iiifStore, client))
         }
     }
