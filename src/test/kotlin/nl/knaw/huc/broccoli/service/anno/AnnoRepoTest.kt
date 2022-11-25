@@ -2,7 +2,7 @@ package nl.knaw.huc.broccoli.service.anno
 
 import nl.knaw.huc.annorepo.client.AnnoRepoClient
 import nl.knaw.huc.broccoli.config.RepublicConfiguration
-import nl.knaw.huc.broccoli.resources.RepublicVolumeMapper
+import nl.knaw.huc.broccoli.resources.republic.RepublicVolumeMapper
 import org.junit.jupiter.api.Test
 import java.net.URI
 import kotlin.test.assertEquals

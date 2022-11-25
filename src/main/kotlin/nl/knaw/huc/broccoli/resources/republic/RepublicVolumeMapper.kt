@@ -1,4 +1,4 @@
-package nl.knaw.huc.broccoli.resources
+package nl.knaw.huc.broccoli.resources.republic
 
 import nl.knaw.huc.broccoli.config.RepublicConfiguration
 import nl.knaw.huc.broccoli.config.RepublicVolume

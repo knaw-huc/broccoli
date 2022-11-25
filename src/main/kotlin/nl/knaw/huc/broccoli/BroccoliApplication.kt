@@ -6,6 +6,7 @@ import io.dropwizard.Application
 import io.dropwizard.client.JerseyClientBuilder
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor
 import io.dropwizard.configuration.SubstitutingSourceProvider
+import io.dropwizard.jetty.setup.ServletEnvironment
 import io.dropwizard.setup.Bootstrap
 import io.dropwizard.setup.Environment
 import nl.knaw.huc.annorepo.client.AnnoRepoClient
@@ -14,8 +15,8 @@ import nl.knaw.huc.broccoli.api.Constants.APP_NAME
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
-import nl.knaw.huc.broccoli.resources.RepublicResource
-import nl.knaw.huc.broccoli.resources.RepublicVolumeMapper
+import nl.knaw.huc.broccoli.resources.republic.RepublicResource
+import nl.knaw.huc.broccoli.resources.republic.RepublicVolumeMapper
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
 import nl.knaw.huc.broccoli.service.mock.MockIIIFStore
 import org.eclipse.jetty.servlets.CrossOriginFilter
@@ -56,6 +57,23 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
                     "\n"
         )
 
+        log.info("registered projects: ")
+        log.info(" +- globalise: ${configuration.globalise.annoRepo.uri}")
+        log.info(" +- republic: ${configuration.republic.annoRepo.uri}")
+        log.info("using IIIFRepo located at: ${configuration.iiifUri}")
+        log.info("using TextRepo located at: ${configuration.textUri}")
+
+        registerResources(configuration, environment)
+        setupCORSHeaders(environment.servlets())
+
+        log.info(
+            "\n\n  Starting $name (v$appVersion)\n" +
+                    "       locally accessible at http://localhost:${System.getenv(Constants.EnvironmentVariable.BR_SERVER_PORT.name) ?: 8080}\n" +
+                    "    externally accessible at ${configuration.externalBaseUrl}\n"
+        )
+    }
+
+    private fun registerResources(configuration: BroccoliConfiguration, environment: Environment) {
         val client = JerseyClientBuilder(environment)
             .using(configuration.jerseyClient)
             .build(name)
@@ -64,13 +82,6 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         client.property(CONNECT_TIMEOUT, 0)
         log.info("client.readTimeout (after setting): ${client.configuration.getProperty(READ_TIMEOUT)}")
         log.info("client.connectTimeout (after setting): ${client.configuration.getProperty(CONNECT_TIMEOUT)}")
-
-        log.info("registered projects: ")
-        log.info(" +- globalise: ${configuration.globalise.annoRepo.uri}")
-        log.info(" +- republic: ${configuration.republic.annoRepo.uri}")
-        log.info("using IIIFRepo located at: ${configuration.iiifUri}")
-        log.info("using TextRepo located at: ${configuration.textUri}")
-
         val republicAnnoRepoClient = configuration.republic.annoRepo.run {
             AnnoRepo(
                 AnnoRepoClient(
@@ -85,30 +96,24 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
 
         val iiifStore = MockIIIFStore(configuration.iiifUri, client)
 
-        environment.jersey().apply {
+        with(environment.jersey()) {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())
             register(RepublicResource(configuration.republic, volumeMapper, republicAnnoRepoClient, iiifStore, client))
         }
+    }
 
-        environment.servlets().apply {
-            // Enable CORS headers
-            val cors = addFilter("CORS", CrossOriginFilter::class.java)
+    private fun setupCORSHeaders(environment: ServletEnvironment) {
+        // Enable CORS headers
+        val corsFilter = environment.addFilter("CORS", CrossOriginFilter::class.java)
 
-            // Configure CORS parameters
-            cors.setInitParameter(ALLOWED_ORIGINS_PARAM, "*")
-            cors.setInitParameter(ALLOWED_HEADERS_PARAM, "X-Requested-With,Content-Type,Accept,Origin")
-            cors.setInitParameter(ALLOWED_METHODS_PARAM, "OPTIONS,GET,PUT,POST,DELETE,HEAD")
+        // Configure CORS parameters
+        corsFilter.setInitParameter(ALLOWED_ORIGINS_PARAM, "*")
+        corsFilter.setInitParameter(ALLOWED_HEADERS_PARAM, "X-Requested-With,Content-Type,Accept,Origin")
+        corsFilter.setInitParameter(ALLOWED_METHODS_PARAM, "OPTIONS,GET,PUT,POST,DELETE,HEAD")
 
-            // Add URL mapping
-            cors.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType::class.java), true, "/*")
-        }
-
-        log.info(
-            "\n\n  Starting $name (v$appVersion)\n" +
-                    "       locally accessible at http://localhost:${System.getenv(Constants.EnvironmentVariable.BR_SERVER_PORT.name) ?: 8080}\n" +
-                    "    externally accessible at ${configuration.externalBaseUrl}\n"
-        )
+        // Add URL mapping
+        corsFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType::class.java), true, "/*")
     }
 
     companion object {
