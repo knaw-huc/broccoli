@@ -3,6 +3,7 @@ package nl.knaw.huc.broccoli
 import `in`.vectorpro.dropwizard.swagger.SwaggerBundle
 import `in`.vectorpro.dropwizard.swagger.SwaggerBundleConfiguration
 import io.dropwizard.Application
+import io.dropwizard.assets.AssetsBundle
 import io.dropwizard.client.JerseyClientBuilder
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor
 import io.dropwizard.configuration.SubstitutingSourceProvider
@@ -40,7 +41,10 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         bootstrap.configurationSourceProvider = SubstitutingSourceProvider(
             bootstrap.configurationSourceProvider, EnvironmentVariableSubstitutor()
         )
-        bootstrap.addBundle(getSwaggerBundle())
+        with(bootstrap) {
+            addBundle(getSwaggerBundle())
+            addBundle(AssetsBundle("/mock"))
+        }
     }
 
     private fun getSwaggerBundle() = object : SwaggerBundle<BroccoliConfiguration>() {
@@ -100,7 +104,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         with(environment.jersey()) {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())
-            register(GlobaliseResource())
+            register(GlobaliseResource(configuration.globalise))
             register(RepublicResource(configuration.republic, volumeMapper, republicAnnoRepoClient, iiifStore, client))
         }
     }
