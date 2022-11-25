@@ -18,6 +18,7 @@ republic:
   annoRepo:
     apiKey: ${AR_API_KEY:-}
     containerName: volume-1728-7
+    uri: https://annorepo.republic-caf.diginfra.org
   #  na_prefix: NL-HaNA
   #  na_archiefnummer: 1.01.02
   #  na_inventarisnummer: 3783
