@@ -19,7 +19,7 @@ class MockIIIFStore(private val iiifUri: String, private val client: Client) : I
 
     override fun getCanvasId(volume: String, opening: Int): String {
         try {
-            val json = JsonPath.parse(ResourceLoader.asText("mock/manifest-1728.json"))
+            val json = JsonPath.parse(ResourceLoader.asText("mock/republic/manifest-1728.json"))
             val index = opening - 1
             val canvasId: String = json.read("\$.sequences[0].canvases[$index].@id")
             log.info("id: $canvasId")
