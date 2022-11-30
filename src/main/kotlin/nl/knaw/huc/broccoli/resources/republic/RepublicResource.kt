@@ -84,9 +84,9 @@ class RepublicResource(
                 val start = selector["start"] as Int
                 val end = selector["end"] as Int
                 val bodyTypes =
-                    if (includeTypesSet.isNotEmpty()) {
+                    if (typesToInclude.isNotEmpty()) {
                         isIn(typesToInclude)
-                    } else if (excludeTypesSet.isNotEmpty()) {
+                    } else if (typesToExclude.isNotEmpty()) {
                         isNotIn(typesToExclude)
                     } else /* both are empty */ {
                         isNotIn(setOf("Line", "Page", "RepublicParagraph", "TextRegion", "Scan"))
