@@ -44,11 +44,11 @@ class AnnoRepo(
         val key = Pair(containerName, query)
         val cached = cachedQueryResults.get(key)
         if (cached != null) {
-            log.info("cache hit for: $key")
+            log.info("cache hit for: $key, hashCode=${key.hashCode()}")
             return cached
         }
 
-        log.info("cache miss for: $key")
+        log.info("cache miss for: $key, hashCode=${key.hashCode()}")
         val value = queryAnnoRepo(containerName, query)
         if (value.size < CACHE_RESULT_SET_SIZE_THRESHOLD) {
             log.info("resultSet.size (${value.size}) < $CACHE_RESULT_SET_SIZE_THRESHOLD) -> caching")
