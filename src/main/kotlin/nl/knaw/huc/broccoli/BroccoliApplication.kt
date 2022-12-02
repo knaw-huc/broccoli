@@ -88,6 +88,18 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         log.info("client.readTimeout (after setting): ${client.configuration.getProperty(READ_TIMEOUT)}")
         log.info("client.connectTimeout (after setting): ${client.configuration.getProperty(CONNECT_TIMEOUT)}")
         val republicAnnoRepoClient = configuration.republic.annoRepo.run {
+            log.info("Republic AnnoRepo key: $apiKey")
+            AnnoRepo(
+                AnnoRepoClient(
+                    serverURI = URI.create(uri),
+                    apiKey = apiKey,
+                    userAgent = "$name (${this@BroccoliApplication.javaClass.name}/$appVersion)"
+                ), containerName
+            )
+        }
+
+        val globaliseAnnoRepoClient = configuration.globalise.annoRepo.run {
+            log.info("Globalise AnnoRepo key: $apiKey")
             AnnoRepo(
                 AnnoRepoClient(
                     serverURI = URI.create(uri),
@@ -104,7 +116,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         with(environment.jersey()) {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())
-            register(GlobaliseResource(configuration.globalise))
+            register(GlobaliseResource(configuration.globalise, globaliseAnnoRepoClient, client))
             register(RepublicResource(configuration.republic, volumeMapper, republicAnnoRepoClient, iiifStore, client))
         }
     }

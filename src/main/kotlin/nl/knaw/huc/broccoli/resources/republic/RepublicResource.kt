@@ -190,7 +190,7 @@ class RepublicResource(
             mapOf(
                 "type" to "AnnoTextResult",
                 "request" to mapOf(
-                    "resolutionId" to bodyId,
+                    "bodyId" to bodyId,
                     "relativeTo" to relativeTo
                 ),
                 "anno" to annoPage.items(),

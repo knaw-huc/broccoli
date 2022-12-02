@@ -1,8 +1,93 @@
 package nl.knaw.huc.broccoli.resources.globalise
 
+import nl.knaw.huc.broccoli.api.ResourcePaths.GLOBALISE
 import nl.knaw.huc.broccoli.config.GlobaliseConfiguration
+import nl.knaw.huc.broccoli.service.anno.AnnoRepo
 import org.slf4j.LoggerFactory
+import java.net.URI
+import javax.ws.rs.*
+import javax.ws.rs.client.Client
+import javax.ws.rs.core.GenericType
+import javax.ws.rs.core.MediaType
+import javax.ws.rs.core.Response
 
-class GlobaliseResource(private val globalise: GlobaliseConfiguration) {
+@Path(GLOBALISE)
+@Produces(MediaType.APPLICATION_JSON)
+class GlobaliseResource(
+    private val config: GlobaliseConfiguration,
+    private val annoRepo: AnnoRepo,
+    private val client: Client,
+) {
+    companion object {
+        private const val GLOBALISE_NS = "urn:globalise"
+        private const val LATEST_API_VERSION = 0
+        private val latestVersionURI = URI.create("$GLOBALISE/v$LATEST_API_VERSION")
+    }
+
     private val log = LoggerFactory.getLogger(javaClass)
+
+    private val defaultURI =
+        URI.create("$GLOBALISE/v0/documents/${config.defaultDocument}/openings/${config.defaultOpening}")
+
+    @GET
+    fun redirectToLatestVersion(): Response = Response.seeOther(latestVersionURI).build()
+
+    @GET
+    @Path("v0")
+    fun redirectToDefaultDocumentAndOpening(): Response = Response.seeOther(defaultURI).build()
+
+    @GET
+    @Path("v0/documents/{documentId}/openings/{openingNr}")
+    fun getDocumentOpening(
+        @PathParam("documentId") documentId: String,
+        @PathParam("openingNr") openingNr: Int,
+    ): Response {
+        log.info("documentId: $documentId, openingNr: $openingNr")
+
+        if (openingNr < 1) {
+            throw BadRequestException("Path parameter 'openingNr' must be >= 1")
+        }
+
+        val doc = config.documents.find { it.name == documentId }
+            ?: throw NotFoundException("Document [$documentId] not found in globalise configuration")
+        log.info("doc: $doc")
+
+        val scanNr = "%04d".format(openingNr)
+        val scanName = "NL-HaNA_${config.archiefNr}_${doc.invNr}_${scanNr}"
+
+        val bodyId = "${GLOBALISE_NS}:${scanName}"
+        val anno = annoRepo.findByBodyId(bodyId)
+        log.info("Got anno: $anno")
+
+        val resultText = anno.withoutField<String>("Text", "selector")
+            .also { if (it.size > 1) log.warn("multiple Text without selector: $it") }
+            .first()
+            .let { fetchTextLines(it["source"] as String) }
+
+        val manifestName = "manifest-${doc.manifest ?: doc.name}.json"
+        val manifest = "https://broccoli.tt.di.huc.knaw.nl/mock/globalise/$manifestName"
+
+        val canvasId = "${GLOBALISE_NS}:canvas:$scanName"
+
+        return Response.ok(
+            mapOf(
+                "type" to "AnnoTextResult",
+                "request" to mapOf(
+                    "documentId" to documentId,
+                    "openingNr" to openingNr
+                ),
+                "text" to mapOf(
+                    "lines" to resultText
+                ),
+                "iiif" to mapOf(
+                    "manifest" to manifest,
+                    "canvasIds" to listOf(canvasId)
+                )
+            )
+        ).build()
+    }
+
+    private fun fetchTextLines(textSourceUrl: String): List<String> =
+        client.target(textSourceUrl).request().get().readEntity(object : GenericType<List<String>>() {})
+
 }

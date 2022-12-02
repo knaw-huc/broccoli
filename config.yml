@@ -10,13 +10,38 @@ textUri: https://textrepo.republic-caf.diginfra.org/api
 
 globalise:
   annoRepo:
-    apiKey: ${AR_API_KEY:-}
+    apiKey: ${AR_GLOBALISE_API_KEY:-}
     containerName: globalise
     uri: https://globalise-annorepo.tt.di.huc.knaw.nl
+  archiefNr: '1.04.02'
+  defaultDocument: '316_2'  # quotes needed, or _ will disappear during number parsing
+  defaultOpening: 0048
+  documents:
+    - name: '43'
+      invNr: '1092'
+    - name: '199'
+      invNr: '1297'
+    - name: '316_1'
+      invNr: '1589'
+      manifest: '316'
+    - name: '316_2'
+      invNr: '1589'
+      manifest: '316'
+    - name: '316_3'
+      invNr: '1589'
+      manifest: '316'
+    - name: '405'
+      invNr: '1859'
+    - name: '685_1'
+      invNr: '7573'
+      manifest: '685'
+    - name: '685_2'
+      invNr: '7573'
+      manifest: '685'
 
 republic:
   annoRepo:
-    apiKey: ${AR_API_KEY:-}
+    apiKey: ${AR_REPUBLIC_API_KEY:-}
     containerName: volume-1728-7
     uri: https://annorepo.republic-caf.diginfra.org
   #  na_prefix: NL-HaNA
@@ -24,12 +49,12 @@ republic:
   #  na_inventarisnummer: 3783
   #  na_opening 0285
   #  na_format: "{$na_prefix}_{$na_archiefnummer}_{$na_inventarisnummer}_{$opening}"
-  archiefNr: 1.01.02
-  defaultVolume: 1728
-  defaultOpening: 0285
+  archiefNr: '1.01.02'
+  defaultVolume: '1728'
+  defaultOpening: '0285'
   volumes:
-    - name: 1728
-      invNr: 3783
+    - name: '1728'
+      invNr: '3783'
       imageset: 67533019-4ca0-4b08-b87e-fd5590e7a077
 
 logging:

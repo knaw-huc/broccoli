@@ -71,6 +71,41 @@ class GlobaliseConfiguration {
     @NotNull
     @JsonProperty
     val annoRepo: AnnoRepoConfiguration = AnnoRepoConfiguration()
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    var archiefNr = ""
+
+    @JsonProperty
+    var documents: List<GlobaliseDocument> = ArrayList()
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    val defaultDocument: String = ""
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    @Min(1)
+    val defaultOpening: Int = 1
+}
+
+class GlobaliseDocument {
+    @Valid
+    @NotNull
+    @JsonProperty
+    var name: String = ""
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    var invNr: String = ""
+
+    @Valid
+    @JsonProperty
+    var manifest: String? = null
 }
 
 class RepublicConfiguration {
