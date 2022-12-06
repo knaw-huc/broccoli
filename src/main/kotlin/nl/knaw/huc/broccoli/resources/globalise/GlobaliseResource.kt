@@ -1,5 +1,9 @@
 package nl.knaw.huc.broccoli.resources.globalise
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
+import nl.knaw.huc.broccoli.api.Constants.isIn
+import nl.knaw.huc.broccoli.api.Constants.isNotIn
 import nl.knaw.huc.broccoli.api.ResourcePaths.GLOBALISE
 import nl.knaw.huc.broccoli.config.GlobaliseConfiguration
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
@@ -26,6 +30,8 @@ class GlobaliseResource(
 
     private val log = LoggerFactory.getLogger(javaClass)
 
+    private val objectMapper = ObjectMapper()
+
     private val defaultURI =
         URI.create("$GLOBALISE/v0/documents/${config.defaultDocument}/openings/${config.defaultOpening}")
 
@@ -41,11 +47,22 @@ class GlobaliseResource(
     fun getDocumentOpening(
         @PathParam("documentId") documentId: String,
         @PathParam("openingNr") openingNr: Int,
+        @QueryParam("includeType") includeTypesSet: Set<String>,
+        @QueryParam("includeTypes") includeTypesString: String?,
+        @QueryParam("excludeType") excludeTypesSet: Set<String>,
+        @QueryParam("excludeTypes") excludeTypesString: String?,
     ): Response {
         log.info("documentId: $documentId, openingNr: $openingNr")
 
         if (openingNr < 1) {
             throw BadRequestException("Path parameter 'openingNr' must be >= 1")
+        }
+
+        val typesToInclude = gatherTypes(includeTypesSet, includeTypesString)
+        val typesToExclude = gatherTypes(excludeTypesSet, excludeTypesString)
+
+        if (typesToInclude.isNotEmpty() && typesToExclude.isNotEmpty()) {
+            throw BadRequestException("Use either 'includeType(s)' or 'excludeType(s)', but not both")
         }
 
         val doc = config.documents.find { it.name == documentId }
@@ -59,14 +76,42 @@ class GlobaliseResource(
         val anno = annoRepo.findByBodyId(bodyId)
         log.info("Got anno: $anno")
 
+        // Text part: fetch designated lines from TextRepo
         val resultText = anno.withoutField<String>("Text", "selector")
             .also { if (it.size > 1) log.warn("multiple Text without selector: $it") }
             .first()
             .let { fetchTextLines(it["source"] as String) }
 
+        // Annotation part: overlapping annotations dependent on requested bodyTypes
+        val resultAnno = anno.withField<Any>("Text", "selector")
+            .also { if (it.size > 1) log.warn("multiple Text with selector: $it") }
+            .first()
+            .let {
+                val source = it["source"] as String
+
+                @Suppress("UNCHECKED_CAST")
+                val selector = it["selector"] as Map<String, Any>
+
+                val requestBodyTypes =
+                    if (typesToInclude.isNotEmpty()) {
+                        isIn(typesToInclude)
+                    } else if (typesToExclude.isNotEmpty()) {
+                        isNotIn(typesToExclude)
+                    } else { /* nothing specified, use some sensible default */
+                        isNotIn(setOf("px:TextLine", "px:Page", "px:TextRegion"))
+                    }
+
+                annoRepo.fetchOverlap(
+                    source = source,
+                    start = selector["start"] as Int,
+                    end = selector["end"] as Int,
+                    bodyTypes = requestBodyTypes
+                )
+            }
+
+        // IIIF part: manifest and canvas-ids
         val manifestName = "manifest-${doc.manifest ?: doc.name}.json"
         val manifest = "https://broccoli.tt.di.huc.knaw.nl/mock/globalise/$manifestName"
-
         val canvasId = "${GLOBALISE_NS}:canvas:$scanName"
 
         return Response.ok(
@@ -76,6 +121,7 @@ class GlobaliseResource(
                     "documentId" to documentId,
                     "openingNr" to openingNr
                 ),
+                "anno" to resultAnno,
                 "text" to mapOf(
                     "lines" to resultText
                 ),
@@ -86,6 +132,19 @@ class GlobaliseResource(
             )
         ).build()
     }
+
+    private fun gatherTypes(typesAsSet: Set<String>, typesAsString: String?) =
+        if (typesAsString == null) {
+            typesAsSet
+        } else if (typesAsString.startsWith('[')) {
+            typesAsSet.union(objectMapper.readValue<Set<String>>(typesAsString))
+        } else {
+            typesAsSet.union(
+                typesAsString
+                    .removeSurrounding("\"")
+                    .split(',')
+                    .map { it.trim() })
+        }
 
     private fun fetchTextLines(textSourceUrl: String): List<String> =
         client.target(textSourceUrl).request().get().readEntity(object : GenericType<List<String>>() {})
