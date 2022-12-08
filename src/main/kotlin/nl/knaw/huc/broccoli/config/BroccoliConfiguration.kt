@@ -66,11 +66,25 @@ class AnnoRepoConfiguration {
     var apiKey: String? = null
 }
 
+class TextRepoConfiguration {
+
+    @Valid
+    @JsonProperty
+    var apiKey: String? = null
+}
+
 class GlobaliseConfiguration {
+
     @Valid
     @NotNull
     @JsonProperty
     val annoRepo: AnnoRepoConfiguration = AnnoRepoConfiguration()
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    val textRepo: TextRepoConfiguration = TextRepoConfiguration()
+
 
     @Valid
     @NotNull
@@ -90,6 +104,7 @@ class GlobaliseConfiguration {
     @JsonProperty
     @Min(1)
     val defaultOpening: Int = 1
+
 }
 
 class GlobaliseDocument {
