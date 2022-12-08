@@ -163,9 +163,11 @@ class GlobaliseResource(
         }
 
     private fun fetchTextLines(textSourceUrl: String, textRepoApiKey: String?): List<String> {
+        log.info("GET {}", textSourceUrl)
         var builder = client.target(textSourceUrl)
             .request()
         if (textRepoApiKey != null) {
+            log.info("with apiKey {}", textRepoApiKey)
             builder = builder.header("Authorization", "Basic $textRepoApiKey")
         }
         return builder
