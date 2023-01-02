@@ -13,6 +13,8 @@ globalise:
     apiKey: ${AR_GLOBALISE_API_KEY:-}
     containerName: globalise
     uri: https://globalise-annorepo.tt.di.huc.knaw.nl
+  textRepo:
+    apiKey: ${TR_GLOBALISE_API_KEY:-}
   archiefNr: '1.04.02'
   defaultDocument: '316_2'  # quotes needed, or _ will disappear during number parsing
   defaultOpening: 0048

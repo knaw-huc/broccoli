@@ -91,7 +91,7 @@ class GlobaliseResource(
             anno.withoutField<String>("Text", "selector")
                 .also { if (it.size > 1) log.warn("multiple Text without selector: $it") }
                 .first()
-                .let { fetchTextLines(it["source"] as String) }
+                .let { fetchTextLines(it["source"] as String, config.textRepo.apiKey) }
         }
 
         // Annotation part: overlapping annotations dependent on requested bodyTypes
@@ -162,7 +162,17 @@ class GlobaliseResource(
                     .map { it.trim() })
         }
 
-    private fun fetchTextLines(textSourceUrl: String): List<String> =
-        client.target(textSourceUrl).request().get().readEntity(object : GenericType<List<String>>() {})
+    private fun fetchTextLines(textSourceUrl: String, textRepoApiKey: String?): List<String> {
+        log.info("GET {}", textSourceUrl)
+        var builder = client.target(textSourceUrl)
+            .request()
+        if (textRepoApiKey != null) {
+            log.info("with apiKey {}", textRepoApiKey)
+            builder = builder.header("Authorization", "Basic $textRepoApiKey")
+        }
+        return builder
+            .get()
+            .readEntity(object : GenericType<List<String>>() {})
+    }
 
 }
