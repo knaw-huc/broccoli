@@ -15,6 +15,7 @@ import java.net.URI
 import javax.ws.rs.*
 import javax.ws.rs.client.Client
 import javax.ws.rs.core.GenericType
+import javax.ws.rs.core.HttpHeaders.AUTHORIZATION
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.core.Response
 
@@ -168,7 +169,7 @@ class GlobaliseResource(
             .request()
         if (textRepoApiKey != null) {
             log.info("with apiKey {}", textRepoApiKey)
-            builder = builder.header("Authorization", "Basic $textRepoApiKey")
+            builder = builder.header(AUTHORIZATION, "Basic $textRepoApiKey")
         }
         return builder
             .get()
