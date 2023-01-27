@@ -5,8 +5,12 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import nl.knaw.huc.broccoli.api.Constants.isIn
 import nl.knaw.huc.broccoli.api.Constants.isNotIn
 import nl.knaw.huc.broccoli.api.ResourcePaths.GLOBALISE
+import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.config.GlobaliseConfiguration
+import nl.knaw.huc.broccoli.resources.republic.RepublicResource
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
+import nl.knaw.huc.broccoli.service.anno.AnnoRepo.TextSelector
+import nl.knaw.huc.broccoli.service.anno.BodyIdSearchResult
 import org.slf4j.LoggerFactory
 import java.net.URI
 import javax.ws.rs.*
@@ -35,6 +39,8 @@ class GlobaliseResource(
 
     private val defaultURI =
         URI.create("$GLOBALISE/v0/documents/${config.defaultDocument}/openings/${config.defaultOpening}")
+
+    private val apiKey = config.textRepo.apiKey
 
     @GET
     fun redirectToLatestVersion(): Response = Response.seeOther(latestVersionURI).build()
@@ -81,7 +87,7 @@ class GlobaliseResource(
         val resultText = anno.withoutField<String>("Text", "selector")
             .also { if (it.size > 1) log.warn("multiple Text without selector: $it") }
             .first()
-            .let { fetchTextLines(it["source"] as String, config.textRepo.apiKey) }
+            .let { fetchTextLines(it["source"] as String) }
 
         // Annotation part: overlapping annotations dependent on requested bodyTypes
         val resultAnno: List<Map<String, Any>> = anno.withField<Any>("Text", "selector")
@@ -134,6 +140,81 @@ class GlobaliseResource(
         ).build()
     }
 
+    @GET
+    @Path("v0/bodies/{bodyId}")
+    fun getBodyIdRelativeTo(
+        @PathParam("bodyId") bodyId: String,
+        @QueryParam("relativeTo") @DefaultValue("Origin") relativeTo: String,
+    ): Response {
+        val annoPage = annoRepo.findByBodyId(bodyId)
+        val textTargets = annoPage.target<Any>("Text")
+
+        val textTargetWithoutSelector = textTargets.find { it["selector"] == null }
+            ?: throw WebApplicationException("annotation body $bodyId has no 'Text' target without selector")
+        log.info("textTargetWithoutSelector: $textTargetWithoutSelector")
+        val textLinesSource = textTargetWithoutSelector["source"] as String
+        val textLines = fetchTextLines(textLinesSource)
+
+        val textTargetWithSelector = textTargets.find { it["selector"] != null }
+            ?: throw WebApplicationException("annotation body $bodyId has no 'Text' target with selector")
+        log.info("textTargetWithSelector: $textTargetWithSelector")
+        val textSegmentsSource = textTargetWithSelector["source"] as String
+        @Suppress("UNCHECKED_CAST") val selector =
+            TextSelector(textTargetWithSelector["selector"] as Map<String, Any>)
+
+        val beginCharOffset = selector.beginCharOffset() ?: 0
+        val start = TextMarker(selector.start(), beginCharOffset, textLines[0].length)
+        log.info("start: $start")
+
+        val lengthOfLastLine = textLines.last().length
+        val endCharOffset = selector.endCharOffset() ?: (lengthOfLastLine - 1)
+        val end = TextMarker(selector.end(), endCharOffset, lengthOfLastLine)
+        log.info("end: $end")
+
+        var markers = RepublicResource.TextMarkers(start, end) // <- note how this uses 'Republic' for now
+        log.info("markers (absolute): $markers")
+
+        val location = mapOf(
+            "location" to if (relativeTo == "Origin") {
+                mapOf("type" to "Origin", "id" to "")
+            } else {
+                val (offset, offsetId) = annoRepo.findOffsetRelativeTo(textSegmentsSource, selector, relativeTo)
+                markers = markers.relativeTo(offset)
+                log.info("markers (relative to $offsetId): $markers")
+                mapOf("type" to relativeTo, "bodyId" to offsetId)
+            },
+            "start" to markers.start,
+            "end" to markers.end
+        )
+
+        return Response.ok(
+            mapOf(
+                "type" to "AnnoTextResult",
+                "request" to mapOf(
+                    "bodyId" to bodyId,
+                    "relativeTo" to relativeTo
+                ),
+                "anno" to annoPage.items(),
+                "text" to mapOf(
+                    "location" to location,
+                    "lines" to getTextLines(annoPage),
+                ),
+                "iiif" to mapOf(
+                    "manifest" to "discuss.where.to.get.this.manifest.from",
+                    "canvasIds" to annoPage.targetField<String>("Canvas", "source"),
+                )
+            )
+        ).build()
+    }
+
+    private fun getTextLines(annoPage: BodyIdSearchResult): List<String> {
+        val textTargets = annoPage.target<String>("Text").filter { !it.containsKey("selector") }
+        if (textTargets.size > 1) {
+            log.warn("Multiple text targets (without selector) found, arbitrarily using the first: $textTargets")
+        }
+        return textTargets[0]["source"]?.let { fetchTextLines(it) }.orEmpty()
+    }
+
     private fun gatherTypes(typesAsSet: Set<String>, typesAsString: String?) =
         if (typesAsString == null) {
             typesAsSet
@@ -147,13 +228,13 @@ class GlobaliseResource(
                     .map { it.trim() })
         }
 
-    private fun fetchTextLines(textSourceUrl: String, textRepoApiKey: String?): List<String> {
+    private fun fetchTextLines(textSourceUrl: String): List<String> {
         log.info("GET {}", textSourceUrl)
         var builder = client.target(textSourceUrl)
             .request()
-        if (textRepoApiKey != null) {
-            log.info("with apiKey {}", textRepoApiKey)
-            builder = builder.header(AUTHORIZATION, "Basic $textRepoApiKey")
+        if (apiKey != null) {
+            log.info("with apiKey {}", apiKey)
+            builder = builder.header(AUTHORIZATION, "Basic $apiKey")
         }
         return builder
             .get()
