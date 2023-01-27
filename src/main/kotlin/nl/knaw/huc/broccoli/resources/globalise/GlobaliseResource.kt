@@ -2,14 +2,11 @@ package nl.knaw.huc.broccoli.resources.globalise
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
-import com.jayway.jsonpath.JsonPath
 import nl.knaw.huc.broccoli.api.Constants.isIn
 import nl.knaw.huc.broccoli.api.Constants.isNotIn
 import nl.knaw.huc.broccoli.api.ResourcePaths.GLOBALISE
 import nl.knaw.huc.broccoli.config.GlobaliseConfiguration
-import nl.knaw.huc.broccoli.service.ResourceLoader
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
-import nl.knaw.huc.broccoli.service.anno.BodyIdSearchResult
 import org.slf4j.LoggerFactory
 import java.net.URI
 import javax.ws.rs.*
@@ -55,9 +52,8 @@ class GlobaliseResource(
         @QueryParam("includeTypes") includeTypesString: String?,
         @QueryParam("excludeType") excludeTypesSet: Set<String>,
         @QueryParam("excludeTypes") excludeTypesString: String?,
-        @QueryParam("mock") @DefaultValue("false") mock: Boolean,
     ): Response {
-        log.info("documentId: $documentId, openingNr: $openingNr, mock: $mock")
+        log.info("documentId: $documentId, openingNr: $openingNr")
 
         if (openingNr < 1) {
             throw BadRequestException("Path parameter 'openingNr' must be >= 1")
@@ -78,53 +74,41 @@ class GlobaliseResource(
         val scanName = "NL-HaNA_${config.archiefNr}_${doc.invNr}_${scanNr}"
 
         val bodyId = "${GLOBALISE_NS}:${scanName}"
-        val anno = if (mock) {
-            BodyIdSearchResult(JsonPath.parse("[]"))
-        } else {
-            annoRepo.findByBodyId(bodyId)
-        }
+        val anno = annoRepo.findByBodyId(bodyId)
         log.info("Got anno: $anno")
 
         // Text part: fetch designated lines from TextRepo
-        val resultText = if (mock) {
-            listOf("aap", "noot", "mies")
-        } else {
-            anno.withoutField<String>("Text", "selector")
-                .also { if (it.size > 1) log.warn("multiple Text without selector: $it") }
-                .first()
-                .let { fetchTextLines(it["source"] as String, config.textRepo.apiKey) }
-        }
+        val resultText = anno.withoutField<String>("Text", "selector")
+            .also { if (it.size > 1) log.warn("multiple Text without selector: $it") }
+            .first()
+            .let { fetchTextLines(it["source"] as String, config.textRepo.apiKey) }
 
         // Annotation part: overlapping annotations dependent on requested bodyTypes
-        val resultAnno: List<Map<String, Any>> = if (mock) {
-            JsonPath.parse(ResourceLoader.asText("mock/globalise/anno-sample.json")).read("\$")
-        } else {
-            anno.withField<Any>("Text", "selector")
-                .also { if (it.size > 1) log.warn("multiple Text with selector: $it") }
-                .first()
-                .let {
-                    val source = it["source"] as String
+        val resultAnno: List<Map<String, Any>> = anno.withField<Any>("Text", "selector")
+            .also { if (it.size > 1) log.warn("multiple Text with selector: $it") }
+            .first()
+            .let {
+                val source = it["source"] as String
 
-                    @Suppress("UNCHECKED_CAST")
-                    val selector = it["selector"] as Map<String, Any>
+                @Suppress("UNCHECKED_CAST")
+                val selector = it["selector"] as Map<String, Any>
 
-                    val requestBodyTypes =
-                        if (typesToInclude.isNotEmpty()) {
-                            isIn(typesToInclude)
-                        } else if (typesToExclude.isNotEmpty()) {
-                            isNotIn(typesToExclude)
-                        } else { /* nothing specified, use some sensible default */
-                            isNotIn(setOf("px:TextLine", "px:Page", "px:TextRegion"))
-                        }
+                val requestBodyTypes =
+                    if (typesToInclude.isNotEmpty()) {
+                        isIn(typesToInclude)
+                    } else if (typesToExclude.isNotEmpty()) {
+                        isNotIn(typesToExclude)
+                    } else { /* nothing specified, use some sensible default */
+                        isNotIn(setOf("px:TextLine", "px:Page", "px:TextRegion"))
+                    }
 
-                    annoRepo.fetchOverlap(
-                        source = source,
-                        start = selector["start"] as Int,
-                        end = selector["end"] as Int,
-                        bodyTypes = requestBodyTypes
-                    )
-                }
-        }
+                annoRepo.fetchOverlap(
+                    source = source,
+                    start = selector["start"] as Int,
+                    end = selector["end"] as Int,
+                    bodyTypes = requestBodyTypes
+                )
+            }
 
         // IIIF part: manifest and canvas-ids
         val manifestName = "manifest-${doc.manifest ?: doc.name}.json"
