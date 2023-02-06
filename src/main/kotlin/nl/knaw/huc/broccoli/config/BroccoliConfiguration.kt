@@ -43,6 +43,11 @@ class BroccoliConfiguration : Configuration() {
     @Valid
     @NotNull
     @JsonProperty
+    var projects = ArrayList<ProjectConfiguration>()
+
+    @Valid
+    @NotNull
+    @JsonProperty
     var globalise = GlobaliseConfiguration()
 
     @Valid
@@ -67,10 +72,25 @@ class AnnoRepoConfiguration {
 }
 
 class TextRepoConfiguration {
-
     @Valid
     @JsonProperty
     var apiKey: String? = null
+}
+
+class ProjectConfiguration {
+    @Valid
+    @JsonProperty
+    val name: String = ""
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    val annoRepo = AnnoRepoConfiguration()
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    val textRepo = TextRepoConfiguration()
 }
 
 class GlobaliseConfiguration {
@@ -78,12 +98,12 @@ class GlobaliseConfiguration {
     @Valid
     @NotNull
     @JsonProperty
-    val annoRepo: AnnoRepoConfiguration = AnnoRepoConfiguration()
+    val annoRepo = AnnoRepoConfiguration()
 
     @Valid
     @NotNull
     @JsonProperty
-    val textRepo: TextRepoConfiguration = TextRepoConfiguration()
+    val textRepo = TextRepoConfiguration()
 
 
     @Valid

@@ -13,10 +13,14 @@ import io.dropwizard.setup.Environment
 import nl.knaw.huc.annorepo.client.AnnoRepoClient
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.Constants.APP_NAME
+import nl.knaw.huc.broccoli.config.AnnoRepoConfiguration
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
+import nl.knaw.huc.broccoli.config.ProjectConfiguration
+import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
 import nl.knaw.huc.broccoli.resources.globalise.GlobaliseResource
+import nl.knaw.huc.broccoli.resources.projects.ProjectsResource
 import nl.knaw.huc.broccoli.resources.republic.RepublicResource
 import nl.knaw.huc.broccoli.resources.republic.RepublicVolumeMapper
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
@@ -68,7 +72,18 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         log.info("using IIIFRepo located at: ${configuration.iiifUri}")
         log.info("using TextRepo located at: ${configuration.textUri}")
 
-        registerResources(configuration, environment)
+        val projects = configureProjects(configuration.projects)
+        val client = JerseyClientBuilder(environment)
+            .using(configuration.jerseyClient)
+            .build(name)
+
+        with(environment.jersey()) {
+            register(AboutResource(configuration, name, appVersion))
+            register(HomePageResource())
+            register(ProjectsResource(projects, client))
+        }
+
+//        registerResources(configuration.projects, environment)
         setupCORSHeaders(environment.servlets())
 
         log.info(
@@ -77,6 +92,22 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
                     "    externally accessible at ${configuration.externalBaseUrl}\n"
         )
     }
+
+    private fun configureProjects(projectConfigurations: List<ProjectConfiguration>): Map<String, Project> {
+        return projectConfigurations.associate {
+            log.info("configuring project: ${it.name}:")
+            it.name to Project(it, createAnnoRepo(it.annoRepo))
+        }
+    }
+
+    private fun createAnnoRepo(annoRepoConfig: AnnoRepoConfiguration) =
+        with(annoRepoConfig) {
+            val serverURI = URI.create(uri)
+            val userAgent = "$name (${this@BroccoliApplication.javaClass.name}/$appVersion)"
+            log.info("- setting up AnnoRepo: uri=$serverURI, container=$containerName, apiKey=$apiKey, userAgent=$userAgent")
+
+            AnnoRepo(AnnoRepoClient(serverURI, apiKey, userAgent), containerName)
+        }
 
     private fun registerResources(configuration: BroccoliConfiguration, environment: Environment) {
         val client = JerseyClientBuilder(environment)
