@@ -162,7 +162,9 @@ class ProjectsResource(
         val includes = all.intersect(requested)
 
         val undefined = requested.minus(all)
-        if (undefined.isNotEmpty()) throw BadRequestException("Undefined include: $undefined not in $all")
+        if (undefined.isNotEmpty()) {
+            throw BadRequestException("Undefined include: $undefined not in $all")
+        }
 
         return includes
     }
