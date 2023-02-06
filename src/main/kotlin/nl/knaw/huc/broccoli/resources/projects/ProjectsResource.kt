@@ -1,6 +1,5 @@
 package nl.knaw.huc.broccoli.resources.projects
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.swagger.v3.oas.annotations.Operation
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
 import nl.knaw.huc.broccoli.api.TextMarker
@@ -21,8 +20,6 @@ class ProjectsResource(
     private val client: Client,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
-
-    private val objectMapper = ObjectMapper()
 
     private val apiKey = "*REDACTED*" //TODO: from config
 
