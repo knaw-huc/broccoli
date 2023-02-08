@@ -5,6 +5,7 @@ import `in`.vectorpro.dropwizard.swagger.SwaggerBundleConfiguration
 import io.dropwizard.Application
 import io.dropwizard.assets.AssetsBundle
 import io.dropwizard.client.JerseyClientBuilder
+import io.dropwizard.client.JerseyClientConfiguration
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor
 import io.dropwizard.configuration.SubstitutingSourceProvider
 import io.dropwizard.jetty.setup.ServletEnvironment
@@ -29,6 +30,7 @@ import nl.knaw.huc.broccoli.service.mock.MockIIIFStore
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.eclipse.jetty.servlets.CrossOriginFilter
 import org.eclipse.jetty.servlets.CrossOriginFilter.*
+import org.glassfish.jersey.client.ClientProperties
 import org.slf4j.LoggerFactory
 import java.net.URI
 import java.util.*
@@ -75,9 +77,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
 
         val projects = configureProjects(configuration.projects)
 
-        val client = JerseyClientBuilder(environment)
-            .using(configuration.jerseyClient)
-            .build(name)
+        val client = createClient(configuration.jerseyClient, environment)
 
         with(environment.jersey()) {
             register(AboutResource(configuration, name, appVersion))
@@ -93,6 +93,21 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
                     "       locally accessible at http://localhost:${System.getenv(Constants.EnvironmentVariable.BR_SERVER_PORT.name) ?: 8080}\n" +
                     "    externally accessible at ${configuration.externalBaseUrl}\n"
         )
+    }
+
+    private fun createClient(jerseyClient: JerseyClientConfiguration, environment: Environment): Client {
+        return JerseyClientBuilder(environment)
+            .using(jerseyClient)
+            .build(name)
+            .also {
+                log.info("client.readTimeout (before setting): ${it.configuration.getProperty(ClientProperties.READ_TIMEOUT)}")
+                it.property(ClientProperties.READ_TIMEOUT, 0)
+                log.info("client.readTimeout (after setting): ${it.configuration.getProperty(ClientProperties.READ_TIMEOUT)}")
+
+                log.info("client.connectTimeout (before setting): ${it.configuration.getProperty(ClientProperties.CONNECT_TIMEOUT)}")
+                it.property(ClientProperties.CONNECT_TIMEOUT, 0)
+                log.info("client.connectTimeout (after setting): ${it.configuration.getProperty(ClientProperties.CONNECT_TIMEOUT)}")
+            }
     }
 
     private fun configureProjects(projectConfigurations: List<ProjectConfiguration>): Map<String, Project> {
