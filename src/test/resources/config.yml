@@ -8,6 +8,28 @@ externalBaseUrl: ${BR_EXTERNAL_BASE_URL:-http://localhost:8080}
 iiifUri: https://images.diginfra.net/api/pim
 textUri: https://textrepo.republic-caf.diginfra.org/api
 
+projects:
+  - name: 'globalise'
+    annoRepo:
+      apiKey: ${AR_GLOBALISE_API_KEY:-}
+      containerName: globalise-demo-5
+      uri: https://globalise-annorepo.tt.di.huc.knaw.nl
+    textRepo:
+      apiKey: ${TR_GLOBALISE_API_KEY:-}
+      uri: https://globalise.tt.di.huc.knaw.nl
+    iiif:
+      fetch: urn:globalise:manifest
+
+  - name: 'republic'
+    annoRepo:
+      apiKey: ${AR_REPUBLIC_API_KEY:-}
+      containerName: volume-1728-7
+      uri: https://annorepo.republic-caf.diginfra.org
+    textRepo:
+      uri: https://textrepo.republic-caf.diginfra.org
+    iiif:
+      fixed: https://images.diginfra.net/api/pim/imageset/67533019-4ca0-4b08-b87e-fd5590e7a077/manifest
+
 globalise:
   annoRepo:
     uri: https://globalise-annorepo.tt.di.huc.knaw.nl

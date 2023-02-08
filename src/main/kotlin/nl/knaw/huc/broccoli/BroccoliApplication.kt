@@ -29,12 +29,11 @@ import nl.knaw.huc.broccoli.service.mock.MockIIIFStore
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.eclipse.jetty.servlets.CrossOriginFilter
 import org.eclipse.jetty.servlets.CrossOriginFilter.*
-import org.glassfish.jersey.client.ClientProperties.CONNECT_TIMEOUT
-import org.glassfish.jersey.client.ClientProperties.READ_TIMEOUT
 import org.slf4j.LoggerFactory
 import java.net.URI
 import java.util.*
 import javax.servlet.DispatcherType
+import javax.ws.rs.client.Client
 
 class BroccoliApplication : Application<BroccoliConfiguration>() {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -75,6 +74,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         log.info("using TextRepo located at: ${configuration.textUri}")
 
         val projects = configureProjects(configuration.projects)
+
         val client = JerseyClientBuilder(environment)
             .using(configuration.jerseyClient)
             .build(name)
@@ -85,7 +85,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             register(ProjectsResource(projects, client))
         }
 
-//        registerResources(configuration.projects, environment)
+        registerLegacyResources(configuration, projects, client, environment)
         setupCORSHeaders(environment.servlets())
 
         log.info(
@@ -120,44 +120,20 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             AnnoRepo(AnnoRepoClient(serverURI, apiKey, userAgent), containerName)
         }
 
-    private fun registerResources(configuration: BroccoliConfiguration, environment: Environment) {
-        val client = JerseyClientBuilder(environment)
-            .using(configuration.jerseyClient)
-            .build(name)
-
-        client.property(READ_TIMEOUT, 0)
-        client.property(CONNECT_TIMEOUT, 0)
-        log.info("client.readTimeout (after setting): ${client.configuration.getProperty(READ_TIMEOUT)}")
-        log.info("client.connectTimeout (after setting): ${client.configuration.getProperty(CONNECT_TIMEOUT)}")
-        val republicAnnoRepoClient = configuration.republic.annoRepo.run {
-            log.info("Republic AnnoRepo key: $apiKey")
-            AnnoRepo(
-                AnnoRepoClient(
-                    serverURI = URI.create(uri),
-                    apiKey = apiKey,
-                    userAgent = "$name (${this@BroccoliApplication.javaClass.name}/$appVersion)"
-                ), containerName
-            )
-        }
-
-        val globaliseAnnoRepoClient = configuration.globalise.annoRepo.run {
-            log.info("Globalise AnnoRepo key: $apiKey")
-            AnnoRepo(
-                AnnoRepoClient(
-                    serverURI = URI.create(uri),
-                    apiKey = apiKey,
-                    userAgent = "$name (${this@BroccoliApplication.javaClass.name}/$appVersion)"
-                ), containerName
-            )
-        }
+    private fun registerLegacyResources(
+        configuration: BroccoliConfiguration,
+        projects: Map<String, Project>,
+        client: Client,
+        environment: Environment,
+    ) {
+        val republicAnnoRepoClient = projects["republic"]!!.annoRepo
+        val globaliseAnnoRepoClient = projects["globalise"]!!.annoRepo
 
         val volumeMapper = RepublicVolumeMapper(configuration.republic)
 
         val iiifStore = MockIIIFStore(configuration.iiifUri, client)
 
         with(environment.jersey()) {
-            register(AboutResource(configuration, name, appVersion))
-            register(HomePageResource())
             register(GlobaliseResource(configuration.globalise, globaliseAnnoRepoClient, client))
             register(RepublicResource(configuration.republic, volumeMapper, republicAnnoRepoClient, iiifStore, client))
         }
