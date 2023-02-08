@@ -1,10 +1,14 @@
 package nl.knaw.huc.broccoli.resources.projects
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import io.swagger.v3.oas.annotations.Operation
+import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
 import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo.TextSelector
+import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
 import javax.ws.rs.*
 import javax.ws.rs.client.Client
@@ -21,7 +25,7 @@ class ProjectsResource(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    private val apiKey = "*REDACTED*" //TODO: from config
+    private val objectMapper = ObjectMapper()
 
     init {
         log.debug("init: projects=$projects, client=$client")
@@ -35,38 +39,59 @@ class ProjectsResource(
     }
 
     @GET
-    @Path("{projectId}/bodies/{bodyId}")
+    @Path("{projectId}/{bodyId}")
     @Operation(summary = "Get project's annotations by bodyId")
     fun getProjectBodyId(
         @PathParam("projectId") projectId: String,
         @PathParam("bodyId") bodyId: String,
+        @QueryParam("includeResults") includeResultString: String?,
+        @QueryParam("overlapTypes") overlapTypes: String?,
         @QueryParam("relativeTo") @DefaultValue("Origin") relativeTo: String,
-        @QueryParam("include") includeString: String?,
     ): Response {
-        log.info("prj=$projectId, bodyId=$bodyId, relativeTo=$relativeTo, include=$includeString")
+        log.info("project=$projectId, bodyId=$bodyId, relativeTo=$relativeTo, include=$includeResultString")
+
+        val result = HashMap<String, Any>()
 
         val project = getProject(projectId)
 
-        val includes = parseIncludes(includeString)
+        val includes = parseIncludeResults(includeResultString)
 
-        val result = mutableMapOf(
-            "type" to "BodyIdResult",
-            "request" to mapOf(
-                "bodyId" to bodyId,
-                "include" to includes,
-                "relativeTo" to relativeTo
-            )
+        val typesToInclude = parseOverlapTypes(overlapTypes)
+
+        result["request"] = mapOf(
+            "projectId" to projectId,
+            "bodyId" to bodyId,
+            "includeResults" to includes,
+            "overlapTypes" to overlapTypes,
+            "relativeTo" to relativeTo
         )
 
-        val searchResult = project.annoRepo.findByBodyId(bodyId)
-        log.info("searchResult: ${searchResult.items()}")
+        val annoResultSelf = project.annoRepo.findByBodyId(bodyId)
+        log.info("searchResult: ${annoResultSelf.items()}")
 
         if (includes.contains("anno")) {
-            result["anno"] = searchResult.items()
+            result["anno"] = if (overlapTypes == null) {
+                annoResultSelf.items()
+            } else {
+                annoResultSelf.withField<Any>("Text", "selector")
+                    .also { if (it.size > 1) log.warn("multiple Text with selector: $it") }
+                    .first()
+                    .let {
+                        val selector = it["selector"] as Map<*, *>
+                        val sourceUrl = it["source"] as String
+                        val start = selector["start"] as Int
+                        val end = selector["end"] as Int
+                        val bodyTypes = Constants.isIn(typesToInclude)
+                        project.annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes)
+                    }
+                    .also {
+                        log.info("adding overlap anno: $it")
+                    }
+            }
         }
 
         if (includes.contains("text")) {
-            val withoutSelectorTargets = searchResult.withoutField<String>("Text", "selector")
+            val withoutSelectorTargets = annoResultSelf.withoutField<String>("Text", "selector")
             val withoutSelector = when {
                 withoutSelectorTargets.isEmpty() -> throw NotFoundException("no text targets without 'selector' found")
                 withoutSelectorTargets.size == 1 -> withoutSelectorTargets[0]
@@ -77,9 +102,9 @@ class ProjectsResource(
             }
             log.info("textTarget WITHOUT 'selector': $withoutSelector")
             val textLinesSource = withoutSelector["source"]
-            val textLines = textLinesSource?.let { fetchTextLines(it) }.orEmpty()
+            val textLines = textLinesSource?.let { fetchTextLines(project.textRepo, it) }.orEmpty()
 
-            val withSelectorTargets = searchResult.withField<Any>("Text", "selector")
+            val withSelectorTargets = annoResultSelf.withField<Any>("Text", "selector")
             val withSelector = when {
                 withSelectorTargets.isEmpty() -> throw NotFoundException("no text target with 'selector' found")
                 withSelectorTargets.size == 1 -> withSelectorTargets[0]
@@ -107,7 +132,7 @@ class ProjectsResource(
             log.info("markers (absolute): $markers")
 
             val location = mapOf(
-                "location" to
+                "relativeTo" to
                         if (relativeTo == "Origin") {
                             mapOf("type" to "Origin", "bodyId" to bodyId)
                         } else {
@@ -133,7 +158,7 @@ class ProjectsResource(
         if (includes.contains("iiif")) {
             result["iiif"] = mapOf(
                 "manifest" to "todo://get.manifest",
-                "canvasIds" to searchResult.targetField<String>("Canvas", "source")
+                "canvasIds" to annoResultSelf.targetField<String>("Canvas", "source")
             )
         }
 
@@ -145,19 +170,23 @@ class ProjectsResource(
             ?: throw NotFoundException("Unknown project: $projectId. See /projects for known projects")
     }
 
-    private fun parseIncludes(includeString: String?): Set<String> {
+    private fun parseIncludeResults(includeResultString: String?): Set<String> {
         val all = setOf("anno", "text", "iiif")
 
-        if (includeString == null) {
+        if (includeResultString == null) {
             return all
         }
 
-        val requested = includeString
-            .removeSurrounding("\"")
-            .split(',')
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
-            .toSet()
+        val requested = if (includeResultString.startsWith('[')) {
+            objectMapper.readValue(includeResultString)
+        } else {
+            includeResultString
+                .removeSurrounding("\"")
+                .split(',')
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .toSet()
+        }
 
         val includes = all.intersect(requested)
 
@@ -169,17 +198,40 @@ class ProjectsResource(
         return includes
     }
 
-    private fun fetchTextLines(textSourceUrl: String): List<String> {
-        log.info("GET {}", textSourceUrl)
-        var builder = client.target(textSourceUrl)
-            .request()
-        if (apiKey != null) {
-            log.info("with apiKey {}", apiKey)
-            builder = builder.header(HttpHeaders.AUTHORIZATION, "Basic $apiKey")
+    private fun parseOverlapTypes(overlapTypes: String?): Set<String> =
+        if (overlapTypes == null) {
+            emptySet()
+        } else if (overlapTypes.startsWith('[')) {
+            objectMapper.readValue(overlapTypes)
+        } else {
+            overlapTypes
+                .removeSurrounding("\"")
+                .split(',')
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .toSet()
         }
-        return builder
-            .get()
-            .readEntity(object : GenericType<List<String>>() {})
+
+    private fun fetchTextLines(textRepo: TextRepo, textSourceUrl: String): List<String> {
+        log.info("GET {}", textSourceUrl)
+
+        var builder = client.target(textSourceUrl).request()
+
+        with(textRepo) {
+            if (apiKey != null && canResolve(textSourceUrl)) {
+                log.info("with apiKey {}", apiKey)
+                builder = builder.header(HttpHeaders.AUTHORIZATION, "Basic $apiKey")
+            }
+        }
+
+        val resp = builder.get()
+
+        if (resp.status == Response.Status.UNAUTHORIZED.statusCode) {
+            log.warn("Auth failed fetching $textSourceUrl")
+            throw ClientErrorException("Need credentials for $textSourceUrl", Response.Status.UNAUTHORIZED)
+        }
+
+        return resp.readEntity(object : GenericType<List<String>>() {})
     }
 
     data class TextMarkers(val start: TextMarker, val end: TextMarker) {

@@ -16,6 +16,7 @@ import nl.knaw.huc.broccoli.api.Constants.APP_NAME
 import nl.knaw.huc.broccoli.config.AnnoRepoConfiguration
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.config.ProjectConfiguration
+import nl.knaw.huc.broccoli.config.TextRepoConfiguration
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
@@ -25,6 +26,7 @@ import nl.knaw.huc.broccoli.resources.republic.RepublicResource
 import nl.knaw.huc.broccoli.resources.republic.RepublicVolumeMapper
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
 import nl.knaw.huc.broccoli.service.mock.MockIIIFStore
+import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.eclipse.jetty.servlets.CrossOriginFilter
 import org.eclipse.jetty.servlets.CrossOriginFilter.*
 import org.glassfish.jersey.client.ClientProperties.CONNECT_TIMEOUT
@@ -96,9 +98,18 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
     private fun configureProjects(projectConfigurations: List<ProjectConfiguration>): Map<String, Project> {
         return projectConfigurations.associate {
             log.info("configuring project: ${it.name}:")
-            it.name to Project(it, createAnnoRepo(it.annoRepo))
+            it.name to Project(
+                name = it.name,
+                textRepo = createTextRepo(it.textRepo),
+                annoRepo = createAnnoRepo(it.annoRepo)
+            )
         }
     }
+
+    private fun createTextRepo(textRepoConfig: TextRepoConfiguration) =
+        with(textRepoConfig) {
+            TextRepo(uri, apiKey)
+        }
 
     private fun createAnnoRepo(annoRepoConfig: AnnoRepoConfiguration) =
         with(annoRepoConfig) {

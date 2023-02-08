@@ -9,6 +9,8 @@ class BodyIdSearchResult(val context: DocumentContext) {
 
     fun bodyId(): String = context.read("$.body.id")
 
+    fun bodyType(): String = context.read("$.body.type")
+
     fun <T> target(type: String): List<Map<String, T>> = context.read("$.target[?(@.type == '$type')]")
 
     fun <T> targetField(type: String, field: String): List<T> =

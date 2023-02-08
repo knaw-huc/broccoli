@@ -73,8 +73,21 @@ class AnnoRepoConfiguration {
 
 class TextRepoConfiguration {
     @Valid
+    @NotNull
+    @JsonProperty
+    val uri = "https://textrepo.example.com"
+
+    @Valid
     @JsonProperty
     var apiKey: String? = null
+}
+
+class IIIFConfiguration {
+    @JsonProperty
+    var fixed: String? = null
+
+    @JsonProperty
+    var fetch: String? = null
 }
 
 class ProjectConfiguration {
@@ -91,6 +104,10 @@ class ProjectConfiguration {
     @NotNull
     @JsonProperty
     val textRepo = TextRepoConfiguration()
+
+    @Valid
+    @JsonProperty
+    val iiif = IIIFConfiguration()
 }
 
 class GlobaliseConfiguration {
