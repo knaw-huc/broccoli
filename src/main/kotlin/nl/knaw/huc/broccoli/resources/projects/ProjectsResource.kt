@@ -44,36 +44,36 @@ class ProjectsResource(
     fun getProjectBodyId(
         @PathParam("projectId") projectId: String,
         @PathParam("bodyId") bodyId: String,
-        @QueryParam("includeResults") includeResultString: String?,
-        @QueryParam("overlapTypes") overlapTypes: String?,
+        @QueryParam("includeResults") includeResultsParam: String?,
+        @QueryParam("overlapTypes") overlapTypesParam: String?,
         @QueryParam("relativeTo") @DefaultValue("Origin") relativeTo: String,
     ): Response {
-        log.info("project=$projectId, bodyId=$bodyId, relativeTo=$relativeTo, include=$includeResultString")
+        log.info(
+            "project=$projectId, bodyId=$bodyId, " +
+                    "includeResults=$includeResultsParam, overlapTypes=$overlapTypesParam, relativeTo=$relativeTo"
+        )
 
         val result = HashMap<String, Any>()
-
         val project = getProject(projectId)
-
-        val includes = parseIncludeResults(includeResultString)
-
-        val typesToInclude = parseOverlapTypes(overlapTypes)
+        val interestedIn = parseIncludeResults(includeResultsParam)
+        val overlapTypes = parseOverlapTypes(overlapTypesParam)
 
         result["request"] = mapOf(
             "projectId" to projectId,
             "bodyId" to bodyId,
-            "includeResults" to includes,
-            "overlapTypes" to overlapTypes,
+            "includeResults" to interestedIn,
+            "overlapTypes" to overlapTypesParam,
             "relativeTo" to relativeTo
         )
 
-        val annoResultSelf = project.annoRepo.findByBodyId(bodyId)
-        log.info("searchResult: ${annoResultSelf.items()}")
+        val searchResult = project.annoRepo.findByBodyId(bodyId)
+        log.info("searchResult: ${searchResult.items()}")
 
-        if (includes.contains("anno")) {
-            result["anno"] = if (overlapTypes == null) {
-                annoResultSelf.items()
+        if (interestedIn.contains("anno")) {
+            result["anno"] = if (overlapTypesParam == null) {
+                searchResult.items()
             } else {
-                annoResultSelf.withField<Any>("Text", "selector")
+                searchResult.withField<Any>("Text", "selector")
                     .also { if (it.size > 1) log.warn("multiple Text with selector: $it") }
                     .first()
                     .let {
@@ -81,7 +81,7 @@ class ProjectsResource(
                         val sourceUrl = it["source"] as String
                         val start = selector["start"] as Int
                         val end = selector["end"] as Int
-                        val bodyTypes = Constants.isIn(typesToInclude)
+                        val bodyTypes = Constants.isIn(overlapTypes)
                         project.annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes)
                     }
                     .also {
@@ -90,8 +90,8 @@ class ProjectsResource(
             }
         }
 
-        if (includes.contains("text")) {
-            val withoutSelectorTargets = annoResultSelf.withoutField<String>("Text", "selector")
+        if (interestedIn.contains("text")) {
+            val withoutSelectorTargets = searchResult.withoutField<String>("Text", "selector")
             val withoutSelector = when {
                 withoutSelectorTargets.isEmpty() -> throw NotFoundException("no text targets without 'selector' found")
                 withoutSelectorTargets.size == 1 -> withoutSelectorTargets[0]
@@ -104,7 +104,7 @@ class ProjectsResource(
             val textLinesSource = withoutSelector["source"]
             val textLines = textLinesSource?.let { fetchTextLines(project.textRepo, it) }.orEmpty()
 
-            val withSelectorTargets = annoResultSelf.withField<Any>("Text", "selector")
+            val withSelectorTargets = searchResult.withField<Any>("Text", "selector")
             val withSelector = when {
                 withSelectorTargets.isEmpty() -> throw NotFoundException("no text target with 'selector' found")
                 withSelectorTargets.size == 1 -> withSelectorTargets[0]
@@ -155,10 +155,10 @@ class ProjectsResource(
             )
         }
 
-        if (includes.contains("iiif")) {
+        if (interestedIn.contains("iiif")) {
             result["iiif"] = mapOf(
                 "manifest" to "todo://get.manifest",
-                "canvasIds" to annoResultSelf.targetField<String>("Canvas", "source")
+                "canvasIds" to searchResult.targetField<String>("Canvas", "source")
             )
         }
 
