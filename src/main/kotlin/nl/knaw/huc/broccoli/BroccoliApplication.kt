@@ -30,7 +30,6 @@ import nl.knaw.huc.broccoli.service.mock.MockIIIFStore
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.eclipse.jetty.servlets.CrossOriginFilter
 import org.eclipse.jetty.servlets.CrossOriginFilter.*
-import org.glassfish.jersey.client.ClientProperties
 import org.slf4j.LoggerFactory
 import java.net.URI
 import java.util.*
@@ -99,15 +98,17 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         return JerseyClientBuilder(environment)
             .using(jerseyClient)
             .build(name)
-            .also {
-                log.info("client.readTimeout (before setting): ${it.configuration.getProperty(ClientProperties.READ_TIMEOUT)}")
-                it.property(ClientProperties.READ_TIMEOUT, 0)
-                log.info("client.readTimeout (after setting): ${it.configuration.getProperty(ClientProperties.READ_TIMEOUT)}")
+        /*
+        .also {
+            log.info("client.readTimeout (before setting): ${it.configuration.getProperty(READ_TIMEOUT)}")
+            it.property(READ_TIMEOUT, 0)
+            log.info("client.readTimeout (after setting): ${it.configuration.getProperty(READ_TIMEOUT)}")
 
-                log.info("client.connectTimeout (before setting): ${it.configuration.getProperty(ClientProperties.CONNECT_TIMEOUT)}")
-                it.property(ClientProperties.CONNECT_TIMEOUT, 0)
-                log.info("client.connectTimeout (after setting): ${it.configuration.getProperty(ClientProperties.CONNECT_TIMEOUT)}")
-            }
+            log.info("client.connectTimeout (before setting): ${it.configuration.getProperty(CONNECT_TIMEOUT)}")
+            it.property(CONNECT_TIMEOUT, 0)
+            log.info("client.connectTimeout (after setting): ${it.configuration.getProperty(CONNECT_TIMEOUT)}")
+        }
+         */
     }
 
     private fun configureProjects(projectConfigurations: List<ProjectConfiguration>): Map<String, Project> {

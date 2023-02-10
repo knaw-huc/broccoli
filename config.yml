@@ -1,7 +1,19 @@
+jerseyClient:
+  timeout: 30s
+  connectionTimeout: 1m
+
 server:
   applicationConnectors:
     - type: http
       port: ${BR_SERVER_PORT:-8080}
+
+logging:
+  level: INFO
+  loggers:
+    nl.knaw.huc: DEBUG
+    org: WARN
+    org.glassfish: ERROR
+    com.jayway: ERROR
 
 externalBaseUrl: ${BR_EXTERNAL_BASE_URL:-http://localhost:8080}
 
@@ -83,11 +95,3 @@ republic:
     - name: '1728'
       invNr: '3783'
       imageset: 67533019-4ca0-4b08-b87e-fd5590e7a077
-
-logging:
-  level: INFO
-  loggers:
-    nl.knaw.huc: DEBUG
-    org: WARN
-    org.glassfish: ERROR
-    com.jayway: ERROR
