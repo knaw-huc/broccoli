@@ -99,8 +99,8 @@ class RepublicResource(
             mapOf(
                 "type" to "AnnoTextResult",
                 "request" to mapOf(
-                    "volumeId" to volumeId,
-                    "openingNr" to openingNr
+                    "tier0" to volumeId,
+                    "tier1" to openingNr
                 ),
                 "anno" to resultAnno,
                 "text" to mapOf(

@@ -125,8 +125,8 @@ class GlobaliseResource(
             mapOf(
                 "type" to "AnnoTextResult",
                 "request" to mapOf(
-                    "documentId" to documentId,
-                    "openingNr" to openingNr
+                    "tier0" to documentId,
+                    "tier1" to openingNr
                 ),
                 "anno" to resultAnno,
                 "text" to mapOf(
