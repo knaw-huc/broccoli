@@ -22,10 +22,6 @@ class AnnoRepo(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    init {
-        log.info("defaultContainerName: $defaultContainerName")
-    }
-
     private val cachedQueryResults =
         LRUCache<Pair<String, Map<String, Any>>, List<DocumentContext>>(capacity = CACHE_CAPACITY)
 
