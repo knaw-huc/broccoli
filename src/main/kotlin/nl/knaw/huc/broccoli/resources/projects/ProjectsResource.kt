@@ -53,20 +53,30 @@ class ProjectsResource(
                     "includeResults=$includeResultsParam, overlapTypes=$overlapTypesParam, relativeTo=$relativeTo"
         )
 
-        val result = HashMap<String, Any>()
+        val before = System.currentTimeMillis()
         val project = getProject(projectId)
         val interestedIn = parseIncludeResults(includeResultsParam)
         val overlapTypes = parseOverlapTypes(overlapTypesParam)
 
-        result["request"] = mapOf(
-            "projectId" to projectId,
-            "bodyId" to bodyId,
-            "includeResults" to interestedIn,
-            "overlapTypes" to overlapTypesParam,
-            "relativeTo" to relativeTo
+        val annoTimings = mutableMapOf<String, Any>()
+        val textTimings = mutableMapOf<String, Any>()
+        val selfTimings = mutableMapOf<String, Any>()
+        val profile = mapOf("anno" to annoTimings, "text" to textTimings, "self" to selfTimings)
+
+        val result = mutableMapOf<String, Any>(
+            "profile" to profile,
+            "request" to mapOf(
+                "projectId" to projectId,
+                "bodyId" to bodyId,
+                "includeResults" to interestedIn,
+                "overlapTypes" to overlapTypesParam,
+                "relativeTo" to relativeTo
+            )
         )
 
-        val searchResult = project.annoRepo.findByBodyId(bodyId)
+        val searchResult = timeExecution { project.annoRepo.findByBodyId(bodyId) }
+            .also { annoTimings["findByBodyId"] = it.first }
+            .second
         log.info("searchResult: ${searchResult.items()}")
 
         if (interestedIn.contains("anno")) {
@@ -76,13 +86,15 @@ class ProjectsResource(
                 searchResult.withField<Any>("Text", "selector")
                     .also { if (it.size > 1) log.warn("multiple Text with selector: $it") }
                     .first()
-                    .let {
+                    .let { it ->
                         val selector = it["selector"] as Map<*, *>
                         val sourceUrl = it["source"] as String
                         val start = selector["start"] as Int
                         val end = selector["end"] as Int
                         val bodyTypes = Constants.isIn(overlapTypes)
-                        project.annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes)
+                        timeExecution { project.annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes) }
+                            .also { annoTimings["fetchOverlap"] = it.first }
+                            .second
                     }
                     .also {
                         log.info("adding overlap anno: $it")
@@ -102,7 +114,9 @@ class ProjectsResource(
             }
             log.info("textTarget WITHOUT 'selector': $withoutSelector")
             val textLinesSource = withoutSelector["source"]
-            val textLines = textLinesSource?.let { fetchTextLines(project.textRepo, it) }.orEmpty()
+            val textLines = timeExecution { textLinesSource?.let { fetchTextLines(project.textRepo, it) }.orEmpty() }
+                .also { textTimings["fetchTextLines"] = it.first }
+                .second
 
             val withSelectorTargets = searchResult.withField<Any>("Text", "selector")
             val withSelector = when {
@@ -136,11 +150,11 @@ class ProjectsResource(
                         if (relativeTo == "Origin") {
                             mapOf("type" to "Origin", "bodyId" to bodyId)
                         } else {
-                            val (offset, offsetId) = project.annoRepo.findOffsetRelativeTo(
-                                segmentsSource,
-                                selector,
-                                relativeTo
-                            )
+                            val (offset, offsetId) = timeExecution {
+                                project.annoRepo.findOffsetRelativeTo(segmentsSource, selector, relativeTo)
+                            }.also {
+                                textTimings["findOffsetRelativeTo"] = it.first
+                            }.second
                             markers = markers.relativeTo(offset)
                             log.info("markers (relative to $offsetId): $markers")
                             mapOf("type" to relativeTo, "bodyId" to offsetId)
@@ -162,7 +176,17 @@ class ProjectsResource(
             )
         }
 
+        val after = System.currentTimeMillis()
+        selfTimings["total"] = after - before
+
         return Response.ok(result).build()
+    }
+
+    private fun <R> timeExecution(fn: () -> R): Pair<Long, R> {
+        val before = System.currentTimeMillis()
+        val result = fn()
+        val after = System.currentTimeMillis()
+        return Pair(after - before, result)
     }
 
     private fun getProject(projectId: String): Project {
