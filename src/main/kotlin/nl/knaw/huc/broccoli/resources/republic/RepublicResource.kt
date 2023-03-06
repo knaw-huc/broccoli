@@ -9,8 +9,8 @@ import nl.knaw.huc.broccoli.api.ResourcePaths.REPUBLIC
 import nl.knaw.huc.broccoli.config.RepublicConfiguration
 import nl.knaw.huc.broccoli.service.IIIFStore
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
-import nl.knaw.huc.broccoli.service.anno.AnnoRepo.TextSelector
 import nl.knaw.huc.broccoli.service.anno.BodyIdSearchResult
+import nl.knaw.huc.broccoli.service.anno.TextSelector
 import org.slf4j.LoggerFactory
 import java.net.URI
 import javax.ws.rs.*
@@ -102,7 +102,7 @@ class RepublicResource(
                     "tier0" to volumeId,
                     "tier1" to openingNr
                 ),
-                "anno" to resultAnno,
+                "json" to resultAnno,
                 "text" to mapOf(
                     "location" to mapOf(
                         "relativeTo" to "TODO",
@@ -193,7 +193,7 @@ class RepublicResource(
                     "bodyId" to bodyId,
                     "relativeTo" to relativeTo
                 ),
-                "anno" to annoPage.items(),
+                "json" to annoPage.items(),
                 "text" to mapOf(
                     "location" to location,
                     "lines" to getTextLines(annoPage),
