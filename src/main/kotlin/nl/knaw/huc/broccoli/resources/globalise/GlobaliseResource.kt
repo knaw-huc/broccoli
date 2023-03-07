@@ -128,7 +128,7 @@ class GlobaliseResource(
                     "tier0" to documentId,
                     "tier1" to openingNr
                 ),
-                "json" to resultAnno,
+                "anno" to resultAnno,
                 "text" to mapOf(
                     "lines" to resultText
                 ),
@@ -194,7 +194,7 @@ class GlobaliseResource(
                     "bodyId" to bodyId,
                     "relativeTo" to relativeTo
                 ),
-                "json" to annoPage.items(),
+                "anno" to annoPage.items(),
                 "text" to mapOf(
                     "location" to location,
                     "lines" to getTextLines(annoPage),

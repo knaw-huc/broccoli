@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonPropertyOrder
 import java.net.URI
 
-@JsonPropertyOrder("type", "request", "iiif", "json", "text")
+@JsonPropertyOrder("type", "request", "iiif", "anno", "text")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class AnnoTextResult(
     val type: String = "AnnoTextResult",
