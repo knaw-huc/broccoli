@@ -129,12 +129,8 @@ class ProjectsResource(
                         val annoSelector = extractTextSelector(anno)
 
                         if (annoBodyId != null && annoSelector != null) {
-                            val beginCharOffset = annoSelector.beginCharOffset() ?: 0
-                            val start = TextMarker(annoSelector.start(), beginCharOffset, -1)
-
-                            val endCharOffset = annoSelector.endCharOffset() ?: -1
-                            val end = TextMarker(annoSelector.end(), endCharOffset, -1)
-
+                            val start = TextMarker(annoSelector.start(), annoSelector.beginCharOffset())
+                            val end = TextMarker(annoSelector.end(), annoSelector.endCharOffset())
                             val markers = TextMarkers(start, end).relativeTo(offset.value)
                             relocatedAnnotations.add(
                                 mapOf(
