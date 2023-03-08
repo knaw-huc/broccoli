@@ -9,8 +9,8 @@ import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.config.GlobaliseConfiguration
 import nl.knaw.huc.broccoli.resources.republic.RepublicResource
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
-import nl.knaw.huc.broccoli.service.anno.AnnoRepo.TextSelector
 import nl.knaw.huc.broccoli.service.anno.BodyIdSearchResult
+import nl.knaw.huc.broccoli.service.anno.TextSelector
 import org.slf4j.LoggerFactory
 import java.net.URI
 import javax.ws.rs.*

@@ -11,12 +11,12 @@ data class AnnoTextResult(
     val request: Map<String, String>,
     val anno: List<Any>,
     val text: List<String>,
-    val iiif: IIIFContext
+    val iiif: IIIFContext,
 )
 
 @JsonPropertyOrder("manifest", "canvasId")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class IIIFContext(
     val manifest: URI,
-    val canvasId: String
+    val canvasId: String,
 )

@@ -87,8 +87,7 @@ class AnnoRepo(
     fun findOffsetRelativeTo(source: String, selector: TextSelector, type: String) =
         findOffsetRelativeTo(defaultContainerName, source, selector, type)
 
-    fun findOffsetRelativeTo(containerName: String, source: String, selector: TextSelector, type: String)
-            : Pair<Int, String> {
+    fun findOffsetRelativeTo(containerName: String, source: String, selector: TextSelector, type: String): Offset {
         log.info("findOffsetRelativeTo: containerName=[$containerName], selector=$selector, type=[$type]")
 
         val query = mapOf(
@@ -106,15 +105,10 @@ class AnnoRepo(
             .max()
 
         log.info("closest [$type] starts at $start (absolute)")
-        return Pair(start, anno.bodyId())
+        return Offset(start, anno.bodyId())
     }
 
-    data class TextSelector(private val context: Map<String, Any>) {
-        fun start(): Int = context["start"] as Int
-        fun beginCharOffset(): Int? = context["beginCharOffset"] as Int?
-        fun end(): Int = context["end"] as Int
-        fun endCharOffset(): Int? = context["endCharOffset"] as Int?
-    }
+    data class Offset(val value: Int, val id: String)
 
     companion object {
         const val CACHE_CAPACITY = 100

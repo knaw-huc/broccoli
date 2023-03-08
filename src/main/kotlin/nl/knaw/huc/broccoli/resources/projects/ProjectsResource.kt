@@ -7,7 +7,8 @@ import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
 import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.core.Project
-import nl.knaw.huc.broccoli.service.anno.AnnoRepo.TextSelector
+import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
+import nl.knaw.huc.broccoli.service.anno.TextSelector
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
 import javax.ws.rs.*
@@ -54,7 +55,11 @@ class ProjectsResource(
         )
 
         val before = System.currentTimeMillis()
+
         val project = getProject(projectId)
+        val annoRepo = project.annoRepo
+        val textRepo = project.textRepo
+
         val interestedIn = parseIncludeResults(includeResultsParam)
         val overlapTypes = parseOverlapTypes(overlapTypesParam)
 
@@ -74,99 +79,79 @@ class ProjectsResource(
             )
         )
 
-        val searchResult = timeExecution { project.annoRepo.findByBodyId(bodyId) }
-            .also { annoTimings["findByBodyId"] = it.first }
-            .second
-        log.info("searchResult: ${searchResult.items()}")
+        val searchResult = timeExecution(
+            { annoRepo.findByBodyId(bodyId) },
+            { timeSpent -> annoTimings["findByBodyId"] = timeSpent }
+        )
 
         if (interestedIn.contains("anno")) {
-            result["anno"] = if (overlapTypesParam == null) {
+            result["anno"] = if (overlapTypes.isEmpty()) {
                 searchResult.items()
             } else {
                 searchResult.withField<Any>("Text", "selector")
                     .also { if (it.size > 1) log.warn("multiple Text with selector: $it") }
                     .first()
-                    .let { it ->
+                    .let {
                         val selector = it["selector"] as Map<*, *>
                         val sourceUrl = it["source"] as String
                         val start = selector["start"] as Int
                         val end = selector["end"] as Int
                         val bodyTypes = Constants.isIn(overlapTypes)
-                        timeExecution { project.annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes) }
-                            .also { annoTimings["fetchOverlap"] = it.first }
-                            .second
-                    }
-                    .also {
-                        log.info("adding overlap anno: $it")
+                        timeExecution(
+                            { annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes) },
+                            { timeSpent -> annoTimings["fetchOverlap"] = timeSpent }
+                        )
                     }
             }
         }
 
         if (interestedIn.contains("text")) {
-            val withoutSelectorTargets = searchResult.withoutField<String>("Text", "selector")
-            val withoutSelector = when {
-                withoutSelectorTargets.isEmpty() -> throw NotFoundException("no text targets without 'selector' found")
-                withoutSelectorTargets.size == 1 -> withoutSelectorTargets[0]
-                else -> {
-                    log.warn("multiple 'Text' targets without selector, arbitrarily picking the first")
-                    withoutSelectorTargets[0]
+            val textInterpreter = AnnoSearchResultInterpreter(searchResult)
+
+            val textLines = timeExecution(
+                { fetchTextLines(textRepo, textInterpreter.findTextSource()) },
+                { timeSpent -> textTimings["fetchTextLines"] = timeSpent }
+            )
+            val textResult = mutableMapOf<String, Any>("lines" to textLines)
+
+            val selector = textInterpreter.findSelector()
+            val segmentsSource = textInterpreter.findSegmentsSource()
+
+            if (interestedIn.contains("anno") && relativeTo != "Origin") {
+                val offset = timeExecution(
+                    { annoRepo.findOffsetRelativeTo(segmentsSource, selector, relativeTo) },
+                    { timeSpent -> textTimings["findOffsetRelativeTo"] = timeSpent })
+
+                val relocatedAnnotations = mutableListOf<Map<String, Any>>()
+                (result["anno"] as List<*>).forEach { anno ->
+                    if (anno is Map<*, *>) {
+                        val annoBodyId = extractBodyId(anno)
+                        val annoSelector = extractTextSelector(anno)
+
+                        if (annoBodyId != null && annoSelector != null) {
+                            val start = TextMarker(annoSelector.start(), annoSelector.beginCharOffset())
+                            val end = TextMarker(annoSelector.end(), annoSelector.endCharOffset())
+                            val markers = TextMarkers(start, end).relativeTo(offset.value)
+                            relocatedAnnotations.add(
+                                mapOf(
+                                    "id" to annoBodyId,
+                                    "start" to markers.start,
+                                    "end" to markers.end
+                                )
+                            )
+                        }
+                    }
+
+                    if (relocatedAnnotations.isNotEmpty()) {
+                        textResult["locations"] = mapOf(
+                            "relativeTo" to mapOf("type" to relativeTo, "bodyId" to offset.id),
+                            "annotations" to relocatedAnnotations
+                        )
+                    }
                 }
             }
-            log.info("textTarget WITHOUT 'selector': $withoutSelector")
-            val textLinesSource = withoutSelector["source"]
-            val textLines = timeExecution { textLinesSource?.let { fetchTextLines(project.textRepo, it) }.orEmpty() }
-                .also { textTimings["fetchTextLines"] = it.first }
-                .second
 
-            val withSelectorTargets = searchResult.withField<Any>("Text", "selector")
-            val withSelector = when {
-                withSelectorTargets.isEmpty() -> throw NotFoundException("no text target with 'selector' found")
-                withSelectorTargets.size == 1 -> withSelectorTargets[0]
-                else -> {
-                    log.warn("multiple 'Text' targets with selector, arbitrarily picking the first")
-                    withSelectorTargets[0]
-                }
-            }
-            log.info("textTarget WITH 'selector': $withSelector")
-            val segmentsSource = withSelector["source"] as String
-
-            @Suppress("UNCHECKED_CAST")
-            val selector = TextSelector(withSelector["selector"] as Map<String, Any>)
-
-            val beginCharOffset = selector.beginCharOffset() ?: 0
-            val start = TextMarker(selector.start(), beginCharOffset, textLines[0].length)
-            log.info("start: $start")
-
-            val lengthOfLastLine = textLines.last().length
-            val endCharOffset = selector.endCharOffset() ?: (lengthOfLastLine - 1)
-            val end = TextMarker(selector.end(), endCharOffset, lengthOfLastLine)
-            log.info("end: $end")
-
-            var markers = TextMarkers(start, end)
-            log.info("markers (absolute): $markers")
-
-            val location = mapOf(
-                "relativeTo" to
-                        if (relativeTo == "Origin") {
-                            mapOf("type" to "Origin", "bodyId" to bodyId)
-                        } else {
-                            val (offset, offsetId) = timeExecution {
-                                project.annoRepo.findOffsetRelativeTo(segmentsSource, selector, relativeTo)
-                            }.also {
-                                textTimings["findOffsetRelativeTo"] = it.first
-                            }.second
-                            markers = markers.relativeTo(offset)
-                            log.info("markers (relative to $offsetId): $markers")
-                            mapOf("type" to relativeTo, "bodyId" to offsetId)
-                        },
-                "start" to markers.start,
-                "end" to markers.end
-            )
-
-            result["text"] = mapOf(
-                "location" to location,
-                "lines" to textLines
-            )
+            result["text"] = textResult
         }
 
         if (interestedIn.contains("iiif")) {
@@ -182,11 +167,34 @@ class ProjectsResource(
         return Response.ok(result).build()
     }
 
-    private fun <R> timeExecution(fn: () -> R): Pair<Long, R> {
+    private fun extractBodyId(anno: Map<*, *>): String? {
+        if (anno.containsKey("body")) {
+            val body = anno["body"]
+            if (body is Map<*, *> && body.containsKey("id")) {
+                return body["id"] as String
+            }
+        }
+        return null
+    }
+
+    private fun extractTextSelector(anno: Map<*, *>): TextSelector? {
+        if (anno.containsKey("target")) {
+            (anno["target"] as List<*>).forEach { target ->
+                if (target is Map<*, *> && target["type"] == "Text" && target.containsKey("selector")) {
+                    @Suppress("UNCHECKED_CAST")
+                    val selector = target["selector"] as Map<String, Any>
+                    return TextSelector(selector)
+                }
+            }
+        }
+        return null
+    }
+
+    private fun <R> timeExecution(workToBeTimed: () -> R, storeTimeSpent: (Long) -> Unit): R {
         val before = System.currentTimeMillis()
-        val result = fn()
-        val after = System.currentTimeMillis()
-        return Pair(after - before, result)
+        val result = workToBeTimed()
+        storeTimeSpent(System.currentTimeMillis() - before)
+        return result
     }
 
     private fun getProject(projectId: String): Project {
