@@ -84,7 +84,7 @@ class ProjectsResource(
                 "projectId" to projectId,
                 "bodyId" to bodyId,
                 "includeResults" to interestedIn,
-                "overlapTypes" to overlapTypesParam,
+                "overlapTypes" to overlapTypes,
                 "relativeTo" to relativeTo
             )
         )
