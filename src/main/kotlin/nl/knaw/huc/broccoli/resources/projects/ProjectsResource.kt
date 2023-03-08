@@ -134,7 +134,7 @@ class ProjectsResource(
                             val markers = TextMarkers(start, end).relativeTo(offset.value)
                             relocatedAnnotations.add(
                                 mapOf(
-                                    "id" to annoBodyId,
+                                    "bodyId" to annoBodyId,
                                     "start" to markers.start,
                                     "end" to markers.end
                                 )
