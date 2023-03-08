@@ -1,5 +1,6 @@
 package nl.knaw.huc.broccoli.config
 
+import arrow.core.identity
 import com.fasterxml.jackson.annotation.JsonProperty
 import `in`.vectorpro.dropwizard.swagger.SwaggerBundleConfiguration
 import io.dropwizard.Configuration
@@ -96,6 +97,11 @@ class ProjectConfiguration {
     val name: String = ""
 
     @Valid
+    @JsonProperty
+    @NotNull
+    val tiers: List<TierConfiguration> = ArrayList()
+
+    @Valid
     @NotNull
     @JsonProperty
     val annoRepo = AnnoRepoConfiguration()
@@ -109,6 +115,25 @@ class ProjectConfiguration {
     @JsonProperty
     val iiif = IIIFConfiguration()
 }
+
+class TierConfiguration {
+    @Valid
+    @NotNull
+    @JsonProperty
+    val name: String = ""
+
+    @Valid
+    @JsonProperty
+    val type = Type.STR
+
+    override fun toString(): String = "$name (${type.name.lowercase()})"
+
+    enum class Type(val toAnnoRepoQuery: (String) -> Any) {
+        NUM(Integer::valueOf),
+        STR(::identity);
+    }
+}
+
 
 class GlobaliseConfiguration {
 

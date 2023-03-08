@@ -22,6 +22,11 @@ textUri: https://textrepo.republic-caf.diginfra.org/api
 
 projects:
   - name: 'globalise'
+    tiers:
+      - name: document
+        type: str
+      - name: opening
+        type: num
     annoRepo:
       apiKey: ${AR_GLOBALISE_API_KEY:-}
       containerName: globalise-demo-5
@@ -33,9 +38,14 @@ projects:
       fetch: urn:globalise:manifest
 
   - name: 'republic'
+    tiers:
+      - name: volume
+        type: str
+      - name: opening
+        type: num
     annoRepo:
       apiKey: ${AR_REPUBLIC_API_KEY:-}
-      containerName: volume-1728-7
+      containerName: volume-1728-9
       uri: https://annorepo.republic-caf.diginfra.org
     textRepo:
       uri: https://textrepo.republic-caf.diginfra.org

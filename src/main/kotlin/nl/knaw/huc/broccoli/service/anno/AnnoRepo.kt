@@ -53,7 +53,15 @@ class AnnoRepo(
         return value
     }
 
-    fun findByBodyId(bodyId: String): BodyIdSearchResult = findByBodyId(defaultContainerName, bodyId)
+    fun findByTiers(bodyType: String, tiers: List<Pair<String, Any>>) {
+        val query = mutableMapOf<String, Any>("body.type" to bodyType)
+        tiers.forEach { query["body.metadata.${it.first}"] = it.second }
+        log.info("querying annorepo: $query")
+        val result = annoRepoClient.createSearch(defaultContainerName, query)
+        log.info("result: $result")
+    }
+
+    fun findByBodyId(bodyId: String) = findByBodyId(defaultContainerName, bodyId)
     fun findByBodyId(containerName: String, bodyId: String): BodyIdSearchResult {
         log.info("getBodyId: containerName=[$containerName], bodyId=[$bodyId]")
         val before = System.currentTimeMillis()

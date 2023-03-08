@@ -38,13 +38,28 @@ class ProjectsResource(
     fun listProjects(): Set<String> = projects.keys
 
     @GET
-    @Path("/{projectId}/tiers/{tiers: .*}")
+    @Path("/{projectId}/{bodyType}/{tiers: .*}")
     fun findByTiers(
         @PathParam("projectId") projectId: String,
-        @PathParam("tiers") tiers: String,
+        @PathParam("bodyType") bodyType: String,
+        @PathParam("tiers") tierParams: String,
     ): Response {
-        log.info("tiers: ${tiers.split('/')}")
-        return Response.ok().build()
+        val project = getProject(projectId)
+
+        val availableTiers = project.tiers
+        val requestedTiers = tierParams.split('/').filter { it.isNotBlank() }
+        if (requestedTiers.size != availableTiers.size) {
+            throw BadRequestException("Must specify all tiers: $availableTiers, got $requestedTiers instead")
+        }
+
+        val queryTiers = mutableListOf<Pair<String, Any>>()
+        availableTiers.forEachIndexed { index, tier ->
+            queryTiers.add(Pair(tier.name, tier.type.toAnnoRepoQuery(requestedTiers[index])))
+        }
+        log.info("queryTiers: $queryTiers")
+
+        val result = project.annoRepo.findByTiers(bodyType, queryTiers)
+        return Response.ok(result).build()
     }
 
     @GET
