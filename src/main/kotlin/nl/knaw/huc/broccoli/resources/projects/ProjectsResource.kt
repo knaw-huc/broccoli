@@ -66,15 +66,19 @@ class ProjectsResource(
         val selfTimings = mutableMapOf<String, Any>()
         val profile = mapOf("anno" to annoTimings, "text" to textTimings, "self" to selfTimings)
 
+        val request = mutableMapOf(
+            "projectId" to projectId,
+            "bodyId" to bodyId,
+            "includeResults" to interestedIn,
+        )
+        if (overlapTypes.isNotEmpty()) {
+            request["overlapTypes"] = overlapTypes
+        }
+        request["relativeTo"] = relativeTo
+
         val result = mutableMapOf<String, Any>(
             "profile" to profile,
-            "request" to mapOf(
-                "projectId" to projectId,
-                "bodyId" to bodyId,
-                "includeResults" to interestedIn,
-                "overlapTypes" to overlapTypes,
-                "relativeTo" to relativeTo
-            )
+            "request" to request
         )
 
         val searchResult = timeExecution(
