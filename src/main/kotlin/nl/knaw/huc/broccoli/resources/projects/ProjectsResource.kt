@@ -35,9 +35,7 @@ class ProjectsResource(
     @GET
     @Path("")
     @Operation(summary = "Get configured projects")
-    fun listProjects(): Set<String> {
-        return projects.keys
-    }
+    fun listProjects(): Set<String> = projects.keys
 
     @GET
     @Path("/{projectId}/tiers/{tiers: .*}")
