@@ -1,6 +1,6 @@
 package nl.knaw.huc.broccoli.service.anno
 
-import arrow.core.getOrHandle
+import arrow.core.getOrElse
 import com.jayway.jsonpath.Configuration.defaultConfiguration
 import com.jayway.jsonpath.DocumentContext
 import com.jayway.jsonpath.JsonPath
@@ -30,9 +30,9 @@ class AnnoRepo(
 
     private fun queryAnnoRepo(containerName: String, query: Map<String, Any>) =
         annoRepoClient.filterContainerAnnotations(containerName, query)
-            .getOrHandle { err -> throw BadRequestException("query failed: $err") }
+            .getOrElse { err -> throw BadRequestException("query failed: $err") }
             .annotations.asSequence()
-            .map { it.getOrHandle { err -> throw BadRequestException("fetch failed: $err") } }
+            .map { it.getOrElse { err -> throw BadRequestException("fetch failed: $err") } }
             .map(jsonParser::parse)
             .toList()
 
