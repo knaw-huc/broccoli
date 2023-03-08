@@ -35,9 +35,7 @@ class ProjectsResource(
     @GET
     @Path("")
     @Operation(summary = "Get configured projects")
-    fun listProjects(): Set<String> {
-        return projects.keys
-    }
+    fun listProjects(): Set<String> = projects.keys
 
     @GET
     @Path("{projectId}/{bodyId}")
@@ -74,7 +72,7 @@ class ProjectsResource(
                 "projectId" to projectId,
                 "bodyId" to bodyId,
                 "includeResults" to interestedIn,
-                "overlapTypes" to overlapTypesParam,
+                "overlapTypes" to overlapTypes,
                 "relativeTo" to relativeTo
             )
         )
@@ -134,7 +132,7 @@ class ProjectsResource(
                             val markers = TextMarkers(start, end).relativeTo(offset.value)
                             relocatedAnnotations.add(
                                 mapOf(
-                                    "id" to annoBodyId,
+                                    "bodyId" to annoBodyId,
                                     "start" to markers.start,
                                     "end" to markers.end
                                 )
