@@ -40,6 +40,16 @@ class ProjectsResource(
     }
 
     @GET
+    @Path("/{projectId}/tiers/{tiers: .*}")
+    fun findByTiers(
+        @PathParam("projectId") projectId: String,
+        @PathParam("tiers") tiers: String,
+    ): Response {
+        log.info("tiers: ${tiers.split('/')}")
+        return Response.ok().build()
+    }
+
+    @GET
     @Path("{projectId}/{bodyId}")
     @Operation(summary = "Get project's annotations by bodyId")
     fun getProjectBodyId(
