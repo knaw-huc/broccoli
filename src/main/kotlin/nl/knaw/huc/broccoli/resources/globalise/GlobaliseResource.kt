@@ -9,7 +9,7 @@ import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.config.GlobaliseConfiguration
 import nl.knaw.huc.broccoli.resources.republic.RepublicResource
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
-import nl.knaw.huc.broccoli.service.anno.BodyIdSearchResult
+import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.anno.TextSelector
 import org.slf4j.LoggerFactory
 import java.net.URI
@@ -207,7 +207,7 @@ class GlobaliseResource(
         ).build()
     }
 
-    private fun getTextLines(annoPage: BodyIdSearchResult): List<String> {
+    private fun getTextLines(annoPage: AnnoRepoSearchResult): List<String> {
         val textTargets = annoPage.target<String>("Text").filter { !it.containsKey("selector") }
         if (textTargets.size > 1) {
             log.warn("Multiple text targets (without selector) found, arbitrarily using the first: $textTargets")

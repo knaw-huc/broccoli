@@ -2,7 +2,7 @@ package nl.knaw.huc.broccoli.service.anno
 
 import com.jayway.jsonpath.DocumentContext
 
-class BodyIdSearchResult(val context: DocumentContext) {
+class AnnoRepoSearchResult(val context: DocumentContext) {
     fun items(): List<Map<String, Any>> {
         return listOf(context.read("$"))
     }

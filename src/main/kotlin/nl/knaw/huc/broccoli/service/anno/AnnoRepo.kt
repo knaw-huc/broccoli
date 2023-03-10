@@ -53,22 +53,27 @@ class AnnoRepo(
         return value
     }
 
-    fun findByTiers(bodyType: String, tiers: List<Pair<String, Any>>) {
+    fun findByTiers(
+        bodyType: String,
+        tiers: List<Pair<String, Any>>
+    ): AnnoRepoSearchResult {
         val query = mutableMapOf<String, Any>("body.type" to bodyType)
         tiers.forEach { query["body.metadata.${it.first}"] = it.second }
         log.info("querying annorepo: $query")
-        val result = annoRepoClient.createSearch(defaultContainerName, query)
-        log.info("result: $result")
+        return cacheQuery(defaultContainerName, query)
+            .map(::AnnoRepoSearchResult)
+            .firstOrNull()
+            ?: throw NotFoundException("nothing found for: $query")
     }
 
     fun findByBodyId(bodyId: String) = findByBodyId(defaultContainerName, bodyId)
-    fun findByBodyId(containerName: String, bodyId: String): BodyIdSearchResult {
+    fun findByBodyId(containerName: String, bodyId: String): AnnoRepoSearchResult {
         log.info("getBodyId: containerName=[$containerName], bodyId=[$bodyId]")
         val before = System.currentTimeMillis()
 
         val query = mapOf("body.id" to bodyId)
         val result = cacheQuery(containerName, query)
-            .map(::BodyIdSearchResult)
+            .map(::AnnoRepoSearchResult)
             .firstOrNull()
             ?: throw NotFoundException("bodyId not found: $bodyId")
 
@@ -104,7 +109,7 @@ class AnnoRepo(
         )
 
         val anno = cacheQuery(containerName, query)
-            .map(::BodyIdSearchResult)
+            .map(::AnnoRepoSearchResult)
             .firstOrNull()
             ?: throw NotFoundException("overlap not found ($containerName,$source,$selector)")
 
