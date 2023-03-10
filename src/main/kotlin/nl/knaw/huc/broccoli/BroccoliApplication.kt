@@ -116,6 +116,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             log.info("configuring project: ${it.name}:")
             it.name to Project(
                 name = it.name,
+                tiers = it.tiers,
                 textRepo = createTextRepo(it.textRepo),
                 annoRepo = createAnnoRepo(it.annoRepo)
             )

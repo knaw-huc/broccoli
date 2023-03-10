@@ -9,7 +9,7 @@ import nl.knaw.huc.broccoli.api.ResourcePaths.REPUBLIC
 import nl.knaw.huc.broccoli.config.RepublicConfiguration
 import nl.knaw.huc.broccoli.service.IIIFStore
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
-import nl.knaw.huc.broccoli.service.anno.BodyIdSearchResult
+import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.anno.TextSelector
 import org.slf4j.LoggerFactory
 import java.net.URI
@@ -206,9 +206,9 @@ class RepublicResource(
         ).build()
     }
 
-    private fun extractCanvasIds(annoPage: BodyIdSearchResult) = annoPage.targetField<String>("Canvas", "source")
+    private fun extractCanvasIds(annoPage: AnnoRepoSearchResult) = annoPage.targetField<String>("Canvas", "source")
 
-    private fun getTextLines(annoPage: BodyIdSearchResult): List<String> {
+    private fun getTextLines(annoPage: AnnoRepoSearchResult): List<String> {
         val textTargets = annoPage.target<String>("Text").filter { !it.containsKey("selector") }
         if (textTargets.size > 1) {
             log.warn("Multiple text targets (without selector) found, arbitrarily using the first: $textTargets")

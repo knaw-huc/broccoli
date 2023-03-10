@@ -13,10 +13,7 @@ import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
 import javax.ws.rs.*
 import javax.ws.rs.client.Client
-import javax.ws.rs.core.GenericType
-import javax.ws.rs.core.HttpHeaders
-import javax.ws.rs.core.MediaType
-import javax.ws.rs.core.Response
+import javax.ws.rs.core.*
 
 @Path(PROJECTS)
 @Produces(MediaType.APPLICATION_JSON)
@@ -36,6 +33,55 @@ class ProjectsResource(
     @Path("")
     @Operation(summary = "Get configured projects")
     fun listProjects(): Set<String> = projects.keys
+
+    @GET
+    @Path("/{projectId}/{bodyType}/{tiers: .*}")
+    fun findByTiers(
+        @PathParam("projectId") projectId: String,
+        @PathParam("bodyType") bodyType: String,
+        @PathParam("tiers") tierParams: String,
+        @QueryParam("includeResults") @DefaultValue("bodyId") includeResultsParam: String,
+    ): Response {
+        val result = mutableMapOf<String, Any>()
+
+        val project = getProject(projectId)
+
+        val interestedIn = parseIncludeResults(setOf("anno", "bodyId"), includeResultsParam)
+
+        val availableTiers = project.tiers
+        val requestedTiers = tierParams.split('/').filter { it.isNotBlank() }
+        if (requestedTiers.size != availableTiers.size) {
+            throw BadRequestException("Must specify all tiers: $availableTiers, got $requestedTiers instead")
+        }
+
+        result["request"] = mapOf(
+            "projectId" to projectId,
+            "bodyType" to bodyType,
+            "tiers" to requestedTiers,
+            "includeResults" to interestedIn
+        )
+
+        val queryTiers = mutableListOf<Pair<String, Any>>()
+        availableTiers.forEachIndexed { index, tier ->
+            queryTiers.add(Pair(tier.name, tier.type.toAnnoRepoQuery(requestedTiers[index])))
+        }
+
+        val searchResult = project.annoRepo.findByTiers(bodyType, queryTiers)
+
+        if (interestedIn.contains("bodyId")) {
+            result["bodyId"] = searchResult.bodyId()
+        }
+
+        if (interestedIn.contains("anno")) {
+            result["anno"] = searchResult.items()
+        }
+
+        return Response.ok(result)
+            // TODO: add a Link header? -> which rel to use?
+            //  https://www.iana.org/assignments/link-relations/link-relations.xhtml
+            // .link(location, "canonical")
+            .build()
+    }
 
     @GET
     @Path("{projectId}/{bodyId}")
@@ -58,7 +104,7 @@ class ProjectsResource(
         val annoRepo = project.annoRepo
         val textRepo = project.textRepo
 
-        val interestedIn = parseIncludeResults(includeResultsParam)
+        val interestedIn = parseIncludeResults(setOf("anno", "text", "iiif"), includeResultsParam)
         val overlapTypes = parseOverlapTypes(overlapTypesParam)
 
         val annoTimings = mutableMapOf<String, Any>()
@@ -204,9 +250,7 @@ class ProjectsResource(
             ?: throw NotFoundException("Unknown project: $projectId. See /projects for known projects")
     }
 
-    private fun parseIncludeResults(includeResultString: String?): Set<String> {
-        val all = setOf("anno", "text", "iiif")
-
+    private fun parseIncludeResults(all: Set<String>, includeResultString: String?): Set<String> {
         if (includeResultString == null) {
             return all
         }
