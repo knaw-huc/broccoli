@@ -40,7 +40,7 @@ class ProjectsResource(
         @PathParam("projectId") projectId: String,
         @PathParam("bodyType") bodyType: String,
         @PathParam("tiers") tierParams: String,
-        @QueryParam("includeResults") includeResultsParam: String? = "bodyId",
+        @QueryParam("includeResults") @DefaultValue("bodyId") includeResultsParam: String,
     ): Response {
         val result = mutableMapOf<String, Any>()
 
