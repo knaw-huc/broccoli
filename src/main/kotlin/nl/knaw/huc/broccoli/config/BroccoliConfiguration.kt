@@ -123,6 +123,7 @@ class TierConfiguration {
     val name: String = ""
 
     @Valid
+    @NotNull
     @JsonProperty
     val type = Type.STR
 
