@@ -203,8 +203,30 @@ class ProjectsResource(
         }
 
         if (interestedIn.contains("iiif")) {
+            val manifest = searchResult.withField<Any>("Text", "selector")
+                .also { if (it.size > 1) log.warn("multiple Text with selector: $it") }
+                .first()
+                .let {
+                    val selector = it["selector"] as Map<*, *>
+                    val sourceUrl = it["source"] as String
+                    val start = selector["start"] as Int
+                    val end = selector["end"] as Int
+                    val bodyTypes = Constants.isIn(setOf("Volume"))
+                    timeExecution(
+                        { annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes) },
+                        { timeSpent -> annoTimings["fetchManifest"] = timeSpent }
+                    )
+                }
+                .firstNotNullOfOrNull { extractManifest(it) }
+
+            /*
+            log.info("HUNTING CANVASIDS: $searchResult")
+            log.info("items: ${searchResult.items()}")
+            log.info("targetField: ${searchResult.targetField<String>("Canvas", "source")}")
+             */
+
             result["iiif"] = mapOf(
-                "manifest" to "todo://get.manifest",
+                "manifest" to manifest,
                 "canvasIds" to searchResult.targetField<String>("Canvas", "source")
             )
         }
@@ -213,6 +235,19 @@ class ProjectsResource(
         selfTimings["total"] = after - before
 
         return Response.ok(result).build()
+    }
+
+    private fun extractManifest(anno: Map<*, *>): String? {
+        if (anno.containsKey("body")) {
+            val body = anno["body"]
+            if (body is Map<*, *> && body.containsKey("metadata")) {
+                val metadata = body["metadata"]
+                if (metadata is Map<*, *> && metadata.containsKey("manifest")) {
+                    return metadata["manifest"] as String
+                }
+            }
+        }
+        return null
     }
 
     private fun extractBodyId(anno: Map<*, *>): String? {

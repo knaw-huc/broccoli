@@ -45,7 +45,7 @@ projects:
         type: num
     annoRepo:
       apiKey: ${AR_REPUBLIC_API_KEY:-}
-      containerName: volume-1728-9
+      containerName: volume-1728-11
       uri: https://annorepo.republic-caf.diginfra.org
     textRepo:
       uri: https://textrepo.republic-caf.diginfra.org
