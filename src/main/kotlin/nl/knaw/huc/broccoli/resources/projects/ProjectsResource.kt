@@ -211,19 +211,14 @@ class ProjectsResource(
                     val sourceUrl = it["source"] as String
                     val start = selector["start"] as Int
                     val end = selector["end"] as Int
-                    val bodyTypes = Constants.isIn(setOf("Volume"))
+                    val tier0 = project.tiers[0].name.replaceFirstChar(Char::uppercase)
+                    val bodyTypes = Constants.isIn(setOf(tier0))
                     timeExecution(
                         { annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes) },
                         { timeSpent -> annoTimings["fetchManifest"] = timeSpent }
                     )
                 }
                 .firstNotNullOfOrNull { extractManifest(it) }
-
-            /*
-            log.info("HUNTING CANVASIDS: $searchResult")
-            log.info("items: ${searchResult.items()}")
-            log.info("targetField: ${searchResult.targetField<String>("Canvas", "source")}")
-             */
 
             result["iiif"] = mapOf(
                 "manifest" to manifest,

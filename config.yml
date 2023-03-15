@@ -29,7 +29,7 @@ projects:
         type: num
     annoRepo:
       apiKey: ${AR_GLOBALISE_API_KEY:-}
-      containerName: globalise-demo-5
+      containerName: globalise-demo-8
       uri: https://globalise-annorepo.tt.di.huc.knaw.nl
     textRepo:
       apiKey: ${TR_GLOBALISE_API_KEY:-}
