@@ -211,7 +211,7 @@ class ProjectsResource(
                     val sourceUrl = it["source"] as String
                     val start = selector["start"] as Int
                     val end = selector["end"] as Int
-                    val tier0 = project.tiers[0].name.replaceFirstChar { ch -> ch.uppercase() }
+                    val tier0 = project.tiers[0].name.replaceFirstChar(Char::uppercase)
                     val bodyTypes = Constants.isIn(setOf(tier0))
                     timeExecution(
                         { annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes) },
