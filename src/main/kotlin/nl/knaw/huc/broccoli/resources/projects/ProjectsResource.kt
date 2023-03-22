@@ -49,7 +49,7 @@ class ProjectsResource(
         @QueryParam("num") @DefaultValue("10") num: Int
     ): Response {
         val snipsAndOffsets = if (snip) "return_snippets_and_offsets" else "return_offsets"
-        val entity = """
+        val query = """
             {
               "_source": false,
               "query": {
@@ -76,7 +76,7 @@ class ProjectsResource(
         """.trimIndent()
         val response = client.target("http://localhost:9200").path("my-index0001").path("_search")
             .request()
-            .post(Entity.json(entity))
+            .post(Entity.json(query))
         log.info("response: $response")
         val json = response.readEntityAsJsonString()
         log.info("data: $json")
