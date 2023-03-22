@@ -2,6 +2,9 @@ package nl.knaw.huc.broccoli.resources.projects
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.jayway.jsonpath.Configuration.defaultConfiguration
+import com.jayway.jsonpath.JsonPath
+import com.jayway.jsonpath.Option.DEFAULT_PATH_LEAF_TO_NULL
 import io.swagger.v3.oas.annotations.Operation
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
@@ -13,6 +16,7 @@ import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
 import javax.ws.rs.*
 import javax.ws.rs.client.Client
+import javax.ws.rs.client.Entity
 import javax.ws.rs.core.*
 
 @Path(PROJECTS)
@@ -24,6 +28,7 @@ class ProjectsResource(
     private val log = LoggerFactory.getLogger(javaClass)
 
     private val objectMapper = ObjectMapper()
+    private val jsonParser = JsonPath.using(defaultConfiguration().addOptions(DEFAULT_PATH_LEAF_TO_NULL))
 
     init {
         log.debug("init: projects=$projects, client=$client")
@@ -35,7 +40,54 @@ class ProjectsResource(
     fun listProjects(): Set<String> = projects.keys
 
     @GET
-    @Path("/{projectId}/{bodyType}/{tiers: .*}")
+    @Path("{projectId}/search/{key}")
+    fun searchIndex(
+        @PathParam("key") key: String,
+        @QueryParam("snip") @DefaultValue("false") snip: Boolean,
+        @QueryParam("frag") @DefaultValue("none") frag: String,
+        @QueryParam("size") @DefaultValue("100") size: Int,
+        @QueryParam("num") @DefaultValue("10") num: Int
+    ): Response {
+        val snipsAndOffsets = if (snip) "return_snippets_and_offsets" else "return_offsets"
+        val entity = """
+            {
+              "_source": false,
+              "query": {
+                "match": {
+                  "text": {
+                    "query": "$key"
+                  }
+                }
+              },
+              "highlight": {
+                "fields": {
+                  "text": {
+                    "type": "experimental",
+                    "fragmenter": "$frag",
+                    "fragment_size": $size,
+                    "number_of_fragments": $num,
+                    "options": {
+                      "$snipsAndOffsets": true
+                    }
+                  }
+                }
+              }
+            }
+        """.trimIndent()
+        val response = client.target("http://localhost:9200").path("my-index0001").path("_search")
+            .request()
+            .post(Entity.json(entity))
+        log.info("response: $response")
+        val json = response.readEntityAsJsonString()
+        log.info("data: $json")
+        val hits = jsonParser.parse(json).read<Any>("$.hits.hits[0].highlight.text")
+        return Response.ok(hits).build()
+    }
+
+    private fun Response.readEntityAsJsonString(): String = readEntity(String::class.java) ?: ""
+
+    @GET
+    @Path("{projectId}/{bodyType}/{tiers: .*}")
     fun findByTiers(
         @PathParam("projectId") projectId: String,
         @PathParam("bodyType") bodyType: String,
