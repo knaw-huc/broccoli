@@ -6,7 +6,7 @@ import com.jayway.jsonpath.Configuration.defaultConfiguration
 import com.jayway.jsonpath.JsonPath
 import com.jayway.jsonpath.Option.DEFAULT_PATH_LEAF_TO_NULL
 import io.swagger.v3.oas.annotations.Operation
-import nl.knaw.huc.broccoli.api.Constants
+import nl.knaw.huc.broccoli.api.Constants.isIn
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
 import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.core.Project
@@ -88,14 +88,18 @@ class ProjectsResource(
     }
 
     @GET
-    @Path("{projectId}/index/{tierValue}/{typeToIndex}")
-    fun createIndex(
+    @Path("{projectId}/index/{indexName}/{tierValue}")
+    fun fillIndex(
         @PathParam("projectId") projectId: String,      // e.g., "republic"
-        @PathParam("tierValue") tierValue: String,      // e.g., "1728"
-        @PathParam("typeToIndex") typeToIndex: String   // e.g., "Resolution"
+        @PathParam("indexName") indexName: String,      // e.g., "resolution"
+        @PathParam("tierValue") tierValue: String       // e.g., "1728"
     ): Response {
         val project = getProject(projectId)
-        log.info("creating index: $project")
+        log.info("filling index for project: $project, index: $indexName")
+
+        val brinta = project.brinta
+        val index = brinta.indices.find { it.name == indexName }
+            ?: throw NotFoundException("index '$indexName' not configured for project: ${project.name}")
 
         val topTierName = project.tiers[0].name
         val topTier = project.annoRepo.findByTiers(
@@ -108,33 +112,44 @@ class ProjectsResource(
         val start = selector["start"] as Int
         val end = selector["end"] as Int
 
-        project.annoRepo.streamOverlap(source, start, end, Constants.isIn(setOf(typeToIndex)))
+        project.annoRepo.streamOverlap(source, start, end, isIn(index.bodyTypes.toSet()))
             .map(::AnnoRepoSearchResult)
-            .forEach {
-                val id = it.bodyId()
-                val date = it.bodyMetadata()["sessionDate"] as String    // TODO: make into param: Republic specific!
-                val text = it.withoutField<String>("Text", "selector")
+            .forEach { anno ->
+                // use anno's body.id as documentId in index
+                val docId = anno.bodyId()
+
+                // now construct index payload for current anno
+                val payload = mutableMapOf<String, Any>()
+
+                // core payload for index: fetch "full text" from (remote) URL
+                payload["text"] = anno.withoutField<String>("Text", "selector")
+                    .also { if (it.size > 1) log.warn("multiple Text targets without selector: $it") }
                     .first()
                     .let { textTarget ->
                         val textURL = textTarget["source"] as String
                         client.target(textURL).request().get().readEntity(String::class.java)
                     }
-                val indexPayload = mapOf(
-                    "date" to date,
-                    "text" to text
-                )
 
-                log.info("Indexing $id, date=$date, size=${text.length}")
-                val resp = client.target("http://localhost:9200").path("brinta")    // TODO: host config
-                    .path("_doc").path(id)
-                    .request()
-                    .put(Entity.json(indexPayload))
-
-                if (resp.status != CREATED.statusCode) {
-                    log.warn("Failed to index $id: ${resp.readEntityAsJsonString()}")
+                // optional extra payload: fields from config
+                index.fields.forEach { field ->
+                    payload[field.name] = field.type.toIndex(anno.path(field.path))
                 }
 
-                resp.close() // !!! manual close, if not reading entity, or connection pool will be exhausted !!!
+                log.info("Indexing $docId, payload=$payload")
+
+                val resp = client.target(brinta.uri)
+                    .path(index.name)
+                    .path("_doc")
+                    .path(docId)
+                    .request()
+                    .put(Entity.json(payload))
+
+                if (resp.status != CREATED.statusCode) {
+                    val entity = resp.readEntityAsJsonString() // reading entity also closes connection
+                    log.warn("Failed to index $docId: $entity")
+                } else {
+                    resp.close() // explicit close, or connection pool will be exhausted !!!
+                }
             }
 
         return Response.ok().build()
@@ -254,7 +269,7 @@ class ProjectsResource(
                         val sourceUrl = it["source"] as String
                         val start = selector["start"] as Int
                         val end = selector["end"] as Int
-                        val bodyTypes = Constants.isIn(overlapTypes)
+                        val bodyTypes = isIn(overlapTypes)
                         timeExecution(
                             { annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes) },
                             { timeSpent -> annoTimings["fetchOverlap"] = timeSpent }
@@ -322,7 +337,7 @@ class ProjectsResource(
                     val start = selector["start"] as Int
                     val end = selector["end"] as Int
                     val tier0 = project.tiers[0].name.capitalize()//.replaceFirstChar(Char::uppercase)
-                    val bodyTypes = Constants.isIn(setOf(tier0))
+                    val bodyTypes = isIn(setOf(tier0))
                     timeExecution(
                         { annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes) },
                         { timeSpent -> annoTimings["fetchManifest"] = timeSpent }

@@ -43,6 +43,25 @@ projects:
         type: str
       - name: opening
         type: num
+    brinta:
+      uri: http://localhost:9200
+      indices:
+        - name: resolutions
+          bodyTypes:
+            - Resolution
+          fields:
+            - name: date
+              type: date
+              path: "$.body.metadata.sessionDate"
+            - name: invNr
+              type: short
+              path: "$.body.metadata.inventoryNum"
+            - name: harvested
+              type: date
+              path: "$.provenance.harvestingDate"
+            - name: propositionType
+              type: keyword
+              path: "$.body.metadata.propositionType"
     annoRepo:
       apiKey: ${AR_REPUBLIC_API_KEY:-}
       containerName: volume-1728-11

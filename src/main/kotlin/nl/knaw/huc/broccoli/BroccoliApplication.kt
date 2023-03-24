@@ -14,10 +14,7 @@ import io.dropwizard.setup.Environment
 import nl.knaw.huc.annorepo.client.AnnoRepoClient
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.Constants.APP_NAME
-import nl.knaw.huc.broccoli.config.AnnoRepoConfiguration
-import nl.knaw.huc.broccoli.config.BroccoliConfiguration
-import nl.knaw.huc.broccoli.config.ProjectConfiguration
-import nl.knaw.huc.broccoli.config.TextRepoConfiguration
+import nl.knaw.huc.broccoli.config.*
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
@@ -117,6 +114,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             it.name to Project(
                 name = it.name,
                 tiers = it.tiers,
+                brinta = it.brinta,
                 textRepo = createTextRepo(it.textRepo),
                 annoRepo = createAnnoRepo(it.annoRepo)
             )

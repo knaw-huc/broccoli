@@ -102,6 +102,11 @@ class ProjectConfiguration {
     val tiers: List<TierConfiguration> = ArrayList()
 
     @Valid
+    @JsonProperty
+    @NotNull
+    val brinta: BrintaConfiguration = BrintaConfiguration()
+
+    @Valid
     @NotNull
     @JsonProperty
     val annoRepo = AnnoRepoConfiguration()
@@ -132,6 +137,61 @@ class TierConfiguration {
     enum class Type(val toAnnoRepoQuery: (String) -> Any) {
         NUM(Integer::valueOf),
         STR(::identity);
+    }
+}
+
+class BrintaConfiguration {
+    @Valid
+    @NotNull
+    @JsonProperty
+    val uri: String = "http://localhost:9200"
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    val indices: List<IndexConfiguration> = ArrayList()
+}
+
+class IndexConfiguration {
+    @Valid
+    @NotNull
+    @JsonProperty
+    val name: String = ""
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    val bodyTypes: List<String> = ArrayList()
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    val fields: List<IndexFieldConfiguration> = ArrayList()
+}
+
+class IndexFieldConfiguration {
+    @Valid
+    @NotNull
+    @JsonProperty
+    val name: String = ""
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    val type = Type.KEYWORD
+
+    @Valid
+    @JsonProperty
+    val path: String = "$.body.id"
+
+    enum class Type(val toIndex: (String) -> Any) {
+        BYTE(String::toByte),
+        DATE(::identity),
+        INTEGER(String::toInt),
+        KEYWORD(::identity),
+        LONG(String::toLong),
+        SHORT(String::toShort),
+        TEXT(::identity);
     }
 }
 
