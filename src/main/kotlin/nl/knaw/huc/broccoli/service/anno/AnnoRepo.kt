@@ -97,6 +97,15 @@ class AnnoRepo(
         )
     ).map { it.read<Map<String, Any>>("$") }.toList()
 
+    fun streamOverlap(source: String, start: Int, end: Int, bodyTypes: Map<String, Any>) =
+        cacheQuery(
+            containerName = defaultContainerName,
+            query = mapOf(
+                AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to overlap(source, start, end),
+                AR_BODY_TYPE to bodyTypes
+            )
+        )
+
     fun findOffsetRelativeTo(source: String, selector: TextSelector, type: String) =
         findOffsetRelativeTo(defaultContainerName, source, selector, type)
 

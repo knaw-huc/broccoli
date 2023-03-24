@@ -10,6 +10,7 @@ import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
 import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.core.Project
+import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
 import nl.knaw.huc.broccoli.service.anno.TextSelector
 import nl.knaw.huc.broccoli.service.text.TextRepo
@@ -18,6 +19,7 @@ import javax.ws.rs.*
 import javax.ws.rs.client.Client
 import javax.ws.rs.client.Entity
 import javax.ws.rs.core.*
+import javax.ws.rs.core.Response.Status.CREATED
 
 @Path(PROJECTS)
 @Produces(MediaType.APPLICATION_JSON)
@@ -53,7 +55,7 @@ class ProjectsResource(
             {
               "_source": false,
               "query": {
-                "match": {
+                "match_phrase_prefix": {
                   "text": {
                     "query": "$key"
                   }
@@ -74,7 +76,8 @@ class ProjectsResource(
               }
             }
         """.trimIndent()
-        val response = client.target("http://localhost:9200").path("my-index0001").path("_search")
+        val response = client.target("http://localhost:9200").path("brinta")        // TODO: host config
+            .path("_search")
             .request()
             .post(Entity.json(query))
         log.info("response: $response")
@@ -83,6 +86,61 @@ class ProjectsResource(
         val hits = jsonParser.parse(json).read<Any>("$.hits.hits[0].highlight.text")
         return Response.ok(hits).build()
     }
+
+    @GET
+    @Path("{projectId}/index/{tierValue}/{typeToIndex}")
+    fun createIndex(
+        @PathParam("projectId") projectId: String,      // e.g., "republic"
+        @PathParam("tierValue") tierValue: String,      // e.g., "1728"
+        @PathParam("typeToIndex") typeToIndex: String   // e.g., "Resolution"
+    ): Response {
+        val project = getProject(projectId)
+        log.info("creating index: $project")
+
+        val topTierName = project.tiers[0].name
+        val topTier = project.annoRepo.findByTiers(
+            bodyType = topTierName.capitalize(),
+            tiers = listOf(Pair(topTierName, tierValue))
+        )
+        val textTarget = topTier.withField<Any>("Text", "source").first()
+        val source = textTarget["source"] as String
+        val selector = textTarget["selector"] as Map<*, *>
+        val start = selector["start"] as Int
+        val end = selector["end"] as Int
+
+        project.annoRepo.streamOverlap(source, start, end, Constants.isIn(setOf(typeToIndex)))
+            .map(::AnnoRepoSearchResult)
+            .forEach {
+                val id = it.bodyId()
+                val date = it.bodyMetadata()["sessionDate"] as String    // TODO: make into param: Republic specific!
+                val text = it.withoutField<String>("Text", "selector")
+                    .first()
+                    .let { textTarget ->
+                        val textURL = textTarget["source"] as String
+                        client.target(textURL).request().get().readEntity(String::class.java)
+                    }
+                val indexPayload = mapOf(
+                    "date" to date,
+                    "text" to text
+                )
+
+                log.info("Indexing $id, date=$date, size=${text.length}")
+                val resp = client.target("http://localhost:9200").path("brinta")    // TODO: host config
+                    .path("_doc").path(id)
+                    .request()
+                    .put(Entity.json(indexPayload))
+
+                if (resp.status != CREATED.statusCode) {
+                    log.warn("Failed to index $id: ${resp.readEntityAsJsonString()}")
+                }
+
+                resp.close() // !!! manual close, if not reading entity, or connection pool will be exhausted !!!
+            }
+
+        return Response.ok().build()
+    }
+
+    private fun String.capitalize(): String = replaceFirstChar(Char::uppercase)
 
     private fun Response.readEntityAsJsonString(): String = readEntity(String::class.java) ?: ""
 
@@ -100,22 +158,22 @@ class ProjectsResource(
 
         val interestedIn = parseIncludeResults(setOf("anno", "bodyId"), includeResultsParam)
 
-        val availableTiers = project.tiers
-        val requestedTiers = tierParams.split('/').filter { it.isNotBlank() }
-        if (requestedTiers.size != availableTiers.size) {
-            throw BadRequestException("Must specify all tiers: $availableTiers, got $requestedTiers instead")
+        val formalTiers = project.tiers
+        val actualTiers = tierParams.split('/').filter { it.isNotBlank() }
+        if (actualTiers.size != formalTiers.size) {
+            throw BadRequestException("Must specify value for all formal tiers: $formalTiers, got $actualTiers instead")
         }
 
         result["request"] = mapOf(
             "projectId" to projectId,
             "bodyType" to bodyType,
-            "tiers" to requestedTiers,
+            "tiers" to actualTiers,
             "includeResults" to interestedIn
         )
 
         val queryTiers = mutableListOf<Pair<String, Any>>()
-        availableTiers.forEachIndexed { index, tier ->
-            queryTiers.add(Pair(tier.name, tier.type.toAnnoRepoQuery(requestedTiers[index])))
+        formalTiers.forEachIndexed { index, formalTier ->
+            queryTiers.add(Pair(formalTier.name, formalTier.type.toAnnoRepoQuery(actualTiers[index])))
         }
 
         val searchResult = project.annoRepo.findByTiers(bodyType, queryTiers)
@@ -263,7 +321,7 @@ class ProjectsResource(
                     val sourceUrl = it["source"] as String
                     val start = selector["start"] as Int
                     val end = selector["end"] as Int
-                    val tier0 = project.tiers[0].name.replaceFirstChar(Char::uppercase)
+                    val tier0 = project.tiers[0].name.capitalize()//.replaceFirstChar(Char::uppercase)
                     val bodyTypes = Constants.isIn(setOf(tier0))
                     timeExecution(
                         { annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes) },
