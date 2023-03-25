@@ -47,21 +47,23 @@ projects:
       uri: http://localhost:9200
       indices:
         - name: resolutions
-          bodyTypes:
-            - Resolution
+          bodyTypes: [ Resolution ]
           fields:
             - name: date
-              type: date
               path: "$.body.metadata.sessionDate"
             - name: invNr
-              type: short
               path: "$.body.metadata.inventoryNum"
             - name: harvested
-              type: date
               path: "$.provenance.harvestingDate"
             - name: propositionType
-              type: keyword
               path: "$.body.metadata.propositionType"
+        - name: attendants
+          bodyTypes: [ Attendant, AttendantList ]
+          fields:
+            - name: class
+              path: "$.body.metadata.class"
+            - name: delegateId
+              path: "$.body.metadata.delegateId"
     annoRepo:
       apiKey: ${AR_REPUBLIC_API_KEY:-}
       containerName: volume-1728-11

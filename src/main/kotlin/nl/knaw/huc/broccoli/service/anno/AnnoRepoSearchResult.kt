@@ -11,7 +11,7 @@ class AnnoRepoSearchResult(val context: DocumentContext) {
 
     fun bodyType(): String = context.read("$.body.type")
 
-    fun path(path: String) = context.read<Any>(path).toString()
+    fun read(path: String): Any? = context.read(path)
 
     fun <T> target(type: String): List<Map<String, T>> = context.read("$.target[?(@.type == '$type')]")
 

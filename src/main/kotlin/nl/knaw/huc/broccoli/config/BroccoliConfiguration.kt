@@ -176,23 +176,8 @@ class IndexFieldConfiguration {
     val name: String = ""
 
     @Valid
-    @NotNull
-    @JsonProperty
-    val type = Type.KEYWORD
-
-    @Valid
     @JsonProperty
     val path: String = "$.body.id"
-
-    enum class Type(val toIndex: (String) -> Any) {
-        BYTE(String::toByte),
-        DATE(::identity),
-        INTEGER(String::toInt),
-        KEYWORD(::identity),
-        LONG(String::toLong),
-        SHORT(String::toShort),
-        TEXT(::identity);
-    }
 }
 
 
