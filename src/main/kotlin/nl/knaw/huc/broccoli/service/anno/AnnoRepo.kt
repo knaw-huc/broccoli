@@ -28,13 +28,12 @@ class AnnoRepo(
     // choose 'null' over throwing exceptions when json paths cannot be found
     private val jsonParser = JsonPath.using(defaultConfiguration().addOptions(DEFAULT_PATH_LEAF_TO_NULL))
 
-    private fun queryAnnoRepo(containerName: String, query: Map<String, Any>) =
+    private fun liveQuery(containerName: String, query: Map<String, Any>) =
         annoRepoClient.filterContainerAnnotations(containerName, query)
             .getOrElse { err -> throw BadRequestException("query failed: $err") }
             .annotations.asSequence()
             .map { it.getOrElse { err -> throw BadRequestException("fetch failed: $err") } }
             .map(jsonParser::parse)
-            .toList()
 
     private fun cacheQuery(containerName: String, query: Map<String, Any>): List<DocumentContext> {
         val key = Pair(containerName, query)
@@ -45,7 +44,7 @@ class AnnoRepo(
         }
 
         log.info("cache miss for: $key, hashCode=${key.hashCode()}")
-        val value = queryAnnoRepo(containerName, query)
+        val value = liveQuery(containerName, query).toList() // note: this pulls in the entire result list
         if (value.size < CACHE_RESULT_SET_SIZE_THRESHOLD) {
             log.info("resultSet.size (${value.size}) < $CACHE_RESULT_SET_SIZE_THRESHOLD) -> caching")
             cachedQueryResults.put(key, value)
@@ -96,7 +95,7 @@ class AnnoRepo(
     ).map { it.read<Map<String, Any>>("$") }.toList()
 
     fun streamOverlap(source: String, start: Int, end: Int, bodyTypes: Map<String, Any>) =
-        cacheQuery(
+        liveQuery(
             containerName = defaultContainerName,
             query = mapOf(
                 AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to overlap(source, start, end),
