@@ -45,13 +45,30 @@ class ProjectsResource(
     @GET
     @Path("{projectId}/search/{key}")
     fun searchIndex(
+        @PathParam("projectId") projectId: String,
         @PathParam("key") key: String,
+        @QueryParam("indexName") indexName: String?,
         @QueryParam("snip") @DefaultValue("false") snip: Boolean,
         @QueryParam("frag") @DefaultValue("none") frag: String,
         @QueryParam("size") @DefaultValue("100") size: Int,
         @QueryParam("num") @DefaultValue("10") num: Int
     ): Response {
+        // determine project
+        val project = getProject(projectId)
+        val brinta = project.brinta
+
+        // determine index to use
+        val index = if (indexName == null) {
+            brinta.indices[0]   // if unspecified, default to first index in project configuration
+        } else {
+            brinta.indices.find { it.name == indexName }
+                ?: throw NotFoundException("index '$indexName' not configured for project: ${project.name}")
+        }
+
+        // include snippets, or just offsets?
         val snipsAndOffsets = if (snip) "return_snippets_and_offsets" else "return_offsets"
+
+        // spec out the elastic query
         val query = """
             {
               "_source": false,
@@ -77,12 +94,13 @@ class ProjectsResource(
               }
             }
         """.trimIndent()
-        val response = client.target("http://localhost:9200").path("brinta")        // TODO: host config
-            .path("_search")
+
+        val resp = client.target(brinta.uri).path(index.name).path("_search")
             .request()
             .post(Entity.json(query))
-        log.info("response: $response")
-        val json = response.readEntityAsJsonString()
+        log.info("response: $resp")
+
+        val json = resp.readEntityAsJsonString()
         log.info("data: $json")
         val hits = jsonParser.parse(json).read<Any>("$.hits.hits[0].highlight.text")
         return Response.ok(hits).build()
@@ -169,9 +187,7 @@ class ProjectsResource(
                     log.info("Indexing $docId, payload=$payload")
 
                     client.target(brinta.uri)
-                        .path(index.name)
-                        .path("_doc")
-                        .path(docId)
+                        .path(index.name).path("_doc").path(docId)
                         .request()
                         .put(Entity.json(payload))
                         .run {
