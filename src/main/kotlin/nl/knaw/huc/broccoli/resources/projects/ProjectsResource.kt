@@ -89,73 +89,72 @@ class ProjectsResource(
             }
         """.trimIndent()
 
-        val resp = client.target(brinta.uri).path(index.name).path("_search")
+        return client.target(brinta.uri).path(index.name).path("_search")
             .request()
             .post(Entity.json(query))
-        log.info("response: $resp")
+            .also { log.info("response: $it") }
+            .readEntityAsJsonString()
+            .also { log.info("data: $it") }
+            .let { json ->
+                jsonParser.parse(json)
+                    .read<List<Map<String, Any>>>("$.hits.hits[*]")
+                    .map { hit ->
+                        var runningOffset = 0
+                        var curSegmentIndex = 0
 
-        val json = resp.readEntityAsJsonString()
-        log.info("data: $json")
+                        @Suppress("UNCHECKED_CAST")
+                        val highlight = hit["highlight"] as Map<String, Any>
 
-        val result = jsonParser.parse(json).read<List<Map<String, Any>>>("$.hits.hits[*]")
-            .map { hit ->
-                var runningOffset = 0
-                var curSegmentIndex = 0
+                        @Suppress("UNCHECKED_CAST")
+                        val textLocations = highlight["text"] as List<String>
 
-                @Suppress("UNCHECKED_CAST")
-                val highlight = hit["highlight"] as Map<String, Any>
+                        @Suppress("UNCHECKED_CAST")
+                        val source = hit["_source"] as Map<String, Any>
 
-                @Suppress("UNCHECKED_CAST")
-                val textLocations = highlight["text"] as List<String>
+                        @Suppress("UNCHECKED_CAST")
+                        val segments = source["text"] as List<String>
 
-                @Suppress("UNCHECKED_CAST")
-                val source = hit["_source"] as Map<String, Any>
+                        val locations: List<Map<String, TextMarker>> = textLocations
+                            .map { it.substringBetweenOuter(':') }
+                            .flatMap { it.split(',') }
+                            .map { it.parseIntoCoordinates('-') }
+                            .map { it.toNumericCoordinates() }
+                            .map { loc ->
+                                var curSegmentLength = segments[curSegmentIndex].length
 
-                @Suppress("UNCHECKED_CAST")
-                val segments = source["text"] as List<String>
+                                // skip lines entirely before location start
+                                while (runningOffset + curSegmentLength < loc.start) {
+                                    runningOffset += curSegmentLength + 1
+                                    curSegmentLength = segments[++curSegmentIndex].length
+                                }
+                                val startMarker = TextMarker(curSegmentIndex, loc.start - runningOffset)
 
-                val locations: List<Map<String, Int>> = textLocations
-                    .flatMap { it.substringBetweenOuter(':').split(',') }
-                    .map { Pair(it.substringBefore('-').toInt(), it.substringAfter('-').toInt()) }
-                    .map { loc ->
-                        var curSegmentLength = segments[curSegmentIndex].length
+                                // skip lines entirely before location end
+                                while (runningOffset + curSegmentLength < loc.end) {
+                                    runningOffset += curSegmentLength + 1
+                                    curSegmentLength = segments[++curSegmentIndex].length
+                                }
+                                val endMarker = TextMarker(curSegmentIndex, loc.end - runningOffset - 1)
 
-                        // skip lines entirely before location start
-                        while (runningOffset + curSegmentLength < loc.first) {
-                            runningOffset += curSegmentLength + 1
-                            curSegmentLength = segments[++curSegmentIndex].length
-                        }
-                        val startIndex = curSegmentIndex
-                        val startCharOffset = loc.first - runningOffset
+                                mapOf("start" to startMarker, "end" to endMarker)
+                            }
 
-                        // skip lines entirely before location end
-                        while (runningOffset + curSegmentLength < loc.second) {
-                            runningOffset += curSegmentLength + 1
-                            curSegmentLength = segments[++curSegmentIndex].length
-                        }
-                        val endIndex = curSegmentIndex
-                        val endCharOffset = loc.second - runningOffset - 1
-
-                        mapOf(
-                            "start" to startIndex,
-                            "startCharOffset" to startCharOffset,
-                            "end" to endIndex,
-                            "endCharOffset" to endCharOffset
-                        )
+                        mapOf("bodyId" to hit["_id"], "locations" to locations)
                     }
-
-                mapOf(
-//                    "src" to hit["_source"],
-                    "bodyId" to hit["_id"],
-                    "locations" to locations
-                )
+                    .let { Response.ok(it).build() }
             }
-
-        return Response.ok(result).build()
     }
 
     private fun String.substringBetweenOuter(delimiter: Char): String =
         substringAfter(delimiter).substringBeforeLast(delimiter)
+
+    private data class Coordinates<T>(val start: T, val end: T)
+
+    private fun Coordinates<String>.toNumericCoordinates(): Coordinates<Int> =
+        Coordinates(start.toInt(), end.toInt())
+
+    private fun String.parseIntoCoordinates(delimiter: Char): Coordinates<String> =
+        Coordinates(substringBefore(delimiter), substringAfter(delimiter))
 
     enum class FragOpts {
         NONE, SCAN, SENTENCE; // https://github.com/wikimedia/search-highlighter#elasticsearch-options
