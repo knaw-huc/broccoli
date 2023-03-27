@@ -115,6 +115,7 @@ class ProjectsResource(
                         val segments = source["text"] as List<String>
 
                         val locations: List<Map<String, TextMarker>> = textLocations
+                            .also { log.info("locations: $it") }
                             .map { it.substringBetweenOuter(':') }
                             .flatMap { it.split(',') }
                             .map { it.parseIntoCoordinates('-') }
