@@ -10,6 +10,7 @@ import nl.knaw.huc.broccoli.api.Constants.isIn
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
 import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.core.Project
+import nl.knaw.huc.broccoli.resources.projects.ProjectsResource.FragOpts.NONE
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
 import nl.knaw.huc.broccoli.service.anno.TextSelector
@@ -49,7 +50,7 @@ class ProjectsResource(
         @PathParam("key") key: String,
         @QueryParam("indexName") indexName: String?,
         @QueryParam("snip") @DefaultValue("false") snip: Boolean,
-        @QueryParam("frag") @DefaultValue("none") frag: String,
+        @QueryParam("frag") @DefaultValue("none") frag: FragOpts = NONE,
         @QueryParam("size") @DefaultValue("100") size: Int,
         @QueryParam("num") @DefaultValue("10") num: Int
     ): Response {
@@ -68,30 +69,23 @@ class ProjectsResource(
         // include snippets, or just offsets?
         val snipsAndOffsets = if (snip) "return_snippets_and_offsets" else "return_offsets"
 
+        val textHighlighter = """
+            "text": {
+              "type": "experimental",
+              "fragmenter": "$frag",
+              "fragment_size": $size,
+              "number_of_fragments": $num,
+              "options": { "$snipsAndOffsets": true }
+          }
+        """.trimIndent()
+
         // spec out the elastic query
         val query = """
             {
-              "_source": false,
-              "query": {
-                "match_phrase_prefix": {
-                  "text": {
-                    "query": "$key"
-                  }
-                }
-              },
-              "highlight": {
-                "fields": {
-                  "text": {
-                    "type": "experimental",
-                    "fragmenter": "$frag",
-                    "fragment_size": $size,
-                    "number_of_fragments": $num,
-                    "options": {
-                      "$snipsAndOffsets": true
-                    }
-                  }
-                }
-              }
+              "_source": true,
+              "query": { "match_phrase_prefix": { "text": { "query": "$key" } } },
+              "highlight": { "fields": { $textHighlighter } },
+              "sort": "_doc"
             }
         """.trimIndent()
 
@@ -102,8 +96,37 @@ class ProjectsResource(
 
         val json = resp.readEntityAsJsonString()
         log.info("data: $json")
-        val hits = jsonParser.parse(json).read<Any>("$.hits.hits[0].highlight.text")
-        return Response.ok(hits).build()
+        val result = jsonParser.parse(json).read<List<Map<String, Any>>>("$.hits.hits[*]")
+            .map { hit ->
+                @Suppress("UNCHECKED_CAST")
+                val highlight = hit["highlight"] as Map<String, Any>
+
+                @Suppress("UNCHECKED_CAST")
+                val locations = highlight["text"] as List<String>
+
+                mapOf(
+                    "src" to hit["_source"],
+                    "bodyId" to hit["_id"],
+                    "locations" to locations
+                        .flatMap { it.substringBetweenOuter(':').split(',') }
+                        .map {
+                            mapOf(
+                                "start" to it.substringBefore('-').toInt(),
+                                "end" to it.substringAfter('-').toInt()
+                            )
+                        }
+                )
+            }
+        return Response.ok(result).build()
+    }
+
+    private fun String.substringBetweenOuter(delimiter: Char): String =
+        substringAfter(delimiter).substringBeforeLast(delimiter)
+
+    enum class FragOpts {
+        NONE, SCAN, SENTENCE; // https://github.com/wikimedia/search-highlighter#elasticsearch-options
+
+        override fun toString() = name.lowercase()
     }
 
     @GET
