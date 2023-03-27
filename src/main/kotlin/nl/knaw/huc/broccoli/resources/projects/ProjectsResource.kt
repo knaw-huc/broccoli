@@ -134,7 +134,8 @@ class ProjectsResource(
     fun fillIndex(
         @PathParam("projectId") projectId: String,      // e.g., "republic"
         @PathParam("indexName") indexName: String,      // e.g., "resolutions"
-        @QueryParam("tierValue") tierParam: String?     // e.g., "1728" (optional, if not given: index all)
+        @QueryParam("tierValue") tierParam: String?,    // e.g., "1728" (optional, if not given: index all)
+        @QueryParam("take") take: Int? = null,          // testing param, only index first 'take' items
     ): Response {
         val project = getProject(projectId)
         log.info("filling index for project: $project, index: $indexName")
@@ -169,8 +170,14 @@ class ProjectsResource(
             val end = selector["end"] as Int
 
             // find all annotations with body.type matching this index, overlapping with top tier's range
-            annoRepo.streamOverlap(source, start, end, isIn(index.bodyTypes.toSet()))
-                .map(::AnnoRepoSearchResult)
+            var annos = annoRepo.streamOverlap(source, start, end, isIn(index.bodyTypes.toSet()))
+
+            if (take != null) {
+                log.info("limiting: only indexing first $take item(s)")
+                annos = annos.take(take)
+            }
+
+            annos.map(::AnnoRepoSearchResult)
                 .forEach { anno ->
                     // use anno's body.id as documentId in index
                     val docId = anno.bodyId()
