@@ -58,7 +58,7 @@ projects:
             - name: propositionType
               path: "$.body.metadata.propositionType"
         - name: attendants
-          bodyTypes: [ Attendant, AttendantList ]
+          bodyTypes: [ Attendant, AttendanceList ]
           fields:
             - name: class
               path: "$.body.metadata.class"
