@@ -238,10 +238,10 @@ class ProjectsResource(
     private fun fetchTextSegments(textURL: String) =
         client.target(textURL).request().get().run {
             if (status == OK.statusCode) {
-                readEntityAsJsonString()
+                jsonParser.parse(readEntityAsJsonString()).read<List<String>>("$")
             } else {
                 close()
-                null
+                emptyList()
             }
         }
 
