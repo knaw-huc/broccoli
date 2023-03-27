@@ -96,27 +96,61 @@ class ProjectsResource(
 
         val json = resp.readEntityAsJsonString()
         log.info("data: $json")
+
         val result = jsonParser.parse(json).read<List<Map<String, Any>>>("$.hits.hits[*]")
             .map { hit ->
+                var runningOffset = 0
+                var curSegmentIndex = 0
+
                 @Suppress("UNCHECKED_CAST")
                 val highlight = hit["highlight"] as Map<String, Any>
 
                 @Suppress("UNCHECKED_CAST")
-                val locations = highlight["text"] as List<String>
+                val textLocations = highlight["text"] as List<String>
+
+                @Suppress("UNCHECKED_CAST")
+                val source = hit["_source"] as Map<String, Any>
+
+                @Suppress("UNCHECKED_CAST")
+                val segments = source["text"] as List<String>
+
+                val locations: List<Map<String, Int>> = textLocations
+                    .flatMap { it.substringBetweenOuter(':').split(',') }
+                    .map { Pair(it.substringBefore('-').toInt(), it.substringAfter('-').toInt()) }
+                    .map { loc ->
+                        var curSegmentLength = segments[curSegmentIndex].length
+
+                        // skip lines entirely before location start
+                        while (runningOffset + curSegmentLength < loc.first) {
+                            runningOffset += curSegmentLength + 1
+                            curSegmentLength = segments[++curSegmentIndex].length
+                        }
+                        val startIndex = curSegmentIndex
+                        val startCharOffset = loc.first - runningOffset
+
+                        // skip lines entirely before location end
+                        while (runningOffset + curSegmentLength < loc.second) {
+                            runningOffset += curSegmentLength + 1
+                            curSegmentLength = segments[++curSegmentIndex].length
+                        }
+                        val endIndex = curSegmentIndex
+                        val endCharOffset = loc.second - runningOffset - 1
+
+                        mapOf(
+                            "start" to startIndex,
+                            "startCharOffset" to startCharOffset,
+                            "end" to endIndex,
+                            "endCharOffset" to endCharOffset
+                        )
+                    }
 
                 mapOf(
-                    "src" to hit["_source"],
+//                    "src" to hit["_source"],
                     "bodyId" to hit["_id"],
                     "locations" to locations
-                        .flatMap { it.substringBetweenOuter(':').split(',') }
-                        .map {
-                            mapOf(
-                                "start" to it.substringBefore('-').toInt(),
-                                "end" to it.substringAfter('-').toInt()
-                            )
-                        }
                 )
             }
+
         return Response.ok(result).build()
     }
 
