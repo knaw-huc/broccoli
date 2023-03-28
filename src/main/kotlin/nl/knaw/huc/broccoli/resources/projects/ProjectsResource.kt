@@ -110,13 +110,15 @@ class ProjectsResource(
                         @Suppress("UNCHECKED_CAST")
                         val segments = source["lengths"] as List<Int>
 
-                        val locations: List<Map<String, TextMarker>> = textLocations
+                        val hits: List<Map<String, Any>> = textLocations
                             .also { log.info("locations: $it") }
-                            .map { it.substringBetweenOuter(':') }
-                            .flatMap { it.split(',') }
-                            .map { it.parseIntoCoordinates('-') }
-                            .map { it.toNumericCoordinates() }
-                            .map { loc ->
+                            .map { Pair(it.substringBefore('|'), it.substringAfter('|')) }
+                            .map { Pair(it.first.substringBetweenOuter(':'), it.second) }
+                            .flatMap { it.first.split(',').map { x -> Pair(x, it.second) } }
+                            .map { Pair(it.first.parseIntoCoordinates('-'), it.second) }
+                            .map { Pair(it.first.toNumericCoordinates(), it.second) }
+                            .map { pair ->
+                                val loc = pair.first
                                 var curSegmentLength = segments[curSegmentIndex]
 
                                 // skip lines entirely before location start
@@ -133,15 +135,26 @@ class ProjectsResource(
                                 }
                                 val endMarker = TextMarker(curSegmentIndex, loc.end - runningOffset - 1)
 
-                                mapOf("start" to startMarker, "end" to endMarker)
+                                Pair(pair.second, mapOf("start" to startMarker, "end" to endMarker))
                             }
+                            .let { list ->
+                                val result = LinkedHashMap<String, MutableList<Map<String, TextMarker>>>()
+                                list.forEach { pair ->
+                                    val preview = pair.first
+                                    val location = pair.second
+                                    result.merge(preview, mutableListOf(location)) { l1, l2 -> l1.addAll(l2); l1 }
+                                }
+                                result
+                            }
+                            .entries
+                            .map { e -> mapOf("preview" to e.key, "locations" to e.value) }
 
-                        mutableMapOf(
-                            "bodyId" to hit["_id"],
-                            "locations" to locations
-                        ).apply {
-                            index.fields.forEach { put(it.name, source[it.name]) }
-                        }
+                        LinkedHashMap<String, Any?>()
+                            .apply {
+                                put("bodyId", hit["_id"])
+                                index.fields.forEach { put(it.name, source[it.name]) }
+                                put("hits", hits)
+                            }
                     }
                     .let { Response.ok(it).build() }
             }
