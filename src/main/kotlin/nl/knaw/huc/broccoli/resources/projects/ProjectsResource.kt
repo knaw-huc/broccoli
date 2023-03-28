@@ -95,9 +95,6 @@ class ProjectsResource(
                 jsonParser.parse(json)
                     .read<List<Map<String, Any>>>("$.hits.hits[*]")
                     .map { hit ->
-                        var runningOffset = 0
-                        var curSegmentIndex = 0
-
                         @Suppress("UNCHECKED_CAST")
                         val highlight = hit["highlight"] as Map<String, Any>
 
@@ -110,53 +107,68 @@ class ProjectsResource(
                         @Suppress("UNCHECKED_CAST")
                         val segments = source["lengths"] as List<Int>
 
-                        val hits: List<Map<String, Any>> = textLocations
-                            .also { log.info("locations: $it") }
-                            .map { Pair(it.substringBefore('|'), it.substringAfter('|')) }
-                            .map { Pair(it.first.substringBetweenOuter(':'), it.second) }
-                            .flatMap { it.first.split(',').map { x -> Pair(x, it.second) } }
-                            .map { Pair(it.first.parseIntoCoordinates('-'), it.second) }
-                            .map { Pair(it.first.toNumericCoordinates(), it.second) }
-                            .map { pair ->
-                                val loc = pair.first
+                        // some running vars, updated as we visit each location to keep track of offsets
+                        var runningOffset = 0
+                        var curSegmentIndex = 0
+
+                        textLocations
+                            .map { locationsAndPreviewExpr ->
+                                Pair(
+                                    locationsAndPreviewExpr.substringAfter('|'),
+                                    locationsAndPreviewExpr.substringBefore('|')
+                                )
+                            }
+                            .map { (preview, rangeAndLocationsExpr) ->
+                                Pair(preview, rangeAndLocationsExpr.substringBetweenOuter(':'))
+                            }
+                            .flatMap { (preview, locationsExpr) ->
+                                locationsExpr
+                                    .split(',')
+                                    .map { locationExpr -> Pair(preview, locationExpr) }
+                            }
+                            .map { (preview, locationExpr) ->
+                                Pair(preview, locationExpr.parseIntoCoordinates('-'))
+                            }
+                            .map { (preview, location) ->
                                 var curSegmentLength = segments[curSegmentIndex]
 
-                                // skip lines entirely before location start
-                                while (runningOffset + curSegmentLength < loc.start) {
+                                // skip lines entirely before start
+                                while (runningOffset + curSegmentLength < location.start) {
                                     runningOffset += curSegmentLength + 1
                                     curSegmentLength = segments[++curSegmentIndex]
                                 }
-                                val startMarker = TextMarker(curSegmentIndex, loc.start - runningOffset)
+                                val startMarker = TextMarker(curSegmentIndex, location.start - runningOffset)
 
-                                // skip lines entirely before location end
-                                while (runningOffset + curSegmentLength < loc.end) {
+                                // skip lines entirely before end
+                                while (runningOffset + curSegmentLength < location.end) {
                                     runningOffset += curSegmentLength + 1
                                     curSegmentLength = segments[++curSegmentIndex]
                                 }
-                                val endMarker = TextMarker(curSegmentIndex, loc.end - runningOffset - 1)
+                                val endMarker = TextMarker(curSegmentIndex, location.end - runningOffset - 1)
 
-                                Pair(pair.second, mapOf("start" to startMarker, "end" to endMarker))
+                                Pair(preview, mapOf("start" to startMarker, "end" to endMarker))
                             }
-                            .let { list ->
-                                val result = LinkedHashMap<String, MutableList<Map<String, TextMarker>>>()
-                                list.forEach { pair ->
-                                    val preview = pair.first
-                                    val location = pair.second
-                                    result.merge(preview, mutableListOf(location)) { l1, l2 -> l1.addAll(l2); l1 }
-                                }
-                                result
+                            .let { previewAndLocationsList ->
+                                mutableMapOf<String, MutableList<Map<String, TextMarker>>>()
+                                    .apply {
+                                        previewAndLocationsList.forEach { (preview, location) ->
+                                            getOrPut(preview) { mutableListOf() } += location
+                                        }
+                                    }
                             }
                             .entries
-                            .map { e -> mapOf("preview" to e.key, "locations" to e.value) }
-
-                        LinkedHashMap<String, Any?>()
-                            .apply {
-                                put("bodyId", hit["_id"])
-                                index.fields.forEach { put(it.name, source[it.name]) }
-                                put("hits", hits)
+                            .map { (preview, locations) -> mapOf("preview" to preview, "locations" to locations) }
+                            .let { previewAndLocationsList ->
+                                mutableMapOf("bodyId" to hit["_id"])
+                                    .apply {
+                                        index.fields.forEach { field -> put(field.name, source[field.name]) }
+                                        put("hits", previewAndLocationsList)
+                                    }
                             }
                     }
-                    .let { Response.ok(it).build() }
+                    .let { result ->
+                        Response.ok(result).build()
+                    }
             }
     }
 
@@ -165,11 +177,8 @@ class ProjectsResource(
 
     private data class Coordinates<T>(val start: T, val end: T)
 
-    private fun Coordinates<String>.toNumericCoordinates(): Coordinates<Int> =
-        Coordinates(start.toInt(), end.toInt())
-
-    private fun String.parseIntoCoordinates(delimiter: Char): Coordinates<String> =
-        Coordinates(substringBefore(delimiter), substringAfter(delimiter))
+    private fun String.parseIntoCoordinates(delimiter: Char): Coordinates<Int> =
+        Coordinates(substringBefore(delimiter).toInt(), substringAfter(delimiter).toInt())
 
     enum class FragOpts {
         NONE, SCAN, SENTENCE; // https://github.com/wikimedia/search-highlighter#elasticsearch-options
