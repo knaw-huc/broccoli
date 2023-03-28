@@ -94,7 +94,7 @@ class ProjectsResource(
             .post(Entity.json(query))
             .also { log.info("response: $it") }
             .readEntityAsJsonString()
-            .also { log.info("data: $it") }
+//            .also { log.info("data: $it") }
             .let { json ->
                 jsonParser.parse(json)
                     .read<List<Map<String, Any>>>("$.hits.hits[*]")
@@ -112,7 +112,7 @@ class ProjectsResource(
                         val source = hit["_source"] as Map<String, Any>
 
                         @Suppress("UNCHECKED_CAST")
-                        val segments = source["text"] as List<String>
+                        val segments = source["lengths"] as List<Int>
 
                         val locations: List<Map<String, TextMarker>> = textLocations
                             .also { log.info("locations: $it") }
@@ -121,19 +121,19 @@ class ProjectsResource(
                             .map { it.parseIntoCoordinates('-') }
                             .map { it.toNumericCoordinates() }
                             .map { loc ->
-                                var curSegmentLength = segments[curSegmentIndex].length
+                                var curSegmentLength = segments[curSegmentIndex]
 
                                 // skip lines entirely before location start
                                 while (runningOffset + curSegmentLength < loc.start) {
                                     runningOffset += curSegmentLength + 1
-                                    curSegmentLength = segments[++curSegmentIndex].length
+                                    curSegmentLength = segments[++curSegmentIndex]
                                 }
                                 val startMarker = TextMarker(curSegmentIndex, loc.start - runningOffset)
 
                                 // skip lines entirely before location end
                                 while (runningOffset + curSegmentLength < loc.end) {
                                     runningOffset += curSegmentLength + 1
-                                    curSegmentLength = segments[++curSegmentIndex].length
+                                    curSegmentLength = segments[++curSegmentIndex]
                                 }
                                 val endMarker = TextMarker(curSegmentIndex, loc.end - runningOffset - 1)
 
@@ -226,8 +226,11 @@ class ProjectsResource(
                         .let { textTarget ->
                             val textURL = textTarget["source"] as String
                             val textSegments = fetchTextSegments(textURL)
+                            val joinedText = textSegments.joinToString(separator = " ")
+                            val segmentLengths = textSegments.map { it.length }
                             if (textSegments != null) {
-                                payload["text"] = textSegments
+                                payload["text"] = joinedText
+                                payload["lengths"] = segmentLengths
                                 ok.add(docId)
                             } else {
                                 log.warn("Failed to fetch text for $docId from $textURL")

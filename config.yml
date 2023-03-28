@@ -49,12 +49,18 @@ projects:
         - name: resolutions
           bodyTypes: [ Resolution ]
           fields:
-            - name: date
+            - type: bodyType
+              path: "$.body.type"
+            - name: sessionDate
               path: "$.body.metadata.sessionDate"
-            - name: invNr
-              path: "$.body.metadata.inventoryNum"
-            - name: harvested
-              path: "$.provenance.harvestingDate"
+            - name: sessionDay
+              path: "$.body.metadata.sessionDay"
+            - name: sessionMonth
+              path: "$.body.metadata.sessionMonth"
+            - name: sessionYear
+              path: "$.body.metadata.sessionYear"
+            - name: sessionWeekday
+              path: "$.body.metadata.sessionWeekday"
             - name: propositionType
               path: "$.body.metadata.propositionType"
         - name: attendants
