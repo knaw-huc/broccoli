@@ -43,13 +43,12 @@ class ProjectsResource(
     @Operation(summary = "Get configured projects")
     fun listProjects(): Set<String> = projects.keys
 
-    @GET
-    @Path("{projectId}/search/{key}")
+    @POST
+    @Path("{projectId}/search")
     fun searchIndex(
         @PathParam("projectId") projectId: String,
-        @PathParam("key") key: String,
+        fieldsQuery: String,
         @QueryParam("indexName") indexName: String?,
-        @QueryParam("snip") @DefaultValue("false") snip: Boolean,
         @QueryParam("frag") @DefaultValue("none") frag: FragOpts = NONE,
         @QueryParam("size") @DefaultValue("100") size: Int,
         @QueryParam("num") @DefaultValue("10") num: Int
@@ -66,25 +65,22 @@ class ProjectsResource(
                 ?: throw NotFoundException("index '$indexName' not configured for project: ${project.name}")
         }
 
-        // include snippets, or just offsets?
-        val snipsAndOffsets = if (snip) "return_snippets_and_offsets" else "return_offsets"
-
-        val textHighlighter = """
-            "text": {
-              "type": "experimental",
-              "fragmenter": "$frag",
-              "fragment_size": $size,
-              "number_of_fragments": $num,
-              "options": { "$snipsAndOffsets": true }
-          }
-        """.trimIndent()
-
-        // spec out the elastic query
+        // construct query for elasticsearch
         val query = """
             {
               "_source": true,
-              "query": { "match_phrase_prefix": { "text": { "query": "$key" } } },
-              "highlight": { "fields": { $textHighlighter } },
+              "query": $fieldsQuery,
+              "highlight": {
+                "fields": {
+                  "text": {
+                    "type": "experimental",
+                    "fragmenter": "$frag",
+                    "fragment_size": $size,
+                    "number_of_fragments": $num,
+                    "options": { "return_snippets_and_offsets": true }
+                  }
+                }
+              },
               "sort": "_doc"
             }
         """.trimIndent()
@@ -94,7 +90,7 @@ class ProjectsResource(
             .post(Entity.json(query))
             .also { log.info("response: $it") }
             .readEntityAsJsonString()
-//            .also { log.info("data: $it") }
+            .also { log.info("data: $it") }
             .let { json ->
                 jsonParser.parse(json)
                     .read<List<Map<String, Any>>>("$.hits.hits[*]")
@@ -140,7 +136,12 @@ class ProjectsResource(
                                 mapOf("start" to startMarker, "end" to endMarker)
                             }
 
-                        mapOf("bodyId" to hit["_id"], "locations" to locations)
+                        mutableMapOf(
+                            "bodyId" to hit["_id"],
+                            "locations" to locations
+                        ).apply {
+                            index.fields.forEach { put(it.name, source[it.name]) }
+                        }
                     }
                     .let { Response.ok(it).build() }
             }
