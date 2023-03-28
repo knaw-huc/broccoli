@@ -49,7 +49,7 @@ projects:
         - name: resolutions
           bodyTypes: [ Resolution ]
           fields:
-            - type: bodyType
+            - name: bodyType
               path: "$.body.type"
             - name: sessionDate
               path: "$.body.metadata.sessionDate"
