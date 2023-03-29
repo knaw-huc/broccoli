@@ -1,6 +1,27 @@
-version: '2'
+version: '3.5'
 
 services:
+  brinta:
+    container_name: broccoli_brinta
+    environment:
+      - node.name=br01
+      - cluster.initial_master_nodes=br01
+      - cluster.name=brinta-cluster
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    image: brinta
+    networks:
+      - brinta_network
+    ports:
+      - 9200:9200
+    restart: unless-stopped
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - brinta_volume:/usr/share/elasticsearch/data
+
   broccoli_server:
     container_name: broccoli_server
     environment:
@@ -16,7 +37,12 @@ services:
     restart: unless-stopped
 
 networks:
+  brinta_network:
   broccoli_network:
   nginxproxynetwork:
     external:
       name: nginxproxynetwork
+
+volumes:
+  brinta_volume:
+    driver: local
