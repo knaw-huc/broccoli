@@ -11,7 +11,7 @@ services:
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     image: registry.diginfra.net/tt/brinta:latest
     networks:
-      - brinta_network
+      - broccoli_network
     ports:
       - 9200:9200
     restart: unless-stopped
@@ -37,7 +37,6 @@ services:
     restart: unless-stopped
 
 networks:
-  brinta_network:
   broccoli_network:
   nginxproxynetwork:
     external:
