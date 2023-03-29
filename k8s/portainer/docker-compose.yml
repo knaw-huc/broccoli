@@ -9,7 +9,7 @@ services:
       - cluster.name=brinta-cluster
       - bootstrap.memory_lock=true
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-    image: brinta
+    image: registry.diginfra.net/tt/brinta:latest
     networks:
       - brinta_network
     ports:
