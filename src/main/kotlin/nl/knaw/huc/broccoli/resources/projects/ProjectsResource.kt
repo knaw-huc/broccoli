@@ -2,16 +2,13 @@ package nl.knaw.huc.broccoli.resources.projects
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
-import com.jayway.jsonpath.Configuration.defaultConfiguration
-import com.jayway.jsonpath.JsonPath
-import com.jayway.jsonpath.Option.DEFAULT_PATH_LEAF_TO_NULL
+import com.jayway.jsonpath.ParseContext
 import io.swagger.v3.oas.annotations.Operation
 import nl.knaw.huc.broccoli.api.Constants.isIn
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
 import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.resources.projects.ProjectsResource.FragOpts.SCAN
-import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
 import nl.knaw.huc.broccoli.service.anno.TextSelector
 import nl.knaw.huc.broccoli.service.text.TextRepo
@@ -20,19 +17,17 @@ import javax.ws.rs.*
 import javax.ws.rs.client.Client
 import javax.ws.rs.client.Entity
 import javax.ws.rs.core.*
-import javax.ws.rs.core.Response.Status.Family
-import javax.ws.rs.core.Response.Status.OK
 
 @Path(PROJECTS)
 @Produces(MediaType.APPLICATION_JSON)
 class ProjectsResource(
     private val projects: Map<String, Project>,
     private val client: Client,
+    private val jsonParser: ParseContext
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
     private val objectMapper = ObjectMapper()
-    private val jsonParser = JsonPath.using(defaultConfiguration().addOptions(DEFAULT_PATH_LEAF_TO_NULL))
 
     init {
         log.debug("init: projects=$projects, client=$client")
@@ -187,126 +182,6 @@ class ProjectsResource(
         override fun toString() = name.lowercase()
     }
 
-    @GET
-    @Path("{projectId}/index/{indexName}")
-    fun fillIndex(
-        @PathParam("projectId") projectId: String,      // e.g., "republic"
-        @PathParam("indexName") indexName: String,      // e.g., "resolutions"
-        @QueryParam("tierValue") tierParam: String?,    // e.g., "1728" (optional, if not given: index all)
-        @QueryParam("take") take: Int? = null,          // testing param, only index first 'take' items
-    ): Response {
-        val project = getProject(projectId)
-        log.info("filling index for project: $project, index: $indexName")
-
-        val annoRepo = project.annoRepo
-        val brinta = project.brinta
-
-        val index = brinta.indices.find { it.name == indexName }
-            ?: throw NotFoundException("index '$indexName' not configured for project: ${project.name}")
-
-        val topTierName = project.tiers[0].name
-        val topTierValue = if (tierParam == null) emptyList() else listOf(Pair(topTierName, tierParam))
-
-        val ok = mutableListOf<String>()
-        val err = mutableListOf<Map<*, *>>()
-        val result = mapOf(
-            "ok" to ok,
-            "err" to err
-        )
-
-        annoRepo.findByTiers(
-            bodyType = topTierName.capitalize(),
-            tiers = topTierValue
-        ).forEach { topTier ->
-            log.info("Indexing ${topTier.bodyType()}: ${topTier.bodyId()}")
-
-            // extract entire text range of current top tier (for overlap query)
-            val textTarget = topTier.withField<Any>("Text", "source").first()
-            val source = textTarget["source"] as String
-            val selector = textTarget["selector"] as Map<*, *>
-            val start = selector["start"] as Int
-            val end = selector["end"] as Int
-
-            // find all annotations with body.type matching this index, overlapping with top tier's range
-            var annos = annoRepo.streamOverlap(source, start, end, isIn(index.bodyTypes.toSet()))
-
-            if (take != null) {
-                log.info("limiting: only indexing first $take item(s)")
-                annos = annos.take(take)
-            }
-
-            annos.map(::AnnoRepoSearchResult)
-                .forEach { anno ->
-                    // use anno's body.id as documentId in index
-                    val docId = anno.bodyId()
-
-                    // build index payload for current anno
-                    val payload = mutableMapOf<String, Any>()
-
-                    // First: core payload for index: fetch "full text" from (remote) URL
-                    anno.withoutField<String>("Text", "selector")
-                        .also { if (it.size > 1) log.warn("multiple Text targets without selector: $it") }
-                        .first() // more than one text target without selector? -> arbitrarily choose the first
-                        .let { textTarget ->
-                            val textURL = textTarget["source"] as String
-                            val textSegments = fetchTextSegments(textURL)
-                            val joinedText = textSegments.joinToString(separator = " ")
-                            val segmentLengths = textSegments.map { it.length }
-                            if (textSegments != null) {
-                                payload["text"] = joinedText
-                                payload["lengths"] = segmentLengths
-                                ok.add(docId)
-                            } else {
-                                log.warn("Failed to fetch text for $docId from $textURL")
-                                err.add(
-                                    mapOf(
-                                        "body.id" to docId,
-                                        "annoURL" to anno.read("$.id"),
-                                        "textURL" to textURL
-                                    )
-                                )
-                            }
-                        }
-
-                    // Then: optional extra payload: fields from config
-                    index.fields.forEach { field ->
-                        anno.read(field.path)
-                            ?.let { payload[field.name] = it }
-                            ?: log.info("$docId has no value for field ${field.name} at ${field.path}")
-                    }
-
-                    log.info("Indexing $docId, payload=$payload")
-
-                    client.target(brinta.uri)
-                        .path(index.name).path("_doc").path(docId)
-                        .request()
-                        .put(Entity.json(payload))
-                        .run {
-                            if (statusInfo.family != Family.SUCCESSFUL) {   // could be OK or CREATED
-                                val entity = readEntityAsJsonString()       // reading entity also closes connection
-                                log.warn("Failed to index $docId: $entity")
-                            } else {
-                                close() // explicit close, or connection pool will be exhausted !!!
-                            }
-                        }
-
-                }
-        }
-
-        return Response.ok(result).build()
-    }
-
-    private fun fetchTextSegments(textURL: String) =
-        client.target(textURL).request().get().run {
-            if (status == OK.statusCode) {
-                jsonParser.parse(readEntityAsJsonString()).read<List<String>>("$")
-            } else {
-                close()
-                emptyList()
-            }
-        }
-
-    private fun String.capitalize(): String = replaceFirstChar(Char::uppercase)
 
     private fun Response.readEntityAsJsonString(): String = readEntity(String::class.java) ?: ""
 
@@ -489,7 +364,7 @@ class ProjectsResource(
                     val sourceUrl = it["source"] as String
                     val start = selector["start"] as Int
                     val end = selector["end"] as Int
-                    val tier0 = project.tiers[0].name.capitalize()//.replaceFirstChar(Char::uppercase)
+                    val tier0 = project.tiers[0].name.capitalize()
                     val bodyTypes = isIn(setOf(tier0))
                     timeExecution(
                         { annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes) },
@@ -509,6 +384,8 @@ class ProjectsResource(
 
         return Response.ok(result).build()
     }
+
+    private fun String.capitalize(): String = replaceFirstChar(Char::uppercase)
 
     private fun extractManifest(anno: Map<*, *>): String? {
         if (anno.containsKey("body")) {

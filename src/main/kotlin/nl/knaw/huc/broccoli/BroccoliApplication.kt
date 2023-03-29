@@ -1,5 +1,8 @@
 package nl.knaw.huc.broccoli
 
+import com.jayway.jsonpath.Configuration
+import com.jayway.jsonpath.JsonPath
+import com.jayway.jsonpath.Option
 import `in`.vectorpro.dropwizard.swagger.SwaggerBundle
 import `in`.vectorpro.dropwizard.swagger.SwaggerBundleConfiguration
 import io.dropwizard.Application
@@ -18,6 +21,7 @@ import nl.knaw.huc.broccoli.config.*
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
+import nl.knaw.huc.broccoli.resources.brinta.BrintaResource
 import nl.knaw.huc.broccoli.resources.globalise.GlobaliseResource
 import nl.knaw.huc.broccoli.resources.projects.ProjectsResource
 import nl.knaw.huc.broccoli.resources.republic.RepublicResource
@@ -75,10 +79,14 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
 
         val client = createClient(configuration.jerseyClient, environment)
 
+        val jsonParser =
+            JsonPath.using(Configuration.defaultConfiguration().addOptions(Option.DEFAULT_PATH_LEAF_TO_NULL))
+
         with(environment.jersey()) {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())
-            register(ProjectsResource(projects, client))
+            register(ProjectsResource(projects, client, jsonParser))
+            register(BrintaResource(projects, client, jsonParser))
         }
 
         registerLegacyResources(configuration, projects, client, environment)
