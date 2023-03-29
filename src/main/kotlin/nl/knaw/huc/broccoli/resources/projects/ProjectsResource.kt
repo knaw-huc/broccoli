@@ -10,7 +10,7 @@ import nl.knaw.huc.broccoli.api.Constants.isIn
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
 import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.core.Project
-import nl.knaw.huc.broccoli.resources.projects.ProjectsResource.FragOpts.NONE
+import nl.knaw.huc.broccoli.resources.projects.ProjectsResource.FragOpts.SCAN
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
 import nl.knaw.huc.broccoli.service.anno.TextSelector
@@ -49,7 +49,7 @@ class ProjectsResource(
         @PathParam("projectId") projectId: String,
         fieldsQuery: String,
         @QueryParam("indexName") indexName: String?,
-        @QueryParam("frag") @DefaultValue("none") frag: FragOpts = NONE,
+        @QueryParam("frag") @DefaultValue("scan") frag: FragOpts = SCAN,
         @QueryParam("size") @DefaultValue("100") size: Int,
         @QueryParam("num") @DefaultValue("10") num: Int
     ): Response {
