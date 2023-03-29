@@ -84,6 +84,7 @@ class ProjectsResource(
               "sort": "_doc"
             }
         """.trimIndent()
+            .also { log.info("sending query: $it") }
 
         return client.target(brinta.uri).path(index.name).path("_search")
             .request()
