@@ -1,17 +1,17 @@
 package nl.knaw.huc.broccoli.resources.brinta
 
 import com.jayway.jsonpath.ParseContext
+import jakarta.ws.rs.*
+import jakarta.ws.rs.client.Client
+import jakarta.ws.rs.client.Entity
+import jakarta.ws.rs.core.MediaType
+import jakarta.ws.rs.core.Response
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.ResourcePaths.BRINTA
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import org.slf4j.LoggerFactory
-import javax.ws.rs.*
-import javax.ws.rs.client.Client
-import javax.ws.rs.client.Entity
-import javax.ws.rs.core.MediaType
-import javax.ws.rs.core.Response
 
 @Path(BRINTA)
 @Produces(MediaType.APPLICATION_JSON)

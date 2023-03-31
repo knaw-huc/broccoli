@@ -5,6 +5,8 @@ import com.jayway.jsonpath.Configuration.defaultConfiguration
 import com.jayway.jsonpath.DocumentContext
 import com.jayway.jsonpath.JsonPath
 import com.jayway.jsonpath.Option.DEFAULT_PATH_LEAF_TO_NULL
+import jakarta.ws.rs.BadRequestException
+import jakarta.ws.rs.NotFoundException
 import nl.knaw.huc.annorepo.client.AnnoRepoClient
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE
@@ -12,8 +14,6 @@ import nl.knaw.huc.broccoli.api.Constants.isEqualTo
 import nl.knaw.huc.broccoli.api.Constants.overlap
 import nl.knaw.huc.broccoli.service.cache.LRUCache
 import org.slf4j.LoggerFactory
-import javax.ws.rs.BadRequestException
-import javax.ws.rs.NotFoundException
 import kotlin.streams.asSequence
 
 class AnnoRepo(

@@ -3,13 +3,13 @@ package nl.knaw.huc.broccoli.config
 import arrow.core.identity
 import com.fasterxml.jackson.annotation.JsonProperty
 import `in`.vectorpro.dropwizard.swagger.SwaggerBundleConfiguration
-import io.dropwizard.Configuration
 import io.dropwizard.client.JerseyClientConfiguration
+import io.dropwizard.core.Configuration
+import jakarta.validation.Valid
+import jakarta.validation.constraints.Min
+import jakarta.validation.constraints.NotNull
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.resources.AboutResource
-import javax.validation.Valid
-import javax.validation.constraints.Min
-import javax.validation.constraints.NotNull
 
 class BroccoliConfiguration : Configuration() {
     @Valid

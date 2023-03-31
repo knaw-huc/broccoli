@@ -3,17 +3,17 @@ package nl.knaw.huc.broccoli
 import com.jayway.jsonpath.Configuration
 import com.jayway.jsonpath.JsonPath
 import com.jayway.jsonpath.Option
-import `in`.vectorpro.dropwizard.swagger.SwaggerBundle
-import `in`.vectorpro.dropwizard.swagger.SwaggerBundleConfiguration
-import io.dropwizard.Application
 import io.dropwizard.assets.AssetsBundle
 import io.dropwizard.client.JerseyClientBuilder
 import io.dropwizard.client.JerseyClientConfiguration
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor
 import io.dropwizard.configuration.SubstitutingSourceProvider
+import io.dropwizard.core.Application
+import io.dropwizard.core.setup.Bootstrap
+import io.dropwizard.core.setup.Environment
 import io.dropwizard.jetty.setup.ServletEnvironment
-import io.dropwizard.setup.Bootstrap
-import io.dropwizard.setup.Environment
+import jakarta.servlet.DispatcherType
+import jakarta.ws.rs.client.Client
 import nl.knaw.huc.annorepo.client.AnnoRepoClient
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.Constants.APP_NAME
@@ -22,20 +22,14 @@ import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
 import nl.knaw.huc.broccoli.resources.brinta.BrintaResource
-import nl.knaw.huc.broccoli.resources.globalise.GlobaliseResource
 import nl.knaw.huc.broccoli.resources.projects.ProjectsResource
-import nl.knaw.huc.broccoli.resources.republic.RepublicResource
-import nl.knaw.huc.broccoli.resources.republic.RepublicVolumeMapper
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
-import nl.knaw.huc.broccoli.service.mock.MockIIIFStore
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.eclipse.jetty.servlets.CrossOriginFilter
 import org.eclipse.jetty.servlets.CrossOriginFilter.*
 import org.slf4j.LoggerFactory
 import java.net.URI
 import java.util.*
-import javax.servlet.DispatcherType
-import javax.ws.rs.client.Client
 
 class BroccoliApplication : Application<BroccoliConfiguration>() {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -49,15 +43,18 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             bootstrap.configurationSourceProvider, EnvironmentVariableSubstitutor()
         )
         with(bootstrap) {
-            addBundle(getSwaggerBundle())
+//            addBundle(getSwaggerBundle())
             addBundle(AssetsBundle("/mock"))
         }
     }
 
-    private fun getSwaggerBundle() = object : SwaggerBundle<BroccoliConfiguration>() {
+    /*
+    private fun getSwaggerBundle(): ConfiguredBundle<in BroccoliConfiguration?> = object : SwaggerBundle<BroccoliConfiguration>(),
+        ConfiguredBundle<BroccoliConfiguration?> {
         override fun getSwaggerBundleConfiguration(configuration: BroccoliConfiguration): SwaggerBundleConfiguration =
             configuration.swaggerBundleConfiguration
     }
+     */
 
     override fun run(configuration: BroccoliConfiguration, environment: Environment) {
         log.info(
@@ -89,7 +86,6 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             register(BrintaResource(projects, client, jsonParser))
         }
 
-        registerLegacyResources(configuration, projects, client, environment)
         setupCORSHeaders(environment.servlets())
 
         log.info(
@@ -142,25 +138,6 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
 
             AnnoRepo(AnnoRepoClient(serverURI, apiKey, userAgent), containerName)
         }
-
-    private fun registerLegacyResources(
-        configuration: BroccoliConfiguration,
-        projects: Map<String, Project>,
-        client: Client,
-        environment: Environment,
-    ) {
-        val republicAnnoRepoClient = projects["republic"]!!.annoRepo
-        val globaliseAnnoRepoClient = projects["globalise"]!!.annoRepo
-
-        val volumeMapper = RepublicVolumeMapper(configuration.republic)
-
-        val iiifStore = MockIIIFStore(configuration.iiifUri, client)
-
-        with(environment.jersey()) {
-            register(GlobaliseResource(configuration.globalise, globaliseAnnoRepoClient, client))
-            register(RepublicResource(configuration.republic, volumeMapper, republicAnnoRepoClient, iiifStore, client))
-        }
-    }
 
     private fun setupCORSHeaders(environment: ServletEnvironment) {
         // Enable CORS headers

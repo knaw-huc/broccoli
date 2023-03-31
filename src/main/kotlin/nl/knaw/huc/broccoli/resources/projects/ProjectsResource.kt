@@ -4,6 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.jayway.jsonpath.ParseContext
 import io.swagger.v3.oas.annotations.Operation
+import jakarta.ws.rs.*
+import jakarta.ws.rs.client.Client
+import jakarta.ws.rs.client.Entity
+import jakarta.ws.rs.core.*
 import nl.knaw.huc.broccoli.api.Constants.isIn
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
 import nl.knaw.huc.broccoli.api.TextMarker
@@ -13,10 +17,6 @@ import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
 import nl.knaw.huc.broccoli.service.anno.TextSelector
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
-import javax.ws.rs.*
-import javax.ws.rs.client.Client
-import javax.ws.rs.client.Entity
-import javax.ws.rs.core.*
 
 @Path(PROJECTS)
 @Produces(MediaType.APPLICATION_JSON)
@@ -30,7 +30,7 @@ class ProjectsResource(
     private val objectMapper = ObjectMapper()
 
     init {
-        log.debug("init: projects=$projects, client=$client")
+        log.debug("init: projects={}, client={}", projects, client)
     }
 
     @GET
