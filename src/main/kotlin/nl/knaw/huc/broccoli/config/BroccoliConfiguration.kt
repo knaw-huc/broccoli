@@ -178,6 +178,10 @@ class IndexFieldConfiguration {
     @Valid
     @JsonProperty
     val path: String = "$.body.id"
+
+    @Valid
+    @JsonProperty
+    val type: String? = null
 }
 
 

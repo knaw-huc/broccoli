@@ -1,5 +1,6 @@
 package nl.knaw.huc.broccoli.resources.brinta
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.jayway.jsonpath.ParseContext
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.ResourcePaths.BRINTA
@@ -32,17 +33,22 @@ class BrintaResource(
         val index = getIndex(project, indexName)
         log.info("Creating ${project.name} index: ${index.name}")
 
+        val properties = mutableMapOf<String, Any>(
+            "text" to mapOf(
+                "type" to "text",
+                "index_options" to "offsets",
+                "analyzer" to "fulltext_analyzer"
+            )
+        )
+        index.fields.forEach { field ->
+            field.type?.let { type -> properties[field.name] = mapOf("type" to type) }
+        }
+
+        val mappings = mapOf("properties" to properties)
+
         return """
             {
-              "mappings": {
-                "properties": {
-                  "text": {
-                    "type": "text",
-                    "index_options": "offsets",
-                    "analyzer": "fulltext_analyzer"
-                  }
-                }
-              },
+              "mappings": ${mappings.toJsonString()},
               "settings": {
                 "analysis": {
                   "analyzer": {
@@ -59,6 +65,7 @@ class BrintaResource(
               }
             }
         """.trimIndent()
+            .also { mapping -> log.info("mapping: $mapping") }
             .let { mapping ->
                 client.target(project.brinta.uri)
                     .path(index.name)
@@ -72,6 +79,8 @@ class BrintaResource(
                 Response.ok(result).build()
             }
     }
+
+    private fun Map<String, Any>.toJsonString() = jacksonObjectMapper().writeValueAsString(this)
 
     @DELETE
     @Path("{projectId}/{indexName}")

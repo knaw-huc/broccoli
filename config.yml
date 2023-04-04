@@ -47,22 +47,29 @@ projects:
       uri: http://localhost:9200
       indices:
         - name: resolutions
-          bodyTypes: [ Resolution ]
+          bodyTypes: [ Resolution, AttendanceList ]
           fields:
             - name: bodyType
               path: "$.body.type"
+              type: keyword
             - name: sessionDate
               path: "$.body.metadata.sessionDate"
+              type: date
             - name: sessionDay
               path: "$.body.metadata.sessionDay"
+              type: byte
             - name: sessionMonth
               path: "$.body.metadata.sessionMonth"
+              type: byte
             - name: sessionYear
               path: "$.body.metadata.sessionYear"
+              type: short
             - name: sessionWeekday
               path: "$.body.metadata.sessionWeekday"
+              type: keyword
             - name: propositionType
               path: "$.body.metadata.propositionType"
+              type: keyword
         - name: attendants
           bodyTypes: [ Attendant, AttendanceList ]
           fields:
