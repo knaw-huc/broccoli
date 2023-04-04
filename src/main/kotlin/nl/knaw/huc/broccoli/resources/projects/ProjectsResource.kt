@@ -30,7 +30,7 @@ class ProjectsResource(
     private val objectMapper = ObjectMapper()
 
     init {
-        log.debug("init: projects=$projects, client=$client")
+        log.info("init: projects=$projects, client=$client")
     }
 
     @GET
@@ -45,8 +45,8 @@ class ProjectsResource(
         fieldsQuery: String,
         @QueryParam("indexName") indexName: String?,
         @QueryParam("frag") @DefaultValue("scan") frag: FragOpts = SCAN,
-        @QueryParam("size") @DefaultValue("100") size: Int,
-        @QueryParam("num") @DefaultValue("10") num: Int
+        @QueryParam("from") @DefaultValue("0") from: Int,
+        @QueryParam("size") @DefaultValue("10") size: Int,
     ): Response {
         // determine project
         val project = getProject(projectId)
@@ -64,14 +64,14 @@ class ProjectsResource(
         val query = """
             {
               "_source": true,
+              "from": $from,
+              "size": $size,
               "query": $fieldsQuery,
               "highlight": {
                 "fields": {
                   "text": {
                     "type": "experimental",
                     "fragmenter": "$frag",
-                    "fragment_size": $size,
-                    "number_of_fragments": $num,
                     "options": { "return_snippets_and_offsets": true }
                   }
                 }
