@@ -80,6 +80,25 @@ class BrintaResource(
             }
     }
 
+    @GET
+    @Path("{projectId}/indices")
+    fun getMapping(
+        @PathParam("projectId") projectId: String
+    ): Response = getProject(projectId)
+        .also { log.info("project: ${it.name}") }
+        .brinta
+        .indices
+        .let { indices ->
+            mutableMapOf<String, Map<String, String>>().apply {
+                indices.forEach { index ->
+                    put(index.name, mutableMapOf<String, String>().apply {
+                        index.fields.forEach { field -> put(field.name, field.type ?: "undefined") }
+                    })
+                }
+            }
+        }
+        .let { map -> Response.ok(map).build() }
+
     private fun Map<String, Any>.toJsonString() = jacksonObjectMapper().writeValueAsString(this)
 
     @DELETE
