@@ -1,10 +1,12 @@
 package nl.knaw.huc.broccoli.resources.brinta
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.jayway.jsonpath.DocumentContext
 import com.jayway.jsonpath.ParseContext
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.ResourcePaths.BRINTA
 import nl.knaw.huc.broccoli.config.IndexConfiguration
+import nl.knaw.huc.broccoli.config.IndexFieldConfiguration
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import org.slf4j.LoggerFactory
@@ -14,7 +16,7 @@ import javax.ws.rs.client.Entity
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.core.Response
 
-@Path(BRINTA)
+@Path("$BRINTA/{projectId}")
 @Produces(MediaType.APPLICATION_JSON)
 class BrintaResource(
     private val projects: Map<String, Project>,
@@ -24,7 +26,7 @@ class BrintaResource(
     private val log = LoggerFactory.getLogger(javaClass)
 
     @POST
-    @Path("{projectId}/{indexName}")
+    @Path("{indexName}")
     fun createIndex(
         @PathParam("projectId") projectId: String,
         @PathParam("indexName") indexName: String
@@ -81,8 +83,8 @@ class BrintaResource(
     }
 
     @GET
-    @Path("{projectId}/indices")
-    fun getMapping(
+    @Path("indices")
+    fun getIndices(
         @PathParam("projectId") projectId: String
     ): Response = getProject(projectId)
         .also { log.info("project: ${it.name}") }
@@ -99,10 +101,78 @@ class BrintaResource(
         }
         .let { map -> Response.ok(map).build() }
 
-    private fun Map<String, Any>.toJsonString() = jacksonObjectMapper().writeValueAsString(this)
+    @GET
+    @Path("facets")
+    fun getFacets(
+        @PathParam("projectId") projectId: String,
+        @QueryParam("indexName") indexName: String?
+    ): Response = getProject(projectId)
+        .let { project ->
+            getIndex(project, indexName)
+                .let { index ->
+                    index.fields
+                        .mapNotNull(::buildFieldAggregationQuery)
+                        .flatMap { it.asSequence() }
+                        .associate { it.key to it.value }
+                        .let { mutableMapOf("size" to 0, "aggs" to it) }
+                        .toJsonString()
+                        .also { log.info("query: $it") }
+                        .let { query ->
+                            client.target(project.brinta.uri).path(index.name).path("_search")
+                                .request()
+                                .post(Entity.json(query))
+                                .also { log.info("response: $it") }
+                                .readEntityAsJsonString()
+                                .also { log.info("entity: $it") }
+                        }
+                        .let<String, DocumentContext>(jsonParser::parse)
+                        .let { context ->
+                            index.fields
+                                .filter(::isSupportedFieldType)
+                                .map { field ->
+                                    mapOf(field.name to
+                                            context
+                                                .read<List<Map<String, Any>>>("$.aggregations.${field.name}.buckets")
+                                                .associate { (it["key_as_string"] ?: it["key"]) to it["doc_count"] }
+                                    )
+                                }
+                        }
+                }
+        }
+        .let { Response.ok(it).build() }
+
+    private fun isSupportedFieldType(field: IndexFieldConfiguration): Boolean =
+        field.type in setOf("date", "keyword")
+
+    private fun buildFieldAggregationQuery(field: IndexFieldConfiguration) =
+        when (field.type) {
+            "keyword" -> mapOf(
+                field.name to mapOf(
+                    "terms" to mapOf(
+                        "field" to field.name,
+                        "size" to 100
+                    )
+                )
+            )
+
+            "date" -> mapOf(
+                field.name to mapOf(
+                    "date_histogram" to mapOf(
+                        "field" to field.name,
+                        "format" to "yyyy-MM",
+                        "calendar_interval" to "month"
+                    )
+                )
+            )
+
+            else -> {
+                log.info("${field.name}: unhandled type '${field.type}'")
+                null
+            }
+        }
 
     @DELETE
-    @Path("{projectId}/{indexName}")
+    @Path("{indexName}")
     fun deleteIndex(
         @PathParam("projectId") projectId: String,
         @PathParam("indexName") indexName: String
@@ -124,7 +194,7 @@ class BrintaResource(
     }
 
     @POST
-    @Path("{projectId}/{indexName}/fill")
+    @Path("{indexName}/fill")
     fun fillIndex(
         @PathParam("projectId") projectId: String,      // e.g., "republic"
         @PathParam("indexName") indexName: String,      // e.g., "resolutions"
@@ -230,6 +300,8 @@ class BrintaResource(
 
     private fun Response.readEntityAsJsonString(): String = readEntity(String::class.java) ?: ""
 
+    private fun Map<String, Any>.toJsonString() = jacksonObjectMapper().writeValueAsString(this)
+
     private fun fetchTextSegments(textURL: String) =
         client.target(textURL).request().get().run {
             if (status == Response.Status.OK.statusCode) {
@@ -247,9 +319,12 @@ class BrintaResource(
             ?: throw NotFoundException("Unknown project: $projectId. See /projects for known projects")
     }
 
-    private fun getIndex(project: Project, indexName: String): IndexConfiguration {
-        return project.brinta.indices.find { it.name == indexName }
-            ?: throw NotFoundException("index '$indexName' not configured for project: ${project.name}")
-    }
+    private fun getIndex(project: Project, indexName: String?): IndexConfiguration =
+        indexName
+            ?.let {
+                project.brinta.indices.find { index -> index.name == indexName }
+                    ?: throw NotFoundException("index '$indexName' not configured for project: ${project.name}")
+            }
+            ?: project.brinta.indices[0]
 
 }
