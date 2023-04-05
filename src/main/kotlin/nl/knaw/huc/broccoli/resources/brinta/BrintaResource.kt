@@ -128,7 +128,6 @@ class BrintaResource(
                         .let<String, DocumentContext>(jsonParser::parse)
                         .let { context ->
                             index.fields
-                                .filter(::isSupportedFieldType)
                                 .map { field ->
                                     mapOf(field.name to
                                             context
@@ -141,12 +140,9 @@ class BrintaResource(
         }
         .let { Response.ok(it).build() }
 
-    private fun isSupportedFieldType(field: IndexFieldConfiguration): Boolean =
-        field.type in setOf("date", "keyword")
-
     private fun buildFieldAggregationQuery(field: IndexFieldConfiguration) =
         when (field.type) {
-            "keyword" -> mapOf(
+            "keyword", "short", "byte" -> mapOf(
                 field.name to mapOf(
                     "terms" to mapOf(
                         "field" to field.name,
@@ -159,8 +155,8 @@ class BrintaResource(
                 field.name to mapOf(
                     "date_histogram" to mapOf(
                         "field" to field.name,
-                        "format" to "yyyy-MM",
-                        "calendar_interval" to "month"
+                        "format" to "yyyy-MM-dd",
+                        "calendar_interval" to "week"
                     )
                 )
             )
