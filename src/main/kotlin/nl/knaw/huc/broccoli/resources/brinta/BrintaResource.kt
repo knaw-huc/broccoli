@@ -114,7 +114,7 @@ class BrintaResource(
                         .mapNotNull(::buildFieldAggregationQuery)
                         .flatMap { it.asSequence() }
                         .associate { it.key to it.value }
-                        .let { mutableMapOf("size" to 0, "aggs" to it) }
+                        .let { mapOf("size" to 0, "aggregations" to it) }
                         .toJsonString()
                         .also { log.info("query: $it") }
                         .let { query ->
