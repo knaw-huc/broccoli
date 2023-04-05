@@ -47,6 +47,7 @@ class ProjectsResource(
         @QueryParam("frag") @DefaultValue("scan") frag: FragOpts = SCAN,
         @QueryParam("from") @DefaultValue("0") from: Int,
         @QueryParam("size") @DefaultValue("10") size: Int,
+        @QueryParam("sort") @DefaultValue("_score") sort: String = "_score"
     ): Response {
         // determine project
         val project = getProject(projectId)
@@ -76,7 +77,7 @@ class ProjectsResource(
                   }
                 }
               },
-              "sort": "_doc"
+              "sort": "$sort"
             }
         """.trimIndent()
             .also { log.info("sending query: $it") }
