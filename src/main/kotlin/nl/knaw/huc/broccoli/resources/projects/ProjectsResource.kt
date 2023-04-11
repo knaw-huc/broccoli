@@ -8,7 +8,6 @@ import nl.knaw.huc.broccoli.api.Constants.isIn
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
 import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.core.Project
-import nl.knaw.huc.broccoli.resources.projects.ProjectsResource.FragOpts.SCAN
 import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
 import nl.knaw.huc.broccoli.service.anno.TextSelector
 import nl.knaw.huc.broccoli.service.text.TextRepo
@@ -44,10 +43,10 @@ class ProjectsResource(
         @PathParam("projectId") projectId: String,
         fieldsQuery: String,
         @QueryParam("indexName") indexName: String?,
-        @QueryParam("frag") @DefaultValue("scan") frag: FragOpts = SCAN,
+        @QueryParam("frag") @DefaultValue("scan") frag: FragOpts,
         @QueryParam("from") @DefaultValue("0") from: Int,
         @QueryParam("size") @DefaultValue("10") size: Int,
-        @QueryParam("sort") @DefaultValue("_score") sort: String = "{\"_score\"}"
+        @QueryParam("sort") @DefaultValue("_score") sort: String
     ): Response {
         // determine project
         val project = getProject(projectId)
@@ -77,7 +76,7 @@ class ProjectsResource(
                   }
                 }
               },
-              "sort": $sort
+              "sort": ${if (sort.first() == '{') sort else "\"$sort\""}
             }
         """.trimIndent()
             .also { log.info("sending query: $it") }
