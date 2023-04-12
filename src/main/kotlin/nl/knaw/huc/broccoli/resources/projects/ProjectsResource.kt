@@ -88,87 +88,102 @@ class ProjectsResource(
             .readEntityAsJsonString()
             .also { log.info("data: $it") }
             .let { json ->
-                jsonParser.parse(json)
-                    .read<List<Map<String, Any>>>("$.hits.hits[*]")
-                    .map { hit ->
-                        @Suppress("UNCHECKED_CAST")
-                        val source = hit["_source"] as Map<String, Any>
+                val result = mutableMapOf<String, Any>()
+                jsonParser.parse(json).let { context ->
+                    context.read<Map<String, Any>>("$.hits.total")?.let { result["total"] = it }
 
-                        mutableMapOf("bodyId" to hit["_id"])
-                            .apply {
-                                index.fields.forEach { field -> put(field.name, source[field.name]) }
-                                hit["highlight"]
-                                    ?.let { highlight ->
+                    context.read<List<Map<String, Any>>>("$.hits.hits[*]")
+                        .map { hit ->
+                            @Suppress("UNCHECKED_CAST")
+                            val source = hit["_source"] as Map<String, Any>
+
+                            mutableMapOf("_id" to hit["_id"])
+                                .apply {
+                                    // store all configured index fields with an available result from elastic
+                                    index.fields.forEach { field ->
+                                        source[field.name]?.let { put(field.name, it) }
+                                    }
+
+                                    // store highlight if available
+                                    hit["highlight"]?.let { highlight ->
                                         @Suppress("UNCHECKED_CAST")
-                                        (highlight as Map<String, Any>)["text"]
-                                            ?.let { textLocations ->
-                                                // some running vars, updated as we visit each location to keep track of offsets
-                                                var runningOffset = 0
-                                                var curSegmentIndex = 0
+                                        (highlight as Map<String, Any>)["text"]?.let { textLocations ->
+                                            // some running vars, updated as we visit each location to keep track of offsets
+                                            var runningOffset = 0
+                                            var curSegmentIndex = 0
 
-                                                (textLocations as List<String>)
-                                                    .map { locationsAndPreviewExpr ->
-                                                        Pair(
-                                                            locationsAndPreviewExpr.substringAfter('|'),
-                                                            locationsAndPreviewExpr.substringBefore('|')
-                                                        )
-                                                    }
-                                                    .map { (preview, rangeAndLocationsExpr) ->
-                                                        Pair(preview, rangeAndLocationsExpr.substringBetweenOuter(':'))
-                                                    }
-                                                    .flatMap { (preview, locationsExpr) ->
-                                                        locationsExpr
-                                                            .split(',')
-                                                            .map { locationExpr -> Pair(preview, locationExpr) }
-                                                    }
-                                                    .map { (preview, locationExpr) ->
-                                                        Pair(preview, locationExpr.parseIntoCoordinates('-'))
-                                                    }
-                                                    .map { (preview, location) ->
-                                                        @Suppress("UNCHECKED_CAST")
-                                                        val segments = source["lengths"] as List<Int>
-
-                                                        var curSegmentLength = segments[curSegmentIndex]
-
-                                                        // skip lines entirely before start
-                                                        while (runningOffset + curSegmentLength < location.start) {
-                                                            runningOffset += curSegmentLength + 1
-                                                            curSegmentLength = segments[++curSegmentIndex]
-                                                        }
-                                                        val startMarker =
-                                                            TextMarker(curSegmentIndex, location.start - runningOffset)
-
-                                                        // skip lines entirely before end
-                                                        while (runningOffset + curSegmentLength < location.end) {
-                                                            runningOffset += curSegmentLength + 1
-                                                            curSegmentLength = segments[++curSegmentIndex]
-                                                        }
-                                                        val endMarker =
-                                                            TextMarker(
-                                                                curSegmentIndex,
-                                                                location.end - runningOffset - 1
-                                                            )
-
-                                                        Pair(preview, mapOf("start" to startMarker, "end" to endMarker))
-                                                    }
-                                            }
-                                    }
-                                    ?.let { previewAndLocationsList ->
-                                        mutableMapOf<String, MutableList<Map<String, TextMarker>>>()
-                                            .apply {
-                                                previewAndLocationsList.forEach { (preview, location) ->
-                                                    getOrPut(preview) { mutableListOf() } += location
+                                            (textLocations as List<String>)
+                                                .map { locationsAndPreviewExpr ->
+                                                    Pair(
+                                                        locationsAndPreviewExpr.substringAfter('|'),
+                                                        locationsAndPreviewExpr.substringBefore('|')
+                                                    )
                                                 }
-                                            }
+                                                .map { (preview, rangeAndLocationsExpr) ->
+                                                    Pair(
+                                                        preview,
+                                                        rangeAndLocationsExpr.substringBetweenOuter(':')
+                                                    )
+                                                }
+                                                .flatMap { (preview, locationsExpr) ->
+                                                    locationsExpr
+                                                        .split(',')
+                                                        .map { locationExpr -> Pair(preview, locationExpr) }
+                                                }
+                                                .map { (preview, locationExpr) ->
+                                                    Pair(preview, locationExpr.parseIntoCoordinates('-'))
+                                                }
+                                                .map { (preview, location) ->
+                                                    @Suppress("UNCHECKED_CAST")
+                                                    val segments = source["lengths"] as List<Int>
+
+                                                    var curSegmentLength = segments[curSegmentIndex]
+
+                                                    // skip lines entirely before start
+                                                    while (runningOffset + curSegmentLength < location.start) {
+                                                        runningOffset += curSegmentLength + 1
+                                                        curSegmentLength = segments[++curSegmentIndex]
+                                                    }
+                                                    val startMarker =
+                                                        TextMarker(
+                                                            curSegmentIndex,
+                                                            location.start - runningOffset
+                                                        )
+
+                                                    // skip lines entirely before end
+                                                    while (runningOffset + curSegmentLength < location.end) {
+                                                        runningOffset += curSegmentLength + 1
+                                                        curSegmentLength = segments[++curSegmentIndex]
+                                                    }
+                                                    val endMarker =
+                                                        TextMarker(
+                                                            curSegmentIndex,
+                                                            location.end - runningOffset - 1
+                                                        )
+
+                                                    Pair(
+                                                        preview,
+                                                        mapOf("start" to startMarker, "end" to endMarker)
+                                                    )
+                                                }
+                                        }
                                     }
-                                    ?.entries
-                                    ?.map { (k, v) -> mapOf("preview" to k, "locations" to v) }
-                                    ?.let { previewAndLocationsList -> put("hits", previewAndLocationsList) }
-                            }
-                    }
-                    .let { result ->
-                        Response.ok(result).build()
-                    }
+                                        ?.let { previewAndLocationsList ->
+                                            mutableMapOf<String, MutableList<Map<String, TextMarker>>>()
+                                                .apply {
+                                                    previewAndLocationsList.forEach { (preview, location) ->
+                                                        getOrPut(preview) { mutableListOf() } += location
+                                                    }
+                                                }
+                                        }
+                                        ?.entries
+                                        ?.map { (k, v) -> mapOf("preview" to k, "locations" to v) }
+                                        ?.let { previewAndLocationsList -> put("_hits", previewAndLocationsList) }
+                                }
+                        }
+                        .let { result["results"] = it }
+                }
+                Response.ok(result).build()
             }
     }
 
