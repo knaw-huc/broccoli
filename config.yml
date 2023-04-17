@@ -21,7 +21,7 @@ iiifUri: https://images.diginfra.net/api/pim
 textUri: https://textrepo.republic-caf.diginfra.org/api
 
 projects:
-  - name: 'globalise'
+  - name: globalise
     tiers:
       - name: document
         type: str
@@ -37,7 +37,22 @@ projects:
     iiif:
       fetch: urn:globalise:manifest
 
-  - name: 'republic'
+  - name: mondriaan
+    tiers:
+      - name: folder
+        type: str
+      - name: file
+        type: str
+    annoRepo:
+      apiKey: 'provide-api-key-in-config'
+      containerName: 'proeftuin-2'
+      uri: https://globalise-annorepo.tt.di.huc.knaw.nl
+    textRepo:
+      uri: https://mondriaan.tt.di.huc.knaw.nl
+    iiif:
+      fixed: https://images.diginfra.net/api/pim/imageset/67533019-4ca0-4b08-b87e-fd5590e7a077/manifest
+
+  - name: republic
     tiers:
       - name: volume
         type: str
