@@ -41,12 +41,11 @@ projects:
     tiers:
       - name: folder
         type: str
-      - name: file
+      - name: letter
         type: str
     annoRepo:
-      apiKey: 'provide-api-key-in-config'
-      containerName: 'proeftuin-2'
-      uri: https://globalise-annorepo.tt.di.huc.knaw.nl
+      containerName: 'mondriaan-letters-2'
+      uri: https://mondriaan.annorepo.dev.clariah.nl
     textRepo:
       uri: https://mondriaan.tt.di.huc.knaw.nl
     iiif:
