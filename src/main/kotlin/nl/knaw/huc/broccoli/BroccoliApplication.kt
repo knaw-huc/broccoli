@@ -45,10 +45,11 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
     override fun getName(): String = APP_NAME
 
     override fun initialize(bootstrap: Bootstrap<BroccoliConfiguration?>) {
-        bootstrap.configurationSourceProvider = SubstitutingSourceProvider(
-            bootstrap.configurationSourceProvider, EnvironmentVariableSubstitutor()
-        )
         with(bootstrap) {
+            configurationSourceProvider = SubstitutingSourceProvider(
+                configurationSourceProvider,
+                EnvironmentVariableSubstitutor()
+            )
             addBundle(getSwaggerBundle())
             addBundle(AssetsBundle("/mock"))
         }
