@@ -383,7 +383,8 @@ class ProjectsResource(
                     val sourceUrl = it["source"] as String
                     val start = selector["start"] as Int
                     val end = selector["end"] as Int
-                    val tier0 = project.tiers[0].name.capitalize()
+                    val tier0 = project.tiers[0].let { conf -> conf.anno ?: conf.name.capitalize() }
+                    log.info("tier0: $tier0")
                     val bodyTypes = isIn(setOf(tier0))
                     timeExecution(
                         { annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes) },

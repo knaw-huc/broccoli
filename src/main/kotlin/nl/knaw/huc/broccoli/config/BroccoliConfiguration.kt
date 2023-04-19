@@ -132,6 +132,10 @@ class TierConfiguration {
     @JsonProperty
     val type = Type.STR
 
+    @Valid
+    @JsonProperty
+    val anno: String? = null
+
     override fun toString(): String = "$name (${type.name.lowercase()})"
 
     enum class Type(val toAnnoRepoQuery: (String) -> Any) {

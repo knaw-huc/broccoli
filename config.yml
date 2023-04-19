@@ -41,11 +41,28 @@ projects:
     tiers:
       - name: folder
         type: str
+        anno: tt:Folder
       - name: letter
         type: str
+        anno: tt:Letter
     annoRepo:
-      containerName: 'mondriaan-letters-2'
+      containerName: 'mondriaan-letters-3'
       uri: https://mondriaan.annorepo.dev.clariah.nl
+    brinta:
+      uri: http://localhost:9200
+      indices:
+        - name: divs
+          bodyTypes: [ tei:Div ]
+          fields:
+            - name: bodyType
+              path: "$.body.type"
+              type: keyword
+            - name: lang
+              path: "$.body.metadata.lang"
+              type: keyword
+            - name: type
+              path: "$.body.metadata.type"
+              type: keyword
     textRepo:
       uri: https://mondriaan.tt.di.huc.knaw.nl
     iiif:
