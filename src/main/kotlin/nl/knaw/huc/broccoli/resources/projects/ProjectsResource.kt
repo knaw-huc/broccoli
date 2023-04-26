@@ -2,11 +2,14 @@ package nl.knaw.huc.broccoli.resources.projects
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.jayway.jsonpath.ParseContext
 import io.swagger.v3.oas.annotations.Operation
 import nl.knaw.huc.broccoli.api.Constants.isIn
+import nl.knaw.huc.broccoli.api.IndexQuery
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
 import nl.knaw.huc.broccoli.api.TextMarker
+import nl.knaw.huc.broccoli.core.ElasticQueryBuilder
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
 import nl.knaw.huc.broccoli.service.anno.TextSelector
@@ -26,7 +29,7 @@ class ProjectsResource(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    private val objectMapper = ObjectMapper()
+    private val objectMapper = ObjectMapper().registerKotlinModule()
 
     init {
         log.info("init: projects=$projects, client=$client")
@@ -41,7 +44,7 @@ class ProjectsResource(
     @Path("{projectId}/search")
     fun searchIndex(
         @PathParam("projectId") projectId: String,
-        fieldsQuery: String,
+        queryString: IndexQuery,
         @QueryParam("indexName") indexName: String?,
         @QueryParam("frag") @DefaultValue("scan") frag: FragOpts,
         @QueryParam("from") @DefaultValue("0") from: Int,
@@ -60,13 +63,17 @@ class ProjectsResource(
                 ?: throw NotFoundException("index '$indexName' not configured for project: ${project.name}")
         }
 
+        log.info("queryString: ${objectMapper.writeValueAsString(queryString)}")
+        val builder = ElasticQueryBuilder()
+        val esQuery = builder.toElasticQuery(queryString)
+
         // construct query for elasticsearch
         val query = """
             {
               "_source": true,
               "from": $from,
               "size": $size,
-              "query": $fieldsQuery,
+              "query": $esQuery,
               "highlight": {
                 "fields": {
                   "text": {
@@ -74,7 +81,8 @@ class ProjectsResource(
                     "fragmenter": "$frag",
                     "options": { "return_snippets_and_offsets": true }
                   }
-                }
+                },
+                "highlight_query": { "match_phrase_prefix": {"text": "${queryString.text}"}}
               },
               "sort": ${if (sort.first() == '{') sort else "\"$sort\""}
             }
