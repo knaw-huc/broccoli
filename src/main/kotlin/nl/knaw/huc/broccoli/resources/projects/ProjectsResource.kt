@@ -147,10 +147,7 @@ class ProjectsResource(
                                                             location.end - runningOffset - 1
                                                         )
 
-                                                    Pair(
-                                                        preview,
-                                                        mapOf("start" to startMarker, "end" to endMarker)
-                                                    )
+                                                    Pair(preview, mapOf("start" to startMarker, "end" to endMarker))
                                                 }
                                         }
                                     }
@@ -164,12 +161,7 @@ class ProjectsResource(
                                         }
                                         ?.entries
                                         ?.map { (k, v) -> mapOf("preview" to k, "locations" to v) }
-                                        ?.let { previewAndLocationsList ->
-                                            put(
-                                                "_hits",
-                                                previewAndLocationsList
-                                            )
-                                        }
+                                        ?.let { previewAndLocationsList -> put("_hits", previewAndLocationsList) }
                                 }
                         }
                         .let { result["results"] = it }
