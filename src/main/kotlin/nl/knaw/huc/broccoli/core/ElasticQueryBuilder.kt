@@ -1,27 +1,30 @@
 package nl.knaw.huc.broccoli.core
 
-import nl.knaw.huc.broccoli.api.IndexDate
-import nl.knaw.huc.broccoli.api.IndexQuery
-import nl.knaw.huc.broccoli.api.IndexTerms
+import nl.knaw.huc.broccoli.api.*
 
 class ElasticQueryBuilder() {
-    fun toElasticQuery(indexQuery: IndexQuery): String {
-        val date = dateToEs(indexQuery.date)
-        val terms = termsToEs(indexQuery.terms)
-        val text = textToEs(indexQuery.text)
+    fun toElasticQuery(indexQuery: IndexQuery): ElasticQuery {
+        val queryTerms = mutableListOf<BaseQuery>()
 
-        return """{"bool": {"must": [$date, $terms, $text]}}"""
+        indexQuery.terms?.forEach {
+            queryTerms.add(TermsQuery(mapOf(it.key to it.value)))
+        }
+
+        indexQuery.date?.let {
+            queryTerms.add(DateQuery(it.name, it.from, it.to))
+        }
+
+        indexQuery.text?.let {
+            queryTerms.add(FullTextQuery(MatchPhrasePrefixQuery(it)))
+        }
+
+        return ElasticQuery(
+            query = ComplexQuery(
+                bool = BoolQuery(
+                    must = queryTerms
+                )
+            ),
+            highlight = indexQuery.text?.let { HighlightTerm(it) }
+        )
     }
-
-    private fun textToEs(text: String) =
-        """{"match_phrase_prefix": {"text": ${quote(text)}}}"""
-
-    private fun termsToEs(terms: IndexTerms) = terms.map {
-        """{"terms": {"${it.key}": ${it.value.map(::quote)}}}"""
-    }.joinToString()
-
-    private fun dateToEs(date: IndexDate) =
-        """{"range": {"${date.name}": {"relation": "within", "gte": "${date.from}", "lte": "${date.to}"}}}"""
-
-    private fun quote(s: String): String = '"' + s + '"'
 }

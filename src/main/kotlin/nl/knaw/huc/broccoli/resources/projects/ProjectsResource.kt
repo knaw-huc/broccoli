@@ -2,7 +2,6 @@ package nl.knaw.huc.broccoli.resources.projects
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.jayway.jsonpath.ParseContext
 import io.swagger.v3.oas.annotations.Operation
 import nl.knaw.huc.broccoli.api.Constants.isIn
@@ -25,11 +24,10 @@ import javax.ws.rs.core.*
 class ProjectsResource(
     private val projects: Map<String, Project>,
     private val client: Client,
-    private val jsonParser: ParseContext
+    private val jsonParser: ParseContext,
+    private val jsonWriter: ObjectMapper
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
-
-    private val objectMapper = ObjectMapper().registerKotlinModule()
 
     init {
         log.info("init: projects=$projects, client=$client")
@@ -63,35 +61,15 @@ class ProjectsResource(
                 ?: throw NotFoundException("index '$indexName' not configured for project: ${project.name}")
         }
 
-        log.info("queryString: ${objectMapper.writeValueAsString(queryString)}")
-        val builder = ElasticQueryBuilder()
-        val esQuery = builder.toElasticQuery(queryString)
-
-        // construct query for elasticsearch
-        val query = """
-            {
-              "_source": true,
-              "from": $from,
-              "size": $size,
-              "query": $esQuery,
-              "highlight": {
-                "fields": {
-                  "text": {
-                    "type": "experimental",
-                    "fragmenter": "$frag",
-                    "options": { "return_snippets_and_offsets": true }
-                  }
-                },
-                "highlight_query": { "match_phrase_prefix": {"text": "${queryString.text}"}}
-              },
-              "sort": ${if (sort.first() == '{') sort else "\"$sort\""}
+        return queryString
+            .also { log.info("queryString: ${jsonWriter.writeValueAsString(it)}") }
+            .let { ElasticQueryBuilder().toElasticQuery(it) }
+            .also { log.info("full ES query: ${jsonWriter.writeValueAsString(it)}") }
+            .let { query ->
+                client.target(brinta.uri).path(index.name).path("_search")
+                    .request()
+                    .post(Entity.json(query))
             }
-        """.trimIndent()
-            .also { log.info("sending query: $it") }
-
-        return client.target(brinta.uri).path(index.name).path("_search")
-            .request()
-            .post(Entity.json(query))
             .also { log.info("response: $it") }
             .readEntityAsJsonString()
             .also { log.info("data: $it") }
@@ -186,7 +164,12 @@ class ProjectsResource(
                                         }
                                         ?.entries
                                         ?.map { (k, v) -> mapOf("preview" to k, "locations" to v) }
-                                        ?.let { previewAndLocationsList -> put("_hits", previewAndLocationsList) }
+                                        ?.let { previewAndLocationsList ->
+                                            put(
+                                                "_hits",
+                                                previewAndLocationsList
+                                            )
+                                        }
                                 }
                         }
                         .let { result["results"] = it }
@@ -469,7 +452,7 @@ class ProjectsResource(
         }
 
         val requested = if (includeResultString.startsWith('[')) {
-            objectMapper.readValue(includeResultString)
+            jsonWriter.readValue(includeResultString)
         } else {
             includeResultString
                 .removeSurrounding("\"")
@@ -493,7 +476,7 @@ class ProjectsResource(
         if (overlapTypes == null) {
             emptySet()
         } else if (overlapTypes.startsWith('[')) {
-            objectMapper.readValue(overlapTypes)
+            jsonWriter.readValue(overlapTypes)
         } else {
             overlapTypes
                 .removeSurrounding("\"")
