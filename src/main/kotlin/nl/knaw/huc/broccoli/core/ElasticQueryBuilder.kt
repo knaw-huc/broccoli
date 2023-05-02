@@ -56,5 +56,4 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
             .let { Aggregations(it) }
     )
 
-    private fun isConfiguredIndexField(name: String) = index.fields.any { it.name == name }
 }
