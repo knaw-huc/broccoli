@@ -5,17 +5,16 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import nl.knaw.huc.broccoli.resources.projects.ProjectsResource.FragOpts
-import org.slf4j.LoggerFactory
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class ElasticQuery(
+    @JsonProperty("_source") val source: Boolean = true,
+    val from: Int,
+    val size: Int,
+    val sort: String,
     val query: ComplexQuery,
     val highlight: HighlightTerm? = null,
-    val aggregations: Aggregations? = null,
-    @JsonProperty("_source") val source: Boolean = true,
-    val from: Int = 0,
-    val size: Int = 10,
-    val sort: String = "_score"
+    val aggregations: Aggregations? = null
 )
 
 data class ComplexQuery(
@@ -78,23 +77,11 @@ data class HighlightTerm(
 
 data class Aggregations(
     @JsonIgnore val terms: List<String>
-    /*"aggs": {
-    "resolutionPropositionTypes": {
-      "terms": {
-        "field": "propositionType",
-        "size": 10
-      }
-    }
-     */
 ) {
-    private val log = LoggerFactory.getLogger(javaClass)
-
     @JsonAnyGetter
     fun toJson() = mutableMapOf<String, Any>().apply {
         terms.forEach {
-            log.info("it -> $it")
             put(it, mapOf("terms" to mapOf("field" to it, "size" to 10)))
-            log.info("map now: $this")
         }
     }
 }

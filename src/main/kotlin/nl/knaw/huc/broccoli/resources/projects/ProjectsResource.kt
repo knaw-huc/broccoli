@@ -8,6 +8,7 @@ import nl.knaw.huc.broccoli.api.Constants.isIn
 import nl.knaw.huc.broccoli.api.IndexQuery
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
 import nl.knaw.huc.broccoli.api.TextMarker
+import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.ElasticQueryBuilder
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
@@ -43,7 +44,7 @@ class ProjectsResource(
     fun searchIndex(
         @PathParam("projectId") projectId: String,
         queryString: IndexQuery,
-        @QueryParam("indexName") indexName: String?,
+        @QueryParam("indexName") indexParam: String?,
         @QueryParam("frag") @DefaultValue("scan") frag: FragOpts,
         @QueryParam("from") @DefaultValue("0") from: Int,
         @QueryParam("size") @DefaultValue("10") size: Int,
@@ -54,16 +55,22 @@ class ProjectsResource(
         val brinta = project.brinta
 
         // determine index to use
-        val index = if (indexName == null) {
-            brinta.indices[0]   // if unspecified, default to first index in project configuration
-        } else {
-            brinta.indices.find { it.name == indexName }
-                ?: throw NotFoundException("index '$indexName' not configured for project: ${project.name}")
-        }
+        val index = indexParam
+            ?.let { indexName ->
+                brinta.indices.find { it.name == indexName }
+                    ?: throw NotFoundException("index '$indexParam' not configured for project: ${project.name}")
+            }
+            ?: brinta.indices.first() // if unspecified, default to first index in project configuration
 
         return queryString
             .also { log.info("queryString: ${jsonWriter.writeValueAsString(it)}") }
-            .let { ElasticQueryBuilder(index).toElasticQuery(it) }
+            .let {
+                ElasticQueryBuilder(index)
+                    .from(from)
+                    .size(size)
+                    .sort(sort)
+                    .toElasticQuery(it)
+            }
             .also { log.info("full ES query: ${jsonWriter.writeValueAsString(it)}") }
             .let { query ->
                 client.target(brinta.uri).path(index.name).path("_search")
@@ -72,7 +79,7 @@ class ProjectsResource(
             }
             .also { log.info("response: $it") }
             .readEntityAsJsonString()
-            .also { log.info("data: $it") }
+            .also { log.info("json: $it") }
             .let { json ->
                 val result = mutableMapOf<String, Any>()
                 jsonParser.parse(json).let { context ->
@@ -80,105 +87,104 @@ class ProjectsResource(
                         ?.let { result["total"] = it }
 
                     context.read<Map<String, Any>>("$.aggregations")
-                        ?.map { entry ->
+                        ?.map { aggregation ->
                             @Suppress("UNCHECKED_CAST")
-                            val buckets = (entry.value as Map<String, Any>)["buckets"] as List<Map<String, Any>>
-                            mapOf(entry.key to buckets.associate {
-                                (it["key_as_string"] ?: it["key"]) to it["doc_count"]
-                            })
+                            val buckets = (aggregation.value as Map<String, Any>)["buckets"]
+
+                            @Suppress("UNCHECKED_CAST")
+                            val associatedValues = (buckets as List<Map<String, Any>>)
+                                .associate { (it["key_as_string"] ?: it["key"]) to it["doc_count"] }
+
+                            mapOf(aggregation.key to associatedValues)
                         }
                         ?.groupByKey()
                         ?.let { result["aggs"] = it }
 
                     context.read<List<Map<String, Any>>>("$.hits.hits[*]")
-                        ?.map { hit ->
-                            @Suppress("UNCHECKED_CAST")
-                            val source = hit["_source"] as Map<String, Any>
-
-                            mutableMapOf("_id" to hit["_id"])
-                                .apply {
-                                    // store all configured index fields with an available result from elastic
-                                    index.fields.forEach { field ->
-                                        source[field.name]?.let { put(field.name, it) }
-                                    }
-
-                                    // store highlight if available
-                                    hit["highlight"]?.let { highlight ->
-                                        @Suppress("UNCHECKED_CAST")
-                                        (highlight as Map<String, Any>)["text"]?.let { textLocations ->
-                                            // some running vars, updated as we visit each location to keep track of offsets
-                                            var runningOffset = 0
-                                            var curSegmentIndex = 0
-
-                                            (textLocations as List<String>)
-                                                .map { locationsAndPreviewExpr ->
-                                                    Pair(
-                                                        locationsAndPreviewExpr.substringAfter('|'),
-                                                        locationsAndPreviewExpr.substringBefore('|')
-                                                    )
-                                                }
-                                                .map { (preview, rangeAndLocationsExpr) ->
-                                                    Pair(
-                                                        preview,
-                                                        rangeAndLocationsExpr.substringBetweenOuter(':')
-                                                    )
-                                                }
-                                                .flatMap { (preview, locationsExpr) ->
-                                                    locationsExpr
-                                                        .split(',')
-                                                        .map { locationExpr -> Pair(preview, locationExpr) }
-                                                }
-                                                .map { (preview, locationExpr) ->
-                                                    Pair(preview, locationExpr.parseIntoCoordinates('-'))
-                                                }
-                                                .map { (preview, location) ->
-                                                    @Suppress("UNCHECKED_CAST")
-                                                    val segments = source["lengths"] as List<Int>
-
-                                                    var curSegmentLength = segments[curSegmentIndex]
-
-                                                    // skip lines entirely before start
-                                                    while (runningOffset + curSegmentLength < location.start) {
-                                                        runningOffset += curSegmentLength + 1
-                                                        curSegmentLength = segments[++curSegmentIndex]
-                                                    }
-                                                    val startMarker =
-                                                        TextMarker(
-                                                            curSegmentIndex,
-                                                            location.start - runningOffset
-                                                        )
-
-                                                    // skip lines entirely before end
-                                                    while (runningOffset + curSegmentLength < location.end) {
-                                                        runningOffset += curSegmentLength + 1
-                                                        curSegmentLength = segments[++curSegmentIndex]
-                                                    }
-                                                    val endMarker =
-                                                        TextMarker(
-                                                            curSegmentIndex,
-                                                            location.end - runningOffset - 1
-                                                        )
-
-                                                    Pair(preview, mapOf("start" to startMarker, "end" to endMarker))
-                                                }
-                                        }
-                                    }
-                                        ?.let { previewAndLocationsList ->
-                                            mutableMapOf<String, MutableList<Map<String, TextMarker>>>()
-                                                .apply {
-                                                    previewAndLocationsList.forEach { (preview, location) ->
-                                                        getOrPut(preview) { mutableListOf() } += location
-                                                    }
-                                                }
-                                        }
-                                        ?.entries
-                                        ?.map { (k, v) -> mapOf("preview" to k, "locations" to v) }
-                                        ?.let { previewAndLocationsList -> put("_hits", previewAndLocationsList) }
-                                }
-                        }
+                        ?.map { buildHitResult(index, it) }
                         ?.let { result["results"] = it }
                 }
                 Response.ok(result).build()
+            }
+    }
+
+    private fun buildHitResult(index: IndexConfiguration, hit: Map<String, Any>) =
+        mutableMapOf("_id" to hit["_id"]).apply {
+            @Suppress("UNCHECKED_CAST")
+            val source = hit["_source"] as Map<String, Any>
+
+            // store all configured index fields with a result from elastic
+            index.fields.forEach { field ->
+                source[field.name]?.let { put(field.name, it) }
+            }
+
+            // store highlight if available
+            hit["highlight"]
+                ?.let { highlight ->
+                    @Suppress("UNCHECKED_CAST")
+                    val text = (highlight as Map<String, Any>)["text"]
+
+                    @Suppress("UNCHECKED_CAST")
+                    text?.let { buildPreviewAndLocations(source, it as List<String>) }
+                }
+                ?.let { previewAndLocations ->
+                    mutableMapOf<String, MutableList<Map<String, TextMarker>>>()
+                        .apply {
+                            previewAndLocations.forEach { (preview, location) ->
+                                getOrPut(preview) { mutableListOf() } += location
+                            }
+                        }
+                }
+                ?.asSequence()
+                ?.map { (k, v) -> mapOf("preview" to k, "locations" to v) }
+                ?.let { put("_hits", it) }
+        }
+
+    private fun buildPreviewAndLocations(
+        source: Map<String, Any>,
+        textLocations: List<String>
+    ): List<Pair<String, Map<String, TextMarker>>> {
+        // some running vars, updated as we visit each location to keep track of offsets
+        var runningOffset = 0
+        var curSegmentIndex = 0
+
+        return textLocations
+            .map { locationsAndPreviewExpr ->
+                Pair(
+                    locationsAndPreviewExpr.substringAfter('|'),
+                    locationsAndPreviewExpr.substringBefore('|')
+                )
+            }
+            .map { (preview, rangeAndLocationsExpr) ->
+                Pair(preview, rangeAndLocationsExpr.substringBetweenOuter(':'))
+            }
+            .flatMap { (preview, locationsExpr) ->
+                locationsExpr
+                    .split(',')
+                    .map { locationExpr -> Pair(preview, locationExpr) }
+            }
+            .map { (preview, locationExpr) -> Pair(preview, locationExpr.parseIntoCoordinates('-')) }
+            .map { (preview, location) ->
+                @Suppress("UNCHECKED_CAST")
+                val segments = source["lengths"] as List<Int>
+
+                var curSegmentLength = segments[curSegmentIndex]
+
+                // skip lines entirely before start
+                while (runningOffset + curSegmentLength < location.start) {
+                    runningOffset += curSegmentLength + 1
+                    curSegmentLength = segments[++curSegmentIndex]
+                }
+                val startMarker = TextMarker(curSegmentIndex, location.start - runningOffset)
+
+                // skip lines entirely before end
+                while (runningOffset + curSegmentLength < location.end) {
+                    runningOffset += curSegmentLength + 1
+                    curSegmentLength = segments[++curSegmentIndex]
+                }
+                val endMarker = TextMarker(curSegmentIndex, location.end - runningOffset - 1)
+
+                Pair(preview, mapOf("start" to startMarker, "end" to endMarker))
             }
     }
 
@@ -193,6 +199,7 @@ class ProjectsResource(
     private fun String.parseIntoCoordinates(delimiter: Char): Coordinates<Int> =
         Coordinates(substringBefore(delimiter).toInt(), substringAfter(delimiter).toInt())
 
+    @Suppress("unused")
     enum class FragOpts {
         NONE, SCAN, SENTENCE; // https://github.com/wikimedia/search-highlighter#elasticsearch-options
 
