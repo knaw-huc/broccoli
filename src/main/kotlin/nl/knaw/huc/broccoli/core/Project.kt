@@ -5,7 +5,7 @@ import nl.knaw.huc.broccoli.config.TierConfiguration
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
 import nl.knaw.huc.broccoli.service.text.TextRepo
 
-class Project(
+data class Project(
     val name: String,
     val tiers: List<TierConfiguration>,
     val brinta: BrintaConfiguration,

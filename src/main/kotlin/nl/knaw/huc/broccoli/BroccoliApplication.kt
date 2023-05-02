@@ -1,5 +1,7 @@
 package nl.knaw.huc.broccoli
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.jayway.jsonpath.Configuration
 import com.jayway.jsonpath.JsonPath
 import com.jayway.jsonpath.Option
@@ -46,6 +48,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
 
     override fun initialize(bootstrap: Bootstrap<BroccoliConfiguration?>) {
         with(bootstrap) {
+            objectMapper.registerKotlinModule()
             configurationSourceProvider = SubstitutingSourceProvider(
                 configurationSourceProvider,
                 EnvironmentVariableSubstitutor()
@@ -83,10 +86,12 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         val jsonParser =
             JsonPath.using(Configuration.defaultConfiguration().addOptions(Option.DEFAULT_PATH_LEAF_TO_NULL))
 
+        val objectMapper = ObjectMapper().registerKotlinModule()
+
         with(environment.jersey()) {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())
-            register(ProjectsResource(projects, client, jsonParser))
+            register(ProjectsResource(projects, client, jsonParser, objectMapper))
             register(BrintaResource(projects, client, jsonParser))
         }
 
