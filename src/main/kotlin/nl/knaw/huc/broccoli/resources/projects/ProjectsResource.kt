@@ -13,6 +13,7 @@ import nl.knaw.huc.broccoli.core.ElasticQueryBuilder
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
 import nl.knaw.huc.broccoli.service.anno.TextSelector
+import nl.knaw.huc.broccoli.service.extractAggregations
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
 import javax.ws.rs.*
@@ -79,19 +80,7 @@ class ProjectsResource(
                     context.read<Map<String, Any>>("$.hits.total")
                         ?.let { result["total"] = it }
 
-                    context.read<Map<String, Any>>("$.aggregations")
-                        ?.map { aggregation ->
-                            @Suppress("UNCHECKED_CAST")
-                            val buckets = (aggregation.value as Map<String, Any>)["buckets"]
-
-                            @Suppress("UNCHECKED_CAST")
-                            val associatedValues = (buckets as List<Map<String, Any>>)
-                                .associate { (it["key_as_string"] ?: it["key"]) to it["doc_count"] }
-
-                            mapOf(aggregation.key to associatedValues)
-                        }
-                        ?.groupByKey()
-                        ?.let { result["aggs"] = it }
+                    extractAggregations(context)?.let { result["aggs"] = it }
 
                     context.read<List<Map<String, Any>>>("$.hits.hits[*]")
                         ?.map { buildHitResult(index, it) }
@@ -180,9 +169,6 @@ class ProjectsResource(
                 Pair(preview, mapOf("start" to startMarker, "end" to endMarker))
             }
     }
-
-    private fun <K, V> List<Map<K, V>>.groupByKey(): Map<K, V> =
-        flatMap { it.asSequence() }.associate { it.key to it.value }
 
     private fun String.substringBetweenOuter(delimiter: Char): String =
         substringAfter(delimiter).substringBeforeLast(delimiter)

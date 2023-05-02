@@ -9,6 +9,7 @@ import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.config.IndexFieldConfiguration
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
+import nl.knaw.huc.broccoli.service.extractAggregations
 import org.slf4j.LoggerFactory
 import javax.ws.rs.*
 import javax.ws.rs.client.Client
@@ -126,19 +127,11 @@ class BrintaResource(
                                 .also { log.info("entity: $it") }
                         }
                         .let<String, DocumentContext>(jsonParser::parse)
-                        .let { context ->
-                            index.fields
-                                .map { field ->
-                                    mapOf(field.name to
-                                            context
-                                                .read<List<Map<String, Any>>>("$.aggregations.${field.name}.buckets")
-                                                .associate { (it["key_as_string"] ?: it["key"]) to it["doc_count"] }
-                                    )
-                                }
-                        }
+                        .let { extractAggregations(it) }
                 }
         }
         .let { Response.ok(it).build() }
+
 
     private fun buildFieldAggregationQuery(field: IndexFieldConfiguration) =
         when (field.type) {
