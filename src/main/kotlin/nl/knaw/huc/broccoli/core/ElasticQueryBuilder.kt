@@ -1,8 +1,9 @@
 package nl.knaw.huc.broccoli.core
 
 import nl.knaw.huc.broccoli.api.*
+import nl.knaw.huc.broccoli.config.IndexConfiguration
 
-class ElasticQueryBuilder {
+class ElasticQueryBuilder(private val index: IndexConfiguration) {
     fun toElasticQuery(indexQuery: IndexQuery): ElasticQuery {
         val queryTerms = mutableListOf<BaseQuery>()
 
@@ -25,7 +26,9 @@ class ElasticQueryBuilder {
                 )
             ),
             highlight = indexQuery.text?.let { HighlightTerm(it) },
-            aggregations = indexQuery.aggregations?.let { Aggregations(it) }
+            aggregations = indexQuery.aggregations
+                ?.filter { index.fields.any { field -> field.name == it } }
+                ?.let { Aggregations(it) }
         )
     }
 }

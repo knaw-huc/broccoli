@@ -63,7 +63,7 @@ class ProjectsResource(
 
         return queryString
             .also { log.info("queryString: ${jsonWriter.writeValueAsString(it)}") }
-            .let { ElasticQueryBuilder().toElasticQuery(it) }
+            .let { ElasticQueryBuilder(index).toElasticQuery(it) }
             .also { log.info("full ES query: ${jsonWriter.writeValueAsString(it)}") }
             .let { query ->
                 client.target(brinta.uri).path(index.name).path("_search")
@@ -76,10 +76,22 @@ class ProjectsResource(
             .let { json ->
                 val result = mutableMapOf<String, Any>()
                 jsonParser.parse(json).let { context ->
-                    context.read<Map<String, Any>>("$.hits.total")?.let { result["total"] = it }
+                    context.read<Map<String, Any>>("$.hits.total")
+                        ?.let { result["total"] = it }
+
+                    context.read<Map<String, Any>>("$.aggregations")
+                        ?.map { entry ->
+                            @Suppress("UNCHECKED_CAST")
+                            val buckets = (entry.value as Map<String, Any>)["buckets"] as List<Map<String, Any>>
+                            mapOf(entry.key to buckets.associate {
+                                (it["key_as_string"] ?: it["key"]) to it["doc_count"]
+                            })
+                        }
+                        ?.groupByKey()
+                        ?.let { result["aggs"] = it }
 
                     context.read<List<Map<String, Any>>>("$.hits.hits[*]")
-                        .map { hit ->
+                        ?.map { hit ->
                             @Suppress("UNCHECKED_CAST")
                             val source = hit["_source"] as Map<String, Any>
 
@@ -164,11 +176,14 @@ class ProjectsResource(
                                         ?.let { previewAndLocationsList -> put("_hits", previewAndLocationsList) }
                                 }
                         }
-                        .let { result["results"] = it }
+                        ?.let { result["results"] = it }
                 }
                 Response.ok(result).build()
             }
     }
+
+    private fun <K, V> List<Map<K, V>>.groupByKey(): Map<K, V> =
+        flatMap { it.asSequence() }.associate { it.key to it.value }
 
     private fun String.substringBetweenOuter(delimiter: Char): String =
         substringAfter(delimiter).substringBeforeLast(delimiter)
