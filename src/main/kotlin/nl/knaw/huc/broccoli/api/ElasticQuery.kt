@@ -76,12 +76,30 @@ data class HighlightTerm(
 }
 
 data class Aggregations(
-    @JsonIgnore val terms: List<String>
+    @JsonIgnore val aggs: List<Aggregation>
 ) {
     @JsonAnyGetter
-    fun toJson() = mutableMapOf<String, Any>().apply {
-        terms.forEach {
-            put(it, mapOf("terms" to mapOf("field" to it, "size" to 10)))
-        }
-    }
+    fun toJson() = aggs.associate { it.name to it.toJson() }
+}
+
+abstract class Aggregation(val name: String) {
+    abstract fun toJson(): Map<String, Map<String, Any>>
+}
+
+class DateAggregation(name: String) : Aggregation(name) {
+    override fun toJson() = mapOf(
+        "date_histogram" to mapOf(
+            "field" to name,
+            "format" to "yyyy-MM-dd",
+            "calendar_interval" to "week"
+        )
+    )
+}
+
+class TermAggregation(name: String) : Aggregation(name) {
+    override fun toJson() = mapOf(
+        "terms" to mapOf(
+            "field" to name
+        )
+    )
 }

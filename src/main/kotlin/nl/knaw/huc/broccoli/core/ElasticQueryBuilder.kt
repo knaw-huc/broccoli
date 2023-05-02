@@ -42,11 +42,18 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
             )
         ),
 
-        highlight = query.text?.let { HighlightTerm(it, frag) },
+        highlight = query.text
+            ?.let { HighlightTerm(it, frag) },
 
-        aggregations = query.aggregations
-            ?.filter(::isConfiguredIndexField)
-            ?.let { Aggregations(it) }
+        aggregations = (query.aggregations ?: index.fields.map { it.name })
+            .mapNotNull { name ->
+                when (index.fields.find { it.name == name }?.type) {
+                    "keyword", "short", "byte" -> TermAggregation(name)
+                    "date" -> DateAggregation(name)
+                    else -> null
+                }
+            }
+            .let { Aggregations(it) }
     )
 
     private fun isConfiguredIndexField(name: String) = index.fields.any { it.name == name }
