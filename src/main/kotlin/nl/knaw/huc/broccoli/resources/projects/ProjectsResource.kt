@@ -50,17 +50,8 @@ class ProjectsResource(
         @QueryParam("size") @DefaultValue("10") size: Int,
         @QueryParam("sort") @DefaultValue("_score") sort: String
     ): Response {
-        // determine project
         val project = getProject(projectId)
-        val brinta = project.brinta
-
-        // determine index to use
-        val index = indexParam
-            ?.let { indexName ->
-                brinta.indices.find { it.name == indexName }
-                    ?: throw NotFoundException("index '$indexParam' not configured for project: ${project.name}")
-            }
-            ?: brinta.indices.first() // if unspecified, default to first index in project configuration
+        val index = getIndex(indexParam, project)
 
         return queryString
             .also { log.info("queryString: ${jsonWriter.writeValueAsString(it)}") }
@@ -69,11 +60,13 @@ class ProjectsResource(
                     .from(from)
                     .size(size)
                     .sort(sort)
-                    .toElasticQuery(it)
+                    .frag(frag)
+                    .query(it)
+                    .toElasticQuery()
             }
             .also { log.info("full ES query: ${jsonWriter.writeValueAsString(it)}") }
             .let { query ->
-                client.target(brinta.uri).path(index.name).path("_search")
+                client.target(project.brinta.uri).path(index.name).path("_search")
                     .request()
                     .post(Entity.json(query))
             }
@@ -459,6 +452,16 @@ class ProjectsResource(
         return projects[projectId]
             ?: throw NotFoundException("Unknown project: $projectId. See /projects for known projects")
     }
+
+    private fun getIndex(indexParam: String?, project: Project) =
+        indexParam
+            ?.let { indexName ->
+                project.brinta.indices.find { it.name == indexName }
+                    ?: throw NotFoundException(
+                        "Unknown index: $indexParam. See /brinta/${project.name}/indices for known indices"
+                    )
+            }
+            ?: project.brinta.indices.first() // if unspecified, use first available index from config
 
     private fun parseIncludeResults(all: Set<String>, includeResultString: String?): Set<String> {
         if (includeResultString == null) {

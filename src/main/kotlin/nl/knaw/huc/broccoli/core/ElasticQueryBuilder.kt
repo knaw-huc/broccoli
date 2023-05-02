@@ -2,58 +2,52 @@ package nl.knaw.huc.broccoli.core
 
 import nl.knaw.huc.broccoli.api.*
 import nl.knaw.huc.broccoli.config.IndexConfiguration
+import nl.knaw.huc.broccoli.resources.projects.ProjectsResource.FragOpts
+import kotlin.properties.Delegates
 
 class ElasticQueryBuilder(private val index: IndexConfiguration) {
-    private var from: Int = 0
-    private var size: Int = 10
-    private var sort: String = "_score"
+    private var from by Delegates.notNull<Int>()
+    private var size by Delegates.notNull<Int>()
+    private lateinit var sort: String
+    private lateinit var frag: FragOpts
+    private lateinit var query: IndexQuery
 
-    fun sort(sort: String): ElasticQueryBuilder {
-        this.sort = sort
-        return this
-    }
+    fun sort(sort: String) = apply { this.sort = sort }
 
-    fun from(from: Int): ElasticQueryBuilder {
-        this.from = from
-        return this
-    }
+    fun frag(frag: FragOpts) = apply { this.frag = frag }
+    fun from(from: Int) = apply { this.from = from }
 
-    fun size(size: Int): ElasticQueryBuilder {
-        this.size = size
-        return this
-    }
+    fun size(size: Int) = apply { this.size = size }
 
-    fun toElasticQuery(indexQuery: IndexQuery): ElasticQuery {
-        val queryTerms = mutableListOf<BaseQuery>()
+    fun query(query: IndexQuery) = apply { this.query = query }
 
-        indexQuery.terms?.forEach {
-            queryTerms.add(TermsQuery(mapOf(it.key to it.value)))
-        }
+    fun toElasticQuery() = ElasticQuery(
+        from = from,
+        size = size,
+        sort = sort,
 
-        indexQuery.date?.let {
-            queryTerms.add(DateQuery(it.name, it.from, it.to))
-        }
+        query = ComplexQuery(
+            bool = BoolQuery(
+                must = mutableListOf<BaseQuery>().apply {
+                    query.terms?.forEach {
+                        add(TermsQuery(mapOf(it.key to it.value)))
+                    }
+                    query.date?.let {
+                        add(DateQuery(it.name, it.from, it.to))
+                    }
+                    query.text?.let {
+                        add(FullTextQuery(MatchPhrasePrefixQuery(it)))
+                    }
+                }
+            )
+        ),
 
-        indexQuery.text?.let {
-            queryTerms.add(FullTextQuery(MatchPhrasePrefixQuery(it)))
-        }
+        highlight = query.text?.let { HighlightTerm(it, frag) },
 
-        return ElasticQuery(
-            from = from,
-            size = size,
-            sort = sort,
+        aggregations = query.aggregations
+            ?.filter(::isConfiguredIndexField)
+            ?.let { Aggregations(it) }
+    )
 
-            query = ComplexQuery(
-                bool = BoolQuery(
-                    must = queryTerms
-                )
-            ),
-
-            highlight = indexQuery.text?.let { HighlightTerm(it) },
-
-            aggregations = indexQuery.aggregations
-                ?.filter { index.fields.any { field -> field.name == it } }
-                ?.let { Aggregations(it) }
-        )
-    }
+    private fun isConfiguredIndexField(name: String) = index.fields.any { it.name == name }
 }
