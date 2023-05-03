@@ -82,22 +82,10 @@ class BrintaResource(
 
     @GET
     @Path("indices")
-    fun getIndices(
-        @PathParam("projectId") projectId: String
-    ): Response = getProject(projectId)
-        .also { log.info("project: ${it.name}") }
-        .brinta
-        .indices
-        .let { indices ->
-            mutableMapOf<String, Map<String, String>>().apply {
-                indices.forEach { index ->
-                    put(index.name, mutableMapOf<String, String>().apply {
-                        index.fields.forEach { field -> put(field.name, field.type ?: "undefined") }
-                    })
-                }
-            }
-        }
-        .let { map -> Response.ok(map).build() }
+    fun getIndices(@PathParam("projectId") projectId: String): Response =
+        getProject(projectId).brinta.indices
+            .associate { idx -> idx.name to idx.fields.associate { f -> f.name to (f.type ?: "undefined") } }
+            .let { Response.ok(it).build() }
 
     @DELETE
     @Path("{indexName}")
