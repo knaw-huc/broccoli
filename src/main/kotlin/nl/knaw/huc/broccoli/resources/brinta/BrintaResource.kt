@@ -1,15 +1,12 @@
 package nl.knaw.huc.broccoli.resources.brinta
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.jayway.jsonpath.DocumentContext
 import com.jayway.jsonpath.ParseContext
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.ResourcePaths.BRINTA
 import nl.knaw.huc.broccoli.config.IndexConfiguration
-import nl.knaw.huc.broccoli.config.IndexFieldConfiguration
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
-import nl.knaw.huc.broccoli.service.extractAggregations
 import org.slf4j.LoggerFactory
 import javax.ws.rs.*
 import javax.ws.rs.client.Client
@@ -101,64 +98,6 @@ class BrintaResource(
             }
         }
         .let { map -> Response.ok(map).build() }
-
-    @GET
-    @Path("facets")
-    fun getFacets(
-        @PathParam("projectId") projectId: String,
-        @QueryParam("indexName") indexName: String?
-    ): Response = getProject(projectId)
-        .let { project ->
-            getIndex(project, indexName)
-                .let { index ->
-                    index.fields
-                        .mapNotNull(::buildFieldAggregationQuery)
-                        .flatMap { it.asSequence() }
-                        .associate { it.key to it.value }
-                        .let { mapOf("size" to 0, "aggregations" to it) }
-                        .toJsonString()
-                        .also { log.info("query: $it") }
-                        .let { query ->
-                            client.target(project.brinta.uri).path(index.name).path("_search")
-                                .request()
-                                .post(Entity.json(query))
-                                .also { log.info("response: $it") }
-                                .readEntityAsJsonString()
-                                .also { log.info("entity: $it") }
-                        }
-                        .let<String, DocumentContext>(jsonParser::parse)
-                        .let { extractAggregations(it) }
-                }
-        }
-        .let { Response.ok(it).build() }
-
-
-    private fun buildFieldAggregationQuery(field: IndexFieldConfiguration) =
-        when (field.type) {
-            "keyword", "short", "byte" -> mapOf(
-                field.name to mapOf(
-                    "terms" to mapOf(
-                        "field" to field.name,
-                        "size" to 100
-                    )
-                )
-            )
-
-            "date" -> mapOf(
-                field.name to mapOf(
-                    "date_histogram" to mapOf(
-                        "field" to field.name,
-                        "format" to "yyyy-MM-dd",
-                        "calendar_interval" to "week"
-                    )
-                )
-            )
-
-            else -> {
-                log.info("${field.name}: unhandled type '${field.type}'")
-                null
-            }
-        }
 
     @DELETE
     @Path("{indexName}")
