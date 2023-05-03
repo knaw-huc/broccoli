@@ -88,10 +88,10 @@ abstract class Aggregation(val name: String) {
 
 class DateAggregation(name: String) : Aggregation(name) {
     override fun toJson() = mapOf(
-        "date_histogram" to mapOf(
+        "auto_date_histogram" to mapOf(
+            "buckets" to 10,
             "field" to name,
-            "format" to "yyyy-MM-dd",
-            "calendar_interval" to "week"
+            "format" to "yyyy-MM-dd"
         )
     )
 }
@@ -99,7 +99,8 @@ class DateAggregation(name: String) : Aggregation(name) {
 class TermAggregation(name: String) : Aggregation(name) {
     override fun toJson() = mapOf(
         "terms" to mapOf(
-            "field" to name
+            "field" to name,
+            "size" to 100
         )
     )
 }
