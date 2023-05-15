@@ -49,10 +49,19 @@ class ProjectsResource(
         @QueryParam("frag") @DefaultValue("scan") frag: FragOpts,
         @QueryParam("from") @DefaultValue("0") from: Int,
         @QueryParam("size") @DefaultValue("10") size: Int,
-        @QueryParam("sort") @DefaultValue("_score") sort: String
+        @QueryParam("sortBy") @DefaultValue("_score") sortBy: String,
+        @QueryParam("sortOrder") @DefaultValue("desc") sortOrder: SortOrder
     ): Response {
         val project = getProject(projectId)
         val index = getIndex(indexParam, project)
+
+        log.info("sortBy=[$sortBy], sortOrder=[$sortOrder]")
+        index.fields.map { it.name }
+            .plus("_doc")
+            .plus("_score")
+            .apply {
+                find { it == sortBy } ?: throw BadRequestException("query param sortBy must be one of ${this.sorted()}")
+            }
 
         return queryString
             .also { log.info("queryString: ${jsonWriter.writeValueAsString(it)}") }
@@ -60,8 +69,9 @@ class ProjectsResource(
                 ElasticQueryBuilder(index)
                     .from(from)
                     .size(size)
-                    .sort(sort)
-                    .frag(frag)
+                    .sortBy(sortBy)
+                    .sortOrder(sortOrder.toString())
+                    .frag(frag.toString())
                     .query(it)
                     .toElasticQuery()
             }
@@ -181,6 +191,13 @@ class ProjectsResource(
     @Suppress("unused")
     enum class FragOpts {
         NONE, SCAN, SENTENCE; // https://github.com/wikimedia/search-highlighter#elasticsearch-options
+
+        override fun toString() = name.lowercase()
+    }
+
+    @Suppress("unused")
+    enum class SortOrder {
+        ASC, DESC;
 
         override fun toString() = name.lowercase()
     }

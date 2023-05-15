@@ -4,14 +4,13 @@ import com.fasterxml.jackson.annotation.JsonAnyGetter
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
-import nl.knaw.huc.broccoli.resources.projects.ProjectsResource.FragOpts
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class ElasticQuery(
     @JsonProperty("_source") val source: Boolean = true,
     val from: Int,
     val size: Int,
-    val sort: String,
+    val sort: Sort,
     val query: ComplexQuery,
     val highlight: HighlightTerm? = null,
     val aggregations: Aggregations? = null
@@ -56,16 +55,24 @@ data class MatchPhrasePrefixQuery(
     val text: String
 )
 
+data class Sort(
+    @JsonIgnore val sortBy: String,
+    @JsonIgnore val sortOrder: String
+) {
+    @JsonAnyGetter
+    fun toJson() = mapOf(sortBy to mapOf("order" to sortOrder))
+}
+
 data class HighlightTerm(
     @JsonIgnore val text: String,
-    @JsonIgnore val fragmenter: FragOpts = FragOpts.SCAN
+    @JsonIgnore val fragmenter: String
 ) {
     @JsonAnyGetter
     fun toJson() = mapOf(
         "fields" to mapOf(
             "text" to mapOf(
                 "type" to "experimental",
-                "fragmenter" to fragmenter.toString(),
+                "fragmenter" to fragmenter,
                 "options" to mapOf(
                     "return_snippets_and_offsets" to true
                 )

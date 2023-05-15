@@ -2,19 +2,22 @@ package nl.knaw.huc.broccoli.core
 
 import nl.knaw.huc.broccoli.api.*
 import nl.knaw.huc.broccoli.config.IndexConfiguration
-import nl.knaw.huc.broccoli.resources.projects.ProjectsResource.FragOpts
 import kotlin.properties.Delegates
 
 class ElasticQueryBuilder(private val index: IndexConfiguration) {
     private var from by Delegates.notNull<Int>()
     private var size by Delegates.notNull<Int>()
-    private lateinit var sort: String
-    private lateinit var frag: FragOpts
+    private lateinit var sortBy: String
+    private lateinit var sortOrder: String
+    private lateinit var frag: String
     private lateinit var query: IndexQuery
 
-    fun sort(sort: String) = apply { this.sort = sort }
+    fun sortBy(sortBy: String) = apply { this.sortBy = sortBy }
 
-    fun frag(frag: FragOpts) = apply { this.frag = frag }
+    fun sortOrder(sortOrder: String) = apply { this.sortOrder = sortOrder }
+
+    fun frag(frag: String) = apply { this.frag = frag }
+
     fun from(from: Int) = apply { this.from = from }
 
     fun size(size: Int) = apply { this.size = size }
@@ -24,7 +27,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
     fun toElasticQuery() = ElasticQuery(
         from = from,
         size = size,
-        sort = sort,
+        sort = Sort(sortBy, sortOrder),
 
         query = ComplexQuery(
             bool = BoolQuery(
