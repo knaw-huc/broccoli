@@ -122,8 +122,8 @@ class BrintaResource(
 
         val index = getIndex(project, indexName)
 
-        val topTierName = project.tiers[0].name
-        val topTierValue = if (tierParam == null) emptyList() else listOf(Pair(topTierName, tierParam))
+        val topTier = project.tiers[0]
+        val topTierValue = if (tierParam == null) emptyList() else listOf(Pair(topTier.name, tierParam))
 
         val ok = mutableListOf<String>()
         val err = mutableListOf<Map<*, *>>()
@@ -133,13 +133,13 @@ class BrintaResource(
         )
 
         project.annoRepo.findByTiers(
-            bodyType = topTierName.capitalize(),
+            bodyType = topTier.anno ?: topTier.name.capitalize(),
             tiers = topTierValue
-        ).forEach { topTier ->
-            log.info("Indexing ${topTier.bodyType()}: ${topTier.bodyId()}")
+        ).forEach { tier ->
+            log.info("Indexing ${tier.bodyType()}: ${tier.bodyId()}")
 
             // extract entire text range of current top tier (for overlap query)
-            val textTarget = topTier.withField<Any>("Text", "source").first()
+            val textTarget = tier.withField<Any>("Text", "source").first()
             val source = textTarget["source"] as String
             val selector = textTarget["selector"] as Map<*, *>
             val start = selector["start"] as Int
