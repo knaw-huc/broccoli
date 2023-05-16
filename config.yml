@@ -46,7 +46,7 @@ projects:
         type: str
         anno: tt:Letter
     annoRepo:
-      containerName: 'mondriaan-letters-3'
+      containerName: 'mondriaan-letters-0.8.4'
       uri: https://mondriaan.annorepo.dev.clariah.nl
     brinta:
       uri: http://localhost:9200
