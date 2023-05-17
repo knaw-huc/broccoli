@@ -16,6 +16,7 @@ import nl.knaw.huc.broccoli.service.anno.TextSelector
 import nl.knaw.huc.broccoli.service.extractAggregations
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
+import javax.validation.constraints.Min
 import javax.ws.rs.*
 import javax.ws.rs.client.Client
 import javax.ws.rs.client.Entity
@@ -47,8 +48,8 @@ class ProjectsResource(
         queryString: IndexQuery,
         @QueryParam("indexName") indexParam: String?,
         @QueryParam("frag") @DefaultValue("scan") frag: FragOpts,
-        @QueryParam("from") @DefaultValue("0") from: Int,
-        @QueryParam("size") @DefaultValue("10") size: Int,
+        @QueryParam("from") @Min(0) @DefaultValue("0") from: Int,
+        @QueryParam("size") @Min(0) @DefaultValue("10") size: Int,
         @QueryParam("sortBy") @DefaultValue("_score") sortBy: String,
         @QueryParam("sortOrder") @DefaultValue("desc") sortOrder: SortOrder
     ): Response {
