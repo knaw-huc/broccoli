@@ -1,6 +1,7 @@
 package nl.knaw.huc.broccoli.resources.brinta
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.jayway.jsonpath.PathNotFoundException
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.ResourcePaths.BRINTA
 import nl.knaw.huc.broccoli.config.IndexConfiguration
@@ -174,7 +175,6 @@ class BrintaResource(
                             if (textSegments.isNotEmpty()) {
                                 // could come from the configuration instead of using a heuristic
                                 val sep = if (textSegments.first().endsWith(' ')) "" else " "
-                                log.info("first=[${textSegments.first()}] -> sep=[$sep]")
                                 val joinedText = textSegments.joinToString(separator = sep)
                                 val segmentLengths = textSegments.map { it.length }
                                 payload["text"] = joinedText
@@ -194,9 +194,13 @@ class BrintaResource(
 
                     // Then: optional extra payload: fields from config
                     index.fields.forEach { field ->
-                        anno.read(field.path)
-                            ?.let { payload[field.name] = it }
-                            ?: log.info("$docId has no value for field ${field.name} at ${field.path}")
+                        try {
+                            anno.read(field.path)?.let { payload[field.name] = it }
+                        } catch (e: PathNotFoundException) {
+                            // Must catch PNF, even though DEFAULT_PATH_LEAF_TO_NULL is set, because intermediate
+                            //   nodes can also be null, i.e., they don't exist, which still yields a PNF Exception.
+                            // Ignore this, just means the annotation doesn't have a value for this field
+                        }
                     }
 
                     log.info("Indexing $docId, payload=$payload")

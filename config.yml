@@ -29,17 +29,29 @@ projects:
         type: num
     annoRepo:
       apiKey: ${AR_GLOBALISE_API_KEY:-}
-      containerName: globalise-demo-8
+      containerName: globalise-demo-9
       uri: https://globalise-annorepo.tt.di.huc.knaw.nl
     brinta:
       uri: http://localhost:9200
       indices:
         - name: docs
-          bodyTypes: [ Document ]
+          bodyTypes: [ Document, tt:Entity, px:Page ]
           fields:
             - name: bodyType
               path: "$.body.type"
               type: keyword
+            - name: classDescription
+              path: "$.body.class_description"
+              type: keyword
+            - name: className
+              path: "$.body.class_name"
+              type: keyword
+            - name: document
+              path: "$.body.metadata.document"
+              type: keyword
+            - name: opening
+              path: "$.body.metadata.opening"
+              type: short
     textRepo:
       apiKey: ${TR_GLOBALISE_API_KEY:-}
       uri: https://globalise.tt.di.huc.knaw.nl
