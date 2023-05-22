@@ -31,6 +31,15 @@ projects:
       apiKey: ${AR_GLOBALISE_API_KEY:-}
       containerName: globalise-demo-8
       uri: https://globalise-annorepo.tt.di.huc.knaw.nl
+    brinta:
+      uri: http://localhost:9200
+      indices:
+        - name: docs
+          bodyTypes: [ Document ]
+          fields:
+            - name: bodyType
+              path: "$.body.type"
+              type: keyword
     textRepo:
       apiKey: ${TR_GLOBALISE_API_KEY:-}
       uri: https://globalise.tt.di.huc.knaw.nl

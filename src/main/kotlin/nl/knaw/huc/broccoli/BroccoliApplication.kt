@@ -92,7 +92,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())
             register(ProjectsResource(projects, client, jsonParser, objectMapper))
-            register(BrintaResource(projects, client, jsonParser))
+            register(BrintaResource(projects, client))
         }
 
         registerLegacyResources(configuration, projects, client, environment)

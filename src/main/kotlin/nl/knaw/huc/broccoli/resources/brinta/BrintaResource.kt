@@ -1,25 +1,28 @@
 package nl.knaw.huc.broccoli.resources.brinta
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.jayway.jsonpath.ParseContext
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.ResourcePaths.BRINTA
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
+import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
 import javax.ws.rs.*
 import javax.ws.rs.client.Client
 import javax.ws.rs.client.Entity
+import javax.ws.rs.core.GenericType
+import javax.ws.rs.core.HttpHeaders.AUTHORIZATION
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.core.Response
+import javax.ws.rs.core.Response.Status.OK
+import javax.ws.rs.core.Response.Status.UNAUTHORIZED
 
 @Path("$BRINTA/{projectId}")
 @Produces(MediaType.APPLICATION_JSON)
 class BrintaResource(
     private val projects: Map<String, Project>,
-    private val client: Client,
-    private val jsonParser: ParseContext
+    private val client: Client
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -167,10 +170,13 @@ class BrintaResource(
                         .first() // more than one text target without selector? -> arbitrarily choose the first
                         .let { textTarget ->
                             val textURL = textTarget["source"] as String
-                            val textSegments = fetchTextSegments(textURL)
-                            val joinedText = textSegments.joinToString(separator = " ")
-                            val segmentLengths = textSegments.map { it.length }
-                            if (textSegments != null) {
+                            val textSegments = fetchTextSegments(project.textRepo, textURL)
+                            if (textSegments.isNotEmpty()) {
+                                // could come from the configuration instead of using a heuristic
+                                val sep = if (textSegments.first().endsWith(' ')) "" else " "
+                                log.info("first=[${textSegments.first()}] -> sep=[$sep]")
+                                val joinedText = textSegments.joinToString(separator = sep)
+                                val segmentLengths = textSegments.map { it.length }
                                 payload["text"] = joinedText
                                 payload["lengths"] = segmentLengths
                                 ok.add(docId)
@@ -218,15 +224,34 @@ class BrintaResource(
 
     private fun Map<String, Any>.toJsonString() = jacksonObjectMapper().writeValueAsString(this)
 
-    private fun fetchTextSegments(textURL: String) =
-        client.target(textURL).request().get().run {
-            if (status == Response.Status.OK.statusCode) {
-                jsonParser.parse(readEntityAsJsonString()).read<List<String>>("$")
-            } else {
-                close()
+    private fun fetchTextSegments(textRepo: TextRepo, textURL: String): List<String> {
+        var builder = client.target(textURL).request()
+
+        with(textRepo) {
+            if (apiKey != null && canResolve(textURL)) {
+                log.info("with apiKey {}", apiKey)
+                builder = builder.header(AUTHORIZATION, "Basic $apiKey")
+            }
+        }
+
+        val resp = builder.get()
+
+        return when (resp.status) {
+            OK.statusCode -> {
+                resp.readEntity(object : GenericType<List<String>>() {})
+            }
+
+            UNAUTHORIZED.statusCode -> {
+                log.warn("Auth failed fetching $textURL")
+                throw ClientErrorException("Need credentials for $textURL", UNAUTHORIZED)
+            }
+
+            else -> {
+                log.warn("Failed to fetch $textURL (status: ${resp.status}")
                 emptyList()
             }
         }
+    }
 
     private fun String.capitalize(): String = replaceFirstChar(Char::uppercase)
 
