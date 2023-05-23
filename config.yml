@@ -35,7 +35,7 @@ projects:
       uri: http://localhost:9200
       indices:
         - name: docs
-          bodyTypes: [ Document, tt:Entity, px:Page ]
+          bodyTypes: [ Document, tt:Entity ]
           fields:
             - name: bodyType
               path: "$.body.type"
@@ -46,12 +46,6 @@ projects:
             - name: className
               path: "$.body.class_name"
               type: keyword
-            - name: document
-              path: "$.body.metadata.document"
-              type: keyword
-            - name: opening
-              path: "$.body.metadata.opening"
-              type: short
     textRepo:
       apiKey: ${TR_GLOBALISE_API_KEY:-}
       uri: https://globalise.tt.di.huc.knaw.nl
