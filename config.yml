@@ -91,6 +91,7 @@ projects:
         type: num
     brinta:
       uri: http://localhost:9200
+      joinSeparator: " "
       indices:
         - name: resolutions
           bodyTypes: [ Resolution, AttendanceList ]

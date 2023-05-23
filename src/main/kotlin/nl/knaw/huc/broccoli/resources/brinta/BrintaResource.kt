@@ -173,9 +173,7 @@ class BrintaResource(
                             val textURL = textTarget["source"] as String
                             val textSegments = fetchTextSegments(project.textRepo, textURL)
                             if (textSegments.isNotEmpty()) {
-                                // could come from the configuration instead of using a heuristic
-                                val sep = if (textSegments.first().endsWith(' ')) "" else " "
-                                val joinedText = textSegments.joinToString(separator = sep)
+                                val joinedText = textSegments.joinToString(project.brinta.joinSeparator ?: "")
                                 val segmentLengths = textSegments.map { it.length }
                                 payload["text"] = joinedText
                                 payload["lengths"] = segmentLengths

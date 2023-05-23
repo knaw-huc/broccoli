@@ -151,6 +151,10 @@ class BrintaConfiguration {
     val uri: String = "http://localhost:9200"
 
     @Valid
+    @JsonProperty
+    val joinSeparator: String? = null
+
+    @Valid
     @NotNull
     @JsonProperty
     val indices: List<IndexConfiguration> = ArrayList()
