@@ -41,6 +41,17 @@ class ProjectsResource(
     @Operation(summary = "Get configured projects")
     fun listProjects(): Set<String> = projects.keys
 
+    @GET
+    @Path("{projectId}")
+    fun exploreIndex(
+        @PathParam("projectId") projectId: String
+    ): Response {
+        val project = getProject(projectId)
+        log.info("Find bodyTypes in use in [${project.name}]: ")
+        return Response.ok(project.annoRepo.findDistinct().sorted()).build()
+    }
+
+
     @POST
     @Path("{projectId}/search")
     fun searchIndex(

@@ -9,6 +9,7 @@ import nl.knaw.huc.annorepo.client.AnnoRepoClient
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE
 import nl.knaw.huc.broccoli.api.Constants.isEqualTo
+import nl.knaw.huc.broccoli.api.Constants.isNotIn
 import nl.knaw.huc.broccoli.api.Constants.overlap
 import nl.knaw.huc.broccoli.service.cache.LRUCache
 import org.slf4j.LoggerFactory
@@ -102,6 +103,18 @@ class AnnoRepo(
                 AR_BODY_TYPE to bodyTypes
             )
         )
+
+    fun findDistinct(): Set<String> = mutableSetOf<String>().apply {
+        for (maxTries in 0..100) {
+            liveQuery(defaultContainerName, mapOf(AR_BODY_TYPE to isNotIn(this)))
+                .map(::AnnoRepoSearchResult)
+                .firstOrNull()
+                ?.bodyType()
+                ?.also { log.info("  $it") }
+                ?.let { add(it) }
+                ?: break
+        }
+    }
 
     fun findOffsetRelativeTo(source: String, selector: TextSelector, type: String) =
         findOffsetRelativeTo(defaultContainerName, source, selector, type)
