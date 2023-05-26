@@ -56,12 +56,12 @@ projects:
     tiers:
       - name: folder
         type: str
-        anno: tt:Folder
+        anno: tf:Folder
       - name: letter
         type: str
-        anno: tt:Letter
+        anno: tf:Letter
     annoRepo:
-      containerName: 'mondriaan-letters-0.8.4'
+      containerName: 'mondriaan-letters-0.8.8'
       uri: https://mondriaan.annorepo.dev.clariah.nl
     brinta:
       uri: http://localhost:9200
