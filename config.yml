@@ -61,13 +61,13 @@ projects:
         type: str
         anno: tf:Letter
     annoRepo:
-      containerName: 'mondriaan-letters-0.8.8'
+      containerName: 'mondriaan-letters-0.8.9'
       uri: https://mondriaan.annorepo.dev.clariah.nl
     brinta:
       uri: http://localhost:9200
       indices:
         - name: divs
-          bodyTypes: [ tei:Div ]
+          bodyTypes: [ tf:Letter, tei:Div , tei:Rs ]
           fields:
             - name: bodyType
               path: "$.body.type"
@@ -77,6 +77,30 @@ projects:
               type: keyword
             - name: type
               path: "$.body.metadata.type"
+              type: keyword
+            - name: country
+              path: "$.body.metadata.country"
+              type: keyword
+            - name: institution
+              path: "$.body.metadata.institution"
+              type: keyword
+            - name: msid
+              path: "$.body.metadata.msid"
+              type: keyword
+            - name: period
+              path: "$.body.metadata.period"
+              type: keyword
+            - name: periodLong
+              path: "$.body.metadata.periodlong"
+              type: keyword
+            - name: letterId
+              path: "$.body.metadata.letterid"
+              type: keyword
+            - name: correspondent
+              path: "$.body.metadata.correspondent"
+              type: keyword
+            - name: location
+              path: "$.body.metadata.location"
               type: keyword
     textRepo:
       uri: https://mondriaan.tt.di.huc.knaw.nl
