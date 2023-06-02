@@ -107,9 +107,7 @@ class AnnoRepo(
     fun findOverlapping(source: String, start: Int, end: Int, constraints: Map<String, Any>) =
         cacheQuery(
             containerName = defaultContainerName,
-            query = constraints.toMutableMap().apply {
-                put(AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE, overlap(source, start, end))
-            }
+            query = constraints.plus(AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to overlap(source, start, end))
         ).map { it.read<Map<String, Any>>("$") }.toList()
 
     fun findDistinct(): Set<String> = mutableSetOf<String>().apply {
