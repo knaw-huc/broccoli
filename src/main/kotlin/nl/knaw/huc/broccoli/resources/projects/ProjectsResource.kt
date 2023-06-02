@@ -51,6 +51,10 @@ class ProjectsResource(
         return Response.ok(project.annoRepo.findDistinct().sorted()).build()
     }
 
+    @GET
+    @Path("{projectId}/views")
+    fun getViews(@PathParam("projectId") projectId: String) = getProject(projectId).views
+
 
     @POST
     @Path("{projectId}/search")
@@ -289,7 +293,8 @@ class ProjectsResource(
         val annoRepo = project.annoRepo
         val textRepo = project.textRepo
 
-        val interestedIn = parseIncludeResults(setOf("anno", "text", "iiif"), includeResultsParam)
+        val definedViews = project.views.keys.plus(setOf("anno", "text", "iiif"))
+        val interestedIn = parseIncludeResults(definedViews, includeResultsParam)
         val overlapTypes = parseOverlapTypes(overlapTypesParam)
 
         val annoTimings = mutableMapOf<String, Any>()
@@ -330,6 +335,17 @@ class ProjectsResource(
                         val start = selector["start"] as Int
                         val end = selector["end"] as Int
                         val bodyTypes = isIn(overlapTypes)
+                        val viewResults = mutableMapOf<String, String>()
+                        project.views
+                            .filter { (view, _) -> interestedIn.contains(view) }
+                            .forEach { (view, constraints) ->
+                                viewResults[view] = annoRepo.findOverlapping(sourceUrl, start, end, constraints)
+                                    .firstOrNull()
+                                    ?.let { result -> result["body"] as Map<*, *> }
+                                    ?.let { body -> body["text"] as String }
+                                    ?: ""
+                            }
+                        if (viewResults.isNotEmpty()) result["views"] = viewResults
                         timeExecution(
                             { annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes) },
                             { timeSpent -> annoTimings["fetchOverlap"] = timeSpent }

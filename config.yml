@@ -60,8 +60,37 @@ projects:
       - name: letter
         type: str
         anno: tf:Letter
+    views:
+      - name: textNL
+        anno:
+          - path: body.type
+            value: tei:Div
+          - path: body.metadata.lang
+            value: nl
+      - name: textEN
+        anno:
+          - path: body.type
+            value: tei:Div
+          - path: body.metadata.lang
+            value: en
+      - name: notesEN
+        anno:
+          - path: body.type
+            value: tei:Note
+          - path: body.metadata.lang
+            value: en
+      - name: title
+        anno:
+          - path: body.type
+            value: tei:Title
+      - name: postalData
+        anno:
+          - path: body.type
+            value: tei:Div
+          - path: body.metadata.type
+            value: postalData
     annoRepo:
-      containerName: 'mondriaan-letters-0.8.9'
+      containerName: 'mondriaan-letters-0.8.10'
       uri: https://mondriaan.annorepo.dev.clariah.nl
     brinta:
       uri: http://localhost:9200

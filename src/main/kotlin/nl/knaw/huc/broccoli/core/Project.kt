@@ -8,6 +8,7 @@ import nl.knaw.huc.broccoli.service.text.TextRepo
 data class Project(
     val name: String,
     val tiers: List<TierConfiguration>,
+    val views: Map<String, Map<String, String>>,
     val brinta: BrintaConfiguration,
     val textRepo: TextRepo,
     val annoRepo: AnnoRepo,

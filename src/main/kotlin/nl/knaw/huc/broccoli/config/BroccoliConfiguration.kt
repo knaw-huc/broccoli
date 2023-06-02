@@ -103,6 +103,10 @@ class ProjectConfiguration {
 
     @Valid
     @JsonProperty
+    val views: List<ViewConfiguration> = emptyList()
+
+    @Valid
+    @JsonProperty
     @NotNull
     val brinta: BrintaConfiguration = BrintaConfiguration()
 
@@ -119,6 +123,30 @@ class ProjectConfiguration {
     @Valid
     @JsonProperty
     val iiif = IIIFConfiguration()
+}
+
+class ViewConfiguration {
+    @Valid
+    @NotNull
+    @JsonProperty
+    val name: String = ""
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    val anno: List<ViewAnnoPath> = emptyList()
+}
+
+class ViewAnnoPath {
+    @Valid
+    @NotNull
+    @JsonProperty
+    val path: String = ""
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    val value: String = ""
 }
 
 class TierConfiguration {
