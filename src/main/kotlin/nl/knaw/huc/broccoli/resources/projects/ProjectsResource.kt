@@ -343,13 +343,14 @@ class ProjectsResource(
                                         { annoRepo.findOverlapping(sourceUrl, start, end, constraints) },
                                         { timeSpent -> annoTimings["fetchOverlap[$view]"] = timeSpent }
                                     )
-                                    val viewText = (viewAnnos.firstOrNull()
+                                    val viewText = viewAnnos
+                                        .firstOrNull()
                                         ?.let { result -> result["body"] as Map<*, *> } // -> TODO: get from TR
                                         ?.let { body -> body["text"] as String }
                                         ?.let { text ->
                                             text.split('\n').joinToString("\n") { s -> s.trim() }
                                         }
-                                        ?: "")
+                                        ?: ""
                                     put(view, viewText)
                                 }
                             if (isNotEmpty()) result["views"] = this
