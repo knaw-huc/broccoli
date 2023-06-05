@@ -6,6 +6,8 @@ import javax.ws.rs.NotFoundException
 class AnnoSearchResultInterpreter(private val searchResult: AnnoRepoSearchResult) {
     private val log = LoggerFactory.getLogger(javaClass)
 
+    fun bodyId() = searchResult.bodyId()
+
     fun findSegmentsSource(): String = findTextTargetWithSelector()["source"] as String
 
     fun findTextSource(): String = findTextTargetWithoutSelector()["source"] as String

@@ -11,6 +11,7 @@ import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.ElasticQueryBuilder
 import nl.knaw.huc.broccoli.core.Project
+import nl.knaw.huc.broccoli.service.anno.AnnoRepo
 import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
 import nl.knaw.huc.broccoli.service.anno.TextSelector
 import nl.knaw.huc.broccoli.service.extractAggregations
@@ -335,25 +336,36 @@ class ProjectsResource(
                         val start = selector["start"] as Int
                         val end = selector["end"] as Int
                         val bodyTypes = isIn(overlapTypes)
-                        mutableMapOf<String, Map<String, List<String>>>().apply {
-                            project.views
-                                .filter { (view, _) -> interestedIn.contains(view) }
-                                .forEach { (view, constraints) ->
-                                    val viewText = timeExecution(
-                                        { annoRepo.findOverlapping(sourceUrl, start, end, constraints) },
-                                        { timeSpent -> annoTimings["fetchOverlap[$view]"] = timeSpent }
-                                    )
-                                        .firstOrNull()
-                                        ?.let { viewAnnos -> AnnoSearchResultInterpreter(viewAnnos) }
-                                        ?.let { annoInterpreter ->
-                                            timeExecution(
-                                                { fetchTextLines(project.textRepo, annoInterpreter.findTextSource()) },
-                                                { timeSpent -> textTimings["fetchLines[$view]"] = timeSpent }
-                                            )
-                                        }
-                                        ?: emptyList()
-                                    put(view, mapOf("lines" to viewText))
-                                }
+                        mutableMapOf<String, Map<String, Any>>().apply {
+                            interestedViews(project, interestedIn).forEach { (view, constraints) ->
+                                val relocatedAnnos = mutableMapOf<String, Any>()
+                                val textSegments = timeExecution(
+                                    { annoRepo.findOverlapping(sourceUrl, start, end, constraints) },
+                                    { timeSpent -> annoTimings["findViewAnno[$view]"] = timeSpent }
+                                )
+                                    .firstOrNull()
+                                    ?.let { viewAnno -> AnnoSearchResultInterpreter(viewAnno) }
+                                    ?.let { viewAnnoInterpreter ->
+                                        findOverlappingViewAnnotations(
+                                            annoRepo,
+                                            viewAnnoInterpreter,
+                                            bodyTypes,
+                                            relativeTo
+                                        )
+                                            .let { relocatedAnnos.putAll(it) }
+                                        val textSource = viewAnnoInterpreter.findTextSource()
+                                        timeExecution(
+                                            { fetchTextLines(project.textRepo, textSource) },
+                                            { timeSpent -> textTimings["fetchViewSegments[$view]"] = timeSpent }
+                                        )
+                                    }
+                                    ?: emptyList()
+                                val textResult = mutableMapOf<String, Any>(
+                                    "lines" to textSegments,
+                                    "locations" to relocatedAnnos
+                                )
+                                put(view, textResult)
+                            }
                             if (isNotEmpty()) result["views"] = this
                         }
                         timeExecution(
@@ -443,6 +455,46 @@ class ProjectsResource(
 
         return Response.ok(result).build()
     }
+
+    private fun findOverlappingViewAnnotations(
+        annoRepo: AnnoRepo,
+        interpreter: AnnoSearchResultInterpreter,
+        bodyTypes: Map<String, Set<String>>,
+        relativeTo: String
+    ): Map<String, Any> {
+        val source = interpreter.findSegmentsSource()
+        val selector = interpreter.findSelector()
+        val offset = annoRepo.findOffsetRelativeTo(source, selector, relativeTo)
+
+        val relocatedAnnotations = mutableListOf<Map<String, Any>>()
+        annoRepo.fetchOverlap(source, selector.start(), selector.end(), bodyTypes).forEach { anno ->
+            if (anno is Map<*, *>) {
+                val annoBodyId = extractBodyId(anno)
+                val annoSelector = extractTextSelector(anno)
+
+                if (annoBodyId != null && annoSelector != null) {
+                    val start = TextMarker(annoSelector.start(), annoSelector.beginCharOffset())
+                    val end = TextMarker(annoSelector.end(), annoSelector.endCharOffset())
+                    val markers = TextMarkers(start, end).relativeTo(offset.value)
+                    relocatedAnnotations.add(
+                        mapOf(
+                            "bodyId" to annoBodyId,
+                            "start" to markers.start,
+                            "end" to markers.end
+                        )
+                    )
+                }
+            }
+        }
+
+        return mapOf(
+            "relativeTo" to mapOf("type" to relativeTo, "bodyId" to offset.id),
+            "annotations" to relocatedAnnotations
+        )
+    }
+
+    private fun interestedViews(project: Project, interestedIn: Set<String>) =
+        project.views.filter { (view, _) -> interestedIn.contains(view) }
 
     private fun String.capitalize(): String = replaceFirstChar(Char::uppercase)
 
