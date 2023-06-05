@@ -108,7 +108,7 @@ class AnnoRepo(
         cacheQuery(
             containerName = defaultContainerName,
             query = constraints.plus(AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to overlap(source, start, end))
-        ).map { it.read<Map<String, Any>>("$") }.toList()
+        ).map(::AnnoRepoSearchResult)
 
     fun findDistinct(): Set<String> = mutableSetOf<String>().apply {
         for (maxTries in 0..100) {

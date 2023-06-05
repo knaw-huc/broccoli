@@ -335,23 +335,24 @@ class ProjectsResource(
                         val start = selector["start"] as Int
                         val end = selector["end"] as Int
                         val bodyTypes = isIn(overlapTypes)
-                        mutableMapOf<String, String>().apply {
+                        mutableMapOf<String, Map<String, List<String>>>().apply {
                             project.views
                                 .filter { (view, _) -> interestedIn.contains(view) }
                                 .forEach { (view, constraints) ->
-                                    val viewAnnos = timeExecution(
+                                    val viewText = timeExecution(
                                         { annoRepo.findOverlapping(sourceUrl, start, end, constraints) },
                                         { timeSpent -> annoTimings["fetchOverlap[$view]"] = timeSpent }
                                     )
-                                    val viewText = viewAnnos
                                         .firstOrNull()
-                                        ?.let { result -> result["body"] as Map<*, *> } // -> TODO: get from TR
-                                        ?.let { body -> body["text"] as String }
-                                        ?.let { text ->
-                                            text.split('\n').joinToString("\n") { s -> s.trim() }
+                                        ?.let { viewAnnos -> AnnoSearchResultInterpreter(viewAnnos) }
+                                        ?.let {
+                                            timeExecution(
+                                                { fetchTextLines(project.textRepo, it.findTextSource()) },
+                                                { timeSpent -> textTimings["fetchLines[$view]"] = timeSpent }
+                                            )
                                         }
-                                        ?: ""
-                                    put(view, viewText)
+                                        ?: emptyList()
+                                    put(view, mapOf("lines" to viewText))
                                 }
                             if (isNotEmpty()) result["views"] = this
                         }
