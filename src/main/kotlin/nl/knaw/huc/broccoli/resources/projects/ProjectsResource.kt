@@ -345,9 +345,9 @@ class ProjectsResource(
                                     )
                                         .firstOrNull()
                                         ?.let { viewAnnos -> AnnoSearchResultInterpreter(viewAnnos) }
-                                        ?.let {
+                                        ?.let { annoInterpreter ->
                                             timeExecution(
-                                                { fetchTextLines(project.textRepo, it.findTextSource()) },
+                                                { fetchTextLines(project.textRepo, annoInterpreter.findTextSource()) },
                                                 { timeSpent -> textTimings["fetchLines[$view]"] = timeSpent }
                                             )
                                         }
