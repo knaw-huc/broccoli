@@ -335,20 +335,28 @@ class ProjectsResource(
                         val start = selector["start"] as Int
                         val end = selector["end"] as Int
                         val bodyTypes = isIn(overlapTypes)
-                        val viewResults = mutableMapOf<String, String>()
-                        project.views
-                            .filter { (view, _) -> interestedIn.contains(view) }
-                            .forEach { (view, constraints) ->
-                                viewResults[view] = annoRepo.findOverlapping(sourceUrl, start, end, constraints)
-                                    .firstOrNull()
-                                    ?.let { result -> result["body"] as Map<*, *> }
-                                    ?.let { body -> body["text"] as String }
-                                    ?: ""
-                            }
-                        if (viewResults.isNotEmpty()) result["views"] = viewResults
+                        mutableMapOf<String, String>().apply {
+                            project.views
+                                .filter { (view, _) -> interestedIn.contains(view) }
+                                .forEach { (view, constraints) ->
+                                    val viewAnnos = timeExecution(
+                                        { annoRepo.findOverlapping(sourceUrl, start, end, constraints) },
+                                        { timeSpent -> annoTimings["fetchOverlap[$view]"] = timeSpent }
+                                    )
+                                    val viewText = (viewAnnos.firstOrNull()
+                                        ?.let { result -> result["body"] as Map<*, *> } // -> TODO: get from TR
+                                        ?.let { body -> body["text"] as String }
+                                        ?.let { text ->
+                                            text.split('\n').joinToString("\n") { s -> s.trim() }
+                                        }
+                                        ?: "")
+                                    put(view, viewText)
+                                }
+                            if (isNotEmpty()) result["views"] = this
+                        }
                         timeExecution(
                             { annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes) },
-                            { timeSpent -> annoTimings["fetchOverlap"] = timeSpent }
+                            { timeSpent -> annoTimings["fetchOverlap[text]"] = timeSpent }
                         )
                     }
             }
