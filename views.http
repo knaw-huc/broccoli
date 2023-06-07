@@ -1,0 +1,54 @@
+### Get the views for bodyId=urn:mondriaan:letter:17583
+#   Calls for view 'title':
+#  - name: title
+#    anno:
+#      - path: body.type
+#        value: tei:Title
+#
+# First, get the subject itself (i.c. a letter):
+POST https://mondriaan.annorepo.dev.clariah.nl/services/mondriaan-letters-0.8.11-1/search
+Content-Type: application/json
+
+{
+  "body.id": "urn:mondriaan:letter:17583"
+}
+
+### Now, we have {source,start,end} for the entire letter:
+# source=https://mondriaan.tt.di.huc.knaw.nl/textrepo/rest/versions/e0869654-3c77-428c-bb3a-d401323f37b5/contents
+# selector={start=2928, end=3426}
+
+### Next up, for each view (pretend only 'title' for now): find view within this source+selector:
+POST https://mondriaan.annorepo.dev.clariah.nl/services/mondriaan-letters-0.8.11-1/search
+Content-Type: application/json
+
+{
+  ":isWithinTextAnchorRange": {
+    "source": "https://mondriaan.tt.di.huc.knaw.nl/textrepo/rest/versions/e0869654-3c77-428c-bb3a-d401323f37b5/contents",
+    "start": 2928,
+    "end": 3426
+  },
+  "body.type": "tei:Title"
+}
+
+### From this anno, get the body.id, the text (via text-target-without-selector), and {source,start,end} of the title
+# body.id: urn:mondriaan:title:18650
+# text @ https://mondriaan.tt.di.huc.knaw.nl/textrepo/view/versions/e0869654-3c77-428c-bb3a-d401323f37b5/segments/index/2929/2942
+# source=https://mondriaan.tt.di.huc.knaw.nl/textrepo/rest/versions/e0869654-3c77-428c-bb3a-d401323f37b5/contents
+# selector={start=2929, end=2942}
+#
+# now there /could/ be, e.g., tei:Rs (entity) in this title, so fetch all annotations 'within' this title
+POST https://mondriaan.annorepo.dev.clariah.nl/services/mondriaan-letters-0.8.11-1/search
+Content-Type: application/json
+
+{
+  ":isWithinTextAnchorRange": {
+    "source": "https://mondriaan.tt.di.huc.knaw.nl/textrepo/rest/versions/e0869654-3c77-428c-bb3a-d401323f37b5/contents",
+    "start": 2929,
+    "end": 2942
+  },
+  "body.type": {
+    ":isIn": [
+      "tei:Rs"
+    ]
+  }
+}
