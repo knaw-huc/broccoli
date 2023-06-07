@@ -19,7 +19,7 @@ Content-Type: application/json
   "body.id": "urn:mondriaan:letter:17583"
 }
 
-### Now, we have {source,start,end} for the entire letter:
+### Now, we have {source,start,end} for the entire subject ('letter'):
 # source=https://mondriaan.tt.di.huc.knaw.nl/textrepo/rest/versions/e0869654-3c77-428c-bb3a-d401323f37b5/contents
 # selector={start=2928, end=3426}
 
@@ -102,6 +102,8 @@ Content-Type: application/json
   },
   "body.type": {
     ":isIn": [
+      "tei:Div",
+      "tei:Letter",
       "tei:Rs"
     ]
   }

@@ -8,9 +8,11 @@ import com.jayway.jsonpath.Option.DEFAULT_PATH_LEAF_TO_NULL
 import nl.knaw.huc.annorepo.client.AnnoRepoClient
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE
+import nl.knaw.huc.broccoli.api.Constants.AR_WITHIN_TEXT_ANCHOR_RANGE
 import nl.knaw.huc.broccoli.api.Constants.isEqualTo
 import nl.knaw.huc.broccoli.api.Constants.isNotIn
 import nl.knaw.huc.broccoli.api.Constants.overlap
+import nl.knaw.huc.broccoli.api.Constants.within
 import nl.knaw.huc.broccoli.service.cache.LRUCache
 import org.slf4j.LoggerFactory
 import javax.ws.rs.BadRequestException
@@ -104,11 +106,11 @@ class AnnoRepo(
             )
         )
 
-    fun findOverlapping(source: String, start: Int, end: Int, constraints: Map<String, Any>) =
+    fun findWithin(source: String, start: Int, end: Int, constraints: Map<String, Any>) =
         cacheQuery(
             containerName = defaultContainerName,
-            query = constraints.plus(AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to overlap(source, start, end))
-        ).map(::AnnoRepoSearchResult)
+            query = constraints.plus(AR_WITHIN_TEXT_ANCHOR_RANGE to within(source, start, end))
+        )
 
     fun findDistinct(): Set<String> = mutableSetOf<String>().apply {
         for (maxTries in 0..100) {

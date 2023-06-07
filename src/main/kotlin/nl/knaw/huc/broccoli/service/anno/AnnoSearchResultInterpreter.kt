@@ -3,10 +3,12 @@ package nl.knaw.huc.broccoli.service.anno
 import org.slf4j.LoggerFactory
 import javax.ws.rs.NotFoundException
 
-class AnnoSearchResultInterpreter(private val searchResult: AnnoRepoSearchResult) {
+class AnnoSearchResultInterpreter(val searchResult: AnnoRepoSearchResult) {
     private val log = LoggerFactory.getLogger(javaClass)
 
     fun bodyId() = searchResult.bodyId()
+
+    fun bodyType() = searchResult.bodyType()
 
     fun findSegmentsSource(): String = findTextTargetWithSelector()["source"] as String
 

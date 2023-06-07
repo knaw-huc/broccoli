@@ -3,10 +3,15 @@ package nl.knaw.huc.broccoli.api
 object Constants {
     const val APP_NAME = "Broccoli"
 
+    const val AR_BODY_ID = "body.id"
     const val AR_BODY_TYPE = "body.type"
     const val AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE = ":overlapsWithTextAnchorRange"
+    const val AR_WITHIN_TEXT_ANCHOR_RANGE = ":isWithinTextAnchorRange"
 
     fun overlap(source: String, start: Int, end: Int): Map<String, *> =
+        mapOf("source" to source, "start" to start, "end" to end)
+
+    fun within(source: String, start: Int, end: Int): Map<String, *> =
         mapOf("source" to source, "start" to start, "end" to end)
 
     fun isEqualTo(it: String) = mapOf(":=" to it)

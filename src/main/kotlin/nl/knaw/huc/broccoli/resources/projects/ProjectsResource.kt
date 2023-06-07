@@ -4,7 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.jayway.jsonpath.ParseContext
 import io.swagger.v3.oas.annotations.Operation
+import nl.knaw.huc.broccoli.api.Constants.AR_BODY_ID
+import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.isIn
+import nl.knaw.huc.broccoli.api.Constants.isNotEqualTo
 import nl.knaw.huc.broccoli.api.IndexQuery
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
 import nl.knaw.huc.broccoli.api.TextMarker
@@ -12,6 +15,7 @@ import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.ElasticQueryBuilder
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
+import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
 import nl.knaw.huc.broccoli.service.anno.TextSelector
 import nl.knaw.huc.broccoli.service.extractAggregations
@@ -332,44 +336,29 @@ class ProjectsResource(
                     .first()
                     .let {
                         val selector = it["selector"] as Map<*, *>
-                        val sourceUrl = it["source"] as String
-                        val start = selector["start"] as Int
-                        val end = selector["end"] as Int
+                        val subjectSource = it["source"] as String
+                        val subjectStart = selector["start"] as Int
+                        val subjectEnd = selector["end"] as Int
                         val bodyTypes = isIn(overlapTypes)
                         mutableMapOf<String, Map<String, Any>>().apply {
-                            interestedViews(project, interestedIn).forEach { (view, constraints) ->
-                                val relocatedAnnos = mutableMapOf<String, Any>()
-                                val textSegments = timeExecution(
-                                    { annoRepo.findOverlapping(sourceUrl, start, end, constraints) },
-                                    { timeSpent -> annoTimings["findViewAnno[$view]"] = timeSpent }
-                                )
+                            interestedViews(project, interestedIn).forEach { (viewName, viewSpec) ->
+                                annoRepo.findWithin(subjectSource, subjectStart, subjectEnd, viewSpec)
+                                    .map(::AnnoRepoSearchResult)
                                     .firstOrNull()
-                                    ?.let { viewAnno -> AnnoSearchResultInterpreter(viewAnno) }
-                                    ?.let { viewAnnoInterpreter ->
-                                        findOverlappingViewAnnotations(
-                                            annoRepo,
-                                            viewAnnoInterpreter,
-                                            bodyTypes,
-                                            relativeTo
+                                    ?.let { viewAnnos ->
+                                        val viewAnnoInterpreter = AnnoSearchResultInterpreter(viewAnnos)
+                                        val source = viewAnnoInterpreter.findTextSource()
+                                        val viewResult = mutableMapOf(
+                                            "lines" to fetchTextLines(project.textRepo, source),
+                                            "locations" to findViewAnnotations(annoRepo, viewAnnoInterpreter, bodyTypes)
                                         )
-                                            .let { relocatedAnnos.putAll(it) }
-                                        val textSource = viewAnnoInterpreter.findTextSource()
-                                        timeExecution(
-                                            { fetchTextLines(project.textRepo, textSource) },
-                                            { timeSpent -> textTimings["fetchViewSegments[$view]"] = timeSpent }
-                                        )
+                                        put(viewName, viewResult)
                                     }
-                                    ?: emptyList()
-                                val textResult = mutableMapOf<String, Any>(
-                                    "lines" to textSegments,
-                                    "locations" to relocatedAnnos
-                                )
-                                put(view, textResult)
                             }
                             if (isNotEmpty()) result["views"] = this
                         }
                         timeExecution(
-                            { annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes) },
+                            { annoRepo.fetchOverlap(subjectSource, subjectStart, subjectEnd, bodyTypes) },
                             { timeSpent -> annoTimings["fetchOverlap[text]"] = timeSpent }
                         )
                     }
@@ -456,39 +445,46 @@ class ProjectsResource(
         return Response.ok(result).build()
     }
 
-    private fun findOverlappingViewAnnotations(
+    private fun findViewAnnotations(
         annoRepo: AnnoRepo,
-        interpreter: AnnoSearchResultInterpreter,
-        bodyTypes: Map<String, Set<String>>,
-        relativeTo: String
+        viewAnnoInterpreter: AnnoSearchResultInterpreter,
+        bodyTypes: Map<String, Set<String>>
     ): Map<String, Any> {
-        val source = interpreter.findSegmentsSource()
-        val selector = interpreter.findSelector()
-        val offset = annoRepo.findOffsetRelativeTo(source, selector, relativeTo)
+        val viewSource = viewAnnoInterpreter.findSegmentsSource()
+        val viewSelector = viewAnnoInterpreter.findSelector()
+        val viewBodyType = viewAnnoInterpreter.bodyType()
+        val viewBodyId = viewAnnoInterpreter.bodyId()
 
         val relocatedAnnotations = mutableListOf<Map<String, Any>>()
-        annoRepo.fetchOverlap(source, selector.start(), selector.end(), bodyTypes).forEach { anno ->
-            if (anno is Map<*, *>) {
-                val annoBodyId = extractBodyId(anno)
-                val annoSelector = extractTextSelector(anno)
-
-                if (annoBodyId != null && annoSelector != null) {
-                    val start = TextMarker(annoSelector.start(), annoSelector.beginCharOffset())
-                    val end = TextMarker(annoSelector.end(), annoSelector.endCharOffset())
-                    val markers = TextMarkers(start, end).relativeTo(offset.value)
-                    relocatedAnnotations.add(
-                        mapOf(
-                            "bodyId" to annoBodyId,
-                            "start" to markers.start,
-                            "end" to markers.end
+        annoRepo.findWithin(
+            viewSource, viewSelector.start(), viewSelector.end(),
+            mapOf(
+                AR_BODY_ID to isNotEqualTo(viewBodyId),
+                AR_BODY_TYPE to bodyTypes
+            )
+        )
+            .map { it.read<Any>("$") }
+            .forEach { anno ->
+                if (anno is Map<*, *>) {
+                    val annoBodyId = extractBodyId(anno)
+                    val annoSelector = extractTextSelector(anno)
+                    if (annoBodyId != null && annoSelector != null) {
+                        val annoStart = TextMarker(annoSelector.start(), annoSelector.beginCharOffset())
+                        val annoEnd = TextMarker(annoSelector.end(), annoSelector.endCharOffset())
+                        val annoMarkers = TextMarkers(annoStart, annoEnd).relativeTo(viewSelector.start())
+                        relocatedAnnotations.add(
+                            mapOf(
+                                "bodyId" to annoBodyId,
+                                "start" to annoMarkers.start,
+                                "end" to annoMarkers.end
+                            )
                         )
-                    )
+                    }
                 }
             }
-        }
 
         return mapOf(
-            "relativeTo" to mapOf("type" to relativeTo, "bodyId" to offset.id),
+            "relativeTo" to mapOf("bodyType" to viewBodyType, "bodyId" to viewBodyId),
             "annotations" to relocatedAnnotations
         )
     }

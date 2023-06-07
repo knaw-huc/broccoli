@@ -61,18 +61,18 @@ projects:
         type: str
         anno: tf:Letter
     views:
-      - name: textNL
+      - name: textOrig
         anno:
           - path: body.type
             value: tei:Div
-          - path: body.metadata.lang
-            value: nl
-      - name: textEN
+          - path: body.metadata.type
+            value: original
+      - name: textTrans
         anno:
           - path: body.type
             value: tei:Div
-          - path: body.metadata.lang
-            value: en
+          - path: body.metadata.type
+            value: translation
       - name: notesEN
         anno:
           - path: body.type
