@@ -30,7 +30,21 @@ Content-Type: application/json
   "body.type": "tei:Title"
 }
 
-### From this anno, get the body.id, the text (via text-target-without-selector), and {source,start,end} of the title
+### Another, more complicated view 'textTrans':
+POST https://mondriaan.annorepo.dev.clariah.nl/services/mondriaan-letters-0.8.11-1/search
+Content-Type: application/json
+
+{
+  ":isWithinTextAnchorRange": {
+    "source": "https://mondriaan.tt.di.huc.knaw.nl/textrepo/rest/versions/e0869654-3c77-428c-bb3a-d401323f37b5/contents",
+    "start": 2928,
+    "end": 3426
+  },
+  "body.type": "tei:Div",
+  "body.metadata.type": "translation"
+}
+
+### From these annos, get the body.id, the text (via text-target-without-selector), and {source,start,end} of the title
 # body.id: urn:mondriaan:title:18650
 # text @ https://mondriaan.tt.di.huc.knaw.nl/textrepo/view/versions/e0869654-3c77-428c-bb3a-d401323f37b5/segments/index/2929/2942
 # source=https://mondriaan.tt.di.huc.knaw.nl/textrepo/rest/versions/e0869654-3c77-428c-bb3a-d401323f37b5/contents
@@ -52,3 +66,7 @@ Content-Type: application/json
     ]
   }
 }
+
+### Finally, {start,end} in these 'anno-within-view', need to be relocated by subtracting the view's start from it.
+# In this case, the start of the 'title' needs to be subtracted from the tei:Rs annos found in the title.
+# This relocates the tei:Rs relative to the start of its surrounding tei:Title
