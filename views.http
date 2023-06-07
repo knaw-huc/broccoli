@@ -30,20 +30,6 @@ Content-Type: application/json
   "body.type": "tei:Title"
 }
 
-### Another, more complicated view 'textTrans':
-POST https://mondriaan.annorepo.dev.clariah.nl/services/mondriaan-letters-0.8.11-1/search
-Content-Type: application/json
-
-{
-  ":isWithinTextAnchorRange": {
-    "source": "https://mondriaan.tt.di.huc.knaw.nl/textrepo/rest/versions/e0869654-3c77-428c-bb3a-d401323f37b5/contents",
-    "start": 2928,
-    "end": 3426
-  },
-  "body.type": "tei:Div",
-  "body.metadata.type": "translation"
-}
-
 ### From these annos, get the body.id, the text (via text-target-without-selector), and {source,start,end} of the title
 # body.id: urn:mondriaan:title:18650
 # text @ https://mondriaan.tt.di.huc.knaw.nl/textrepo/view/versions/e0869654-3c77-428c-bb3a-d401323f37b5/segments/index/2929/2942
@@ -67,6 +53,57 @@ Content-Type: application/json
   }
 }
 
+###
+# body.id=urn:mondriaan:rs:18271 (== bio.xml#iongh_aletta_de, text="Aletta de Iongh")
+# text @ https://mondriaan.tt.di.huc.knaw.nl/textrepo/view/versions/e0869654-3c77-428c-bb3a-d401323f37b5/segments/index/2931/2933
+# source="https://mondriaan.tt.di.huc.knaw.nl/textrepo/rest/versions/e0869654-3c77-428c-bb3a-d401323f37b5/contents"
+# selector={start=2931, end=2933}
+
 ### Finally, {start,end} in these 'anno-within-view', need to be relocated by subtracting the view's start from it.
 # In this case, the start of the 'title' needs to be subtracted from the tei:Rs annos found in the title.
 # This relocates the tei:Rs relative to the start of its surrounding tei:Title
+# => relocate 2931 to (2931 - 2929) = 2; 2933 to (2933 - 2929) = 4
+
+### Another, more complicated view is 'textTrans':
+POST https://mondriaan.annorepo.dev.clariah.nl/services/mondriaan-letters-0.8.11-1/search
+Content-Type: application/json
+
+{
+  ":isWithinTextAnchorRange": {
+    "source": "https://mondriaan.tt.di.huc.knaw.nl/textrepo/rest/versions/e0869654-3c77-428c-bb3a-d401323f37b5/contents",
+    "start": 2928,
+    "end": 3426
+  },
+  "body.type": "tei:Div",
+  "body.metadata.type": "translation"
+}
+
+###
+# body.id=urn:mondriaan:div:17291
+# text @ https://mondriaan.tt.di.huc.knaw.nl/textrepo/view/versions/e0869654-3c77-428c-bb3a-d401323f37b5/segments/index/3185/3274
+# source=https://mondriaan.tt.di.huc.knaw.nl/textrepo/rest/versions/e0869654-3c77-428c-bb3a-d401323f37b5/contents
+# selector={start=3185, end=3274}
+
+### Get tei:Rs from translation:
+POST https://mondriaan.annorepo.dev.clariah.nl/services/mondriaan-letters-0.8.11-1/search
+Content-Type: application/json
+
+{
+  ":isWithinTextAnchorRange": {
+    "source": "https://mondriaan.tt.di.huc.knaw.nl/textrepo/rest/versions/e0869654-3c77-428c-bb3a-d401323f37b5/contents",
+    "start": 3185,
+    "end": 3274
+  },
+  "body.type": {
+    ":isIn": [
+      "tei:Rs"
+    ]
+  }
+}
+
+###
+# body.id=urn:mondriaan:rs:18273 (== bio.xml#spoor_kees, text="Spoor")
+# text @ https://mondriaan.tt.di.huc.knaw.nl/textrepo/view/versions/e0869654-3c77-428c-bb3a-d401323f37b5/segments/index/3200/3200
+# source=https://mondriaan.tt.di.huc.knaw.nl/textrepo/rest/versions/e0869654-3c77-428c-bb3a-d401323f37b5/contents
+# selector={start=3200,end=3200}
+# => relocate 3200 to (3200 - 3185 =) 15
