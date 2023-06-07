@@ -1,9 +1,15 @@
 ### Get the views for bodyId=urn:mondriaan:letter:17583
-#   Calls for view 'title':
+#   Calls for views 'title' and 'textTrans':
 #  - name: title
 #    anno:
 #      - path: body.type
 #        value: tei:Title
+#  - name: textTrans
+#    anno:
+#      - path: body.type
+#        value: tei:Div
+#      - path: body.metadata.type
+#        value: translation
 #
 # First, get the subject itself (i.c. a letter):
 POST https://mondriaan.annorepo.dev.clariah.nl/services/mondriaan-letters-0.8.11-1/search
