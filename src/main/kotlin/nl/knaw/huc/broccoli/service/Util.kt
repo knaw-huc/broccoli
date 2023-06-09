@@ -17,3 +17,5 @@ fun extractAggregations(context: ReadContext) = context.read<Map<String, Any>>("
         }
     }
     ?.groupByKey()
+
+fun String.capitalize(): String = replaceFirstChar(Char::uppercase)

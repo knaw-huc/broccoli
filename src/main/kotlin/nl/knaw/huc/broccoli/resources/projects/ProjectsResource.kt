@@ -18,6 +18,7 @@ import nl.knaw.huc.broccoli.service.anno.AnnoRepo
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
 import nl.knaw.huc.broccoli.service.anno.TextSelector
+import nl.knaw.huc.broccoli.service.capitalize
 import nl.knaw.huc.broccoli.service.extractAggregations
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
@@ -492,7 +493,6 @@ class ProjectsResource(
     private fun interestedViews(project: Project, interestedIn: Set<String>) =
         project.views.filterKeys { view -> interestedIn.contains(view) }
 
-    private fun String.capitalize(): String = replaceFirstChar(Char::uppercase)
 
     private fun extractManifest(anno: Map<*, *>): String? {
         if (anno.containsKey("body")) {
