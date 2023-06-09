@@ -490,7 +490,7 @@ class ProjectsResource(
     }
 
     private fun interestedViews(project: Project, interestedIn: Set<String>) =
-        project.views.filter { (view, _) -> interestedIn.contains(view) }
+        project.views.filterKeys { view -> interestedIn.contains(view) }
 
     private fun String.capitalize(): String = replaceFirstChar(Char::uppercase)
 
