@@ -8,6 +8,8 @@ import com.jayway.jsonpath.Option.DEFAULT_PATH_LEAF_TO_NULL
 import nl.knaw.huc.annorepo.client.AnnoRepoClient
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE
+import nl.knaw.huc.broccoli.api.Constants.AR_PURPOSE
+import nl.knaw.huc.broccoli.api.Constants.AR_TAGGING
 import nl.knaw.huc.broccoli.api.Constants.AR_WITHIN_TEXT_ANCHOR_RANGE
 import nl.knaw.huc.broccoli.api.Constants.isEqualTo
 import nl.knaw.huc.broccoli.api.Constants.isNotIn
@@ -114,7 +116,7 @@ class AnnoRepo(
 
     fun findDistinct(): Set<String> = mutableSetOf<String>().apply {
         for (maxTries in 0..100) {
-            liveQuery(defaultContainerName, mapOf(AR_BODY_TYPE to isNotIn(this)))
+            liveQuery(defaultContainerName, mapOf(AR_PURPOSE to AR_TAGGING, AR_BODY_TYPE to isNotIn(this)))
                 .map(::AnnoRepoSearchResult)
                 .firstOrNull()
                 ?.bodyType()

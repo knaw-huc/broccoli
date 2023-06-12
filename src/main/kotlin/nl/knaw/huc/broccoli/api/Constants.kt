@@ -5,6 +5,12 @@ object Constants {
 
     const val AR_BODY_ID = "body.id"
     const val AR_BODY_TYPE = "body.type"
+
+    const val AR_PURPOSE = "purpose"
+    const val AR_TAGGING = "tagging"
+    const val AR_REFERENCING = "referencing"
+    const val AR_LINKING = "linking"
+
     const val AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE = ":overlapsWithTextAnchorRange"
     const val AR_WITHIN_TEXT_ANCHOR_RANGE = ":isWithinTextAnchorRange"
 
