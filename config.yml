@@ -57,7 +57,7 @@ projects:
       - name: folder
         type: str
         anno: tf:Folder
-      - name: letter
+      - name: letterid
         type: str
         anno: tf:Letter
     views:
@@ -90,7 +90,7 @@ projects:
           - path: body.metadata.type
             value: postalData
     annoRepo:
-      containerName: 'mondriaan-letters-0.8.11-1'
+      containerName: 'mondriaan-letters-0.8.12'
       uri: https://mondriaan.annorepo.dev.clariah.nl
     brinta:
       uri: http://localhost:9200
