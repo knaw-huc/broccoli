@@ -128,7 +128,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             config.name to Project(
                 name = config.name,
                 tiers = config.tiers,
-                views = config.views.associate { view -> view.name to view.anno.associate { it.path to it.value } },
+                views = config.views.associate { view -> view.name to view.conf },
                 brinta = config.brinta,
                 textRepo = createTextRepo(config.textRepo),
                 annoRepo = createAnnoRepo(config.annoRepo)

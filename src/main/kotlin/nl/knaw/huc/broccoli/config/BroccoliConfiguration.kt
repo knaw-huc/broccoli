@@ -103,7 +103,7 @@ class ProjectConfiguration {
 
     @Valid
     @JsonProperty
-    val views: List<ViewConfiguration> = emptyList()
+    val views: List<NamedViewConfiguration> = emptyList()
 
     @Valid
     @JsonProperty
@@ -125,7 +125,7 @@ class ProjectConfiguration {
     val iiif = IIIFConfiguration()
 }
 
-class ViewConfiguration {
+class NamedViewConfiguration {
     @Valid
     @NotNull
     @JsonProperty
@@ -134,10 +134,30 @@ class ViewConfiguration {
     @Valid
     @NotNull
     @JsonProperty
-    val anno: List<ViewAnnoPath> = emptyList()
+    val conf: ViewConfiguration = ViewConfiguration()
 }
 
-class ViewAnnoPath {
+class ViewConfiguration {
+    @Valid
+    @NotNull
+    @JsonProperty
+    val anno: List<ViewAnnoConstraint> = emptyList()
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    val scope: AnnoScope = AnnoScope.WITHIN
+
+    enum class AnnoScope(val toAnnoRepoScope: String) {
+        OVERLAP(Constants.AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE),
+        WITHIN(Constants.AR_WITHIN_TEXT_ANCHOR_RANGE);
+
+        override fun toString() = name.lowercase()
+    }
+}
+
+
+class ViewAnnoConstraint {
     @Valid
     @NotNull
     @JsonProperty

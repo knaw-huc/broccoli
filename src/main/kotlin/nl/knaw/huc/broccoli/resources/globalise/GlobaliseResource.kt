@@ -113,7 +113,7 @@ class GlobaliseResource(
                     start = selector["start"] as Int,
                     end = selector["end"] as Int,
                     bodyTypes = requestBodyTypes
-                )
+                ).map { it.read<Map<String, Any>>("$") }.toList()
             }
 
         // IIIF part: manifest and canvas-ids

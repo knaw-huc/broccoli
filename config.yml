@@ -62,33 +62,38 @@ projects:
         anno: tf:Letter
     views:
       - name: textOrig
-        anno:
-          - path: body.type
-            value: tei:Div
-          - path: body.metadata.type
-            value: original
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: original
       - name: textTrans
-        anno:
-          - path: body.type
-            value: tei:Div
-          - path: body.metadata.type
-            value: translation
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: translation
       - name: notesEN
-        anno:
-          - path: body.type
-            value: tei:Note
-          - path: body.metadata.lang
-            value: en
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Note
+            - path: body.metadata.lang
+              value: en
       - name: title
-        anno:
-          - path: body.type
-            value: tei:Title
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Title
       - name: postalData
-        anno:
-          - path: body.type
-            value: tei:Div
-          - path: body.metadata.type
-            value: postalData
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: postalData
     annoRepo:
       containerName: 'mondriaan-letters-0.8.12'
       uri: https://mondriaan.annorepo.dev.clariah.nl

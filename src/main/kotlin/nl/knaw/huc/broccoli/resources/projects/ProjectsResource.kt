@@ -8,6 +8,7 @@ import nl.knaw.huc.broccoli.api.Constants.AR_BODY_ID
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.isIn
 import nl.knaw.huc.broccoli.api.Constants.isNotEqualTo
+import nl.knaw.huc.broccoli.api.Constants.region
 import nl.knaw.huc.broccoli.api.IndexQuery
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
 import nl.knaw.huc.broccoli.api.TextMarker
@@ -342,8 +343,11 @@ class ProjectsResource(
                         val subjectEnd = selector["end"] as Int
                         val bodyTypes = isIn(overlapTypes)
                         mutableMapOf<String, Map<String, Any>>().apply {
-                            interestedViews(project, interestedIn).forEach { (viewName, viewSpec) ->
-                                annoRepo.findWithin(subjectSource, subjectStart, subjectEnd, viewSpec)
+                            interestedViews(project, interestedIn).forEach { (viewName, viewConf) ->
+                                val annoConstraints = viewConf.anno.associate { it.path to it.value }
+                                val textRegion = region(subjectSource, subjectStart, subjectEnd)
+                                val annoScope = viewConf.scope.toAnnoRepoScope to textRegion
+                                annoRepo.fetch(annoConstraints.plus(annoScope))
                                     .map(::AnnoRepoSearchResult)
                                     .firstOrNull()
                                     ?.let { viewAnnos ->
@@ -358,10 +362,10 @@ class ProjectsResource(
                             }
                             if (isNotEmpty()) result["views"] = this
                         }
-                        timeExecution(
-                            { annoRepo.fetchOverlap(subjectSource, subjectStart, subjectEnd, bodyTypes) },
-                            { timeSpent -> annoTimings["fetchOverlap[text]"] = timeSpent }
-                        )
+                        timeExecution({
+                            annoRepo.fetchOverlap(subjectSource, subjectStart, subjectEnd, bodyTypes)
+                                .map { it.read<Map<String, Any>>("$") }.toList()
+                        }, { timeSpent -> annoTimings["fetchOverlap[text]"] = timeSpent })
                     }
             }
         }
@@ -427,10 +431,10 @@ class ProjectsResource(
                     val tier0 = project.tiers[0].let { conf -> conf.anno ?: conf.name.capitalize() }
                     log.info("tier0: $tier0")
                     val bodyTypes = isIn(setOf(tier0))
-                    timeExecution(
-                        { annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes) },
-                        { timeSpent -> annoTimings["fetchManifest"] = timeSpent }
-                    )
+                    timeExecution({
+                        annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes)
+                            .map { it.read<Map<String, Any>>("$") }.toList()
+                    }, { timeSpent -> annoTimings["fetchManifest"] = timeSpent })
                 }
                 .firstNotNullOfOrNull { extractManifest(it) }
 

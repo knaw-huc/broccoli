@@ -13,8 +13,7 @@ import nl.knaw.huc.broccoli.api.Constants.AR_TAGGING
 import nl.knaw.huc.broccoli.api.Constants.AR_WITHIN_TEXT_ANCHOR_RANGE
 import nl.knaw.huc.broccoli.api.Constants.isEqualTo
 import nl.knaw.huc.broccoli.api.Constants.isNotIn
-import nl.knaw.huc.broccoli.api.Constants.overlap
-import nl.knaw.huc.broccoli.api.Constants.within
+import nl.knaw.huc.broccoli.api.Constants.region
 import nl.knaw.huc.broccoli.service.cache.LRUCache
 import org.slf4j.LoggerFactory
 import javax.ws.rs.BadRequestException
@@ -85,34 +84,27 @@ class AnnoRepo(
         return result
     }
 
-    fun fetchOverlap(source: String, start: Int, end: Int, bodyTypes: Map<String, Any>) =
-        fetchOverlap(defaultContainerName, source, start, end, bodyTypes)
+    fun fetch(query: Map<String, Any>) = cacheQuery(defaultContainerName, query)
 
-    fun fetchOverlap(
-        containerName: String, source: String, start: Int, end: Int,
-        bodyTypes: Map<String, Any>
-    ) = cacheQuery(
-        containerName = containerName,
-        query = mapOf(
-            AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to overlap(source, start, end),
-            AR_BODY_TYPE to bodyTypes
+    fun fetchOverlap(source: String, start: Int, end: Int, bodyTypes: Map<String, Any>) =
+        fetch(
+            mapOf(
+                AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to region(source, start, end),
+                AR_BODY_TYPE to bodyTypes
+            )
         )
-    ).map { it.read<Map<String, Any>>("$") }.toList()
 
     fun streamOverlap(source: String, start: Int, end: Int, bodyTypes: Map<String, Any>) =
         liveQuery(
             containerName = defaultContainerName,
             query = mapOf(
-                AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to overlap(source, start, end),
+                AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to region(source, start, end),
                 AR_BODY_TYPE to bodyTypes
             )
         )
 
     fun findWithin(source: String, start: Int, end: Int, constraints: Map<String, Any>) =
-        cacheQuery(
-            containerName = defaultContainerName,
-            query = constraints.plus(AR_WITHIN_TEXT_ANCHOR_RANGE to within(source, start, end))
-        )
+        fetch(constraints.plus(AR_WITHIN_TEXT_ANCHOR_RANGE to region(source, start, end)))
 
     fun findDistinct(): Set<String> = mutableSetOf<String>().apply {
         for (maxTries in 0..100) {
@@ -133,7 +125,7 @@ class AnnoRepo(
         log.info("findOffsetRelativeTo: containerName=[$containerName], selector=$selector, type=[$type]")
 
         val query = mapOf(
-            AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to overlap(source, selector.start(), selector.end()),
+            AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to region(source, selector.start(), selector.end()),
             AR_BODY_TYPE to isEqualTo(type)
         )
 
