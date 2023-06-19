@@ -6,6 +6,7 @@ import com.jayway.jsonpath.ParseContext
 import io.swagger.v3.oas.annotations.Operation
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_ID
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
+import nl.knaw.huc.broccoli.api.Constants.AR_WITHIN_TEXT_ANCHOR_RANGE
 import nl.knaw.huc.broccoli.api.Constants.isIn
 import nl.knaw.huc.broccoli.api.Constants.isNotEqualTo
 import nl.knaw.huc.broccoli.api.Constants.region
@@ -344,10 +345,11 @@ class ProjectsResource(
                         val bodyTypes = isIn(overlapTypes)
                         mutableMapOf<String, Map<String, Any>>().apply {
                             interestedViews(project, interestedIn).forEach { (viewName, viewConf) ->
-                                val annoConstraints = viewConf.anno.associate { it.path to it.value }
                                 val textRegion = region(subjectSource, subjectStart, subjectEnd)
-                                val annoScope = viewConf.scope.toAnnoRepoScope to textRegion
-                                annoRepo.fetch(annoConstraints.plus(annoScope))
+                                val annoConstraints = viewConf.anno.associate { it.path to it.value }
+                                    .plus(AR_WITHIN_TEXT_ANCHOR_RANGE to textRegion)
+                                log.info("annoConstraints=$annoConstraints")
+                                annoRepo.fetch(annoConstraints)
                                     .map(::AnnoRepoSearchResult)
                                     .firstOrNull()
                                     ?.let { viewAnnos ->
@@ -355,7 +357,12 @@ class ProjectsResource(
                                         val source = viewAnnoInterpreter.findTextSource()
                                         val viewResult = mutableMapOf(
                                             "lines" to fetchTextLines(project.textRepo, source),
-                                            "locations" to findViewAnnotations(annoRepo, viewAnnoInterpreter, bodyTypes)
+                                            "locations" to findViewAnnotations(
+                                                annoRepo,
+                                                viewConf.scope.toAnnoRepoScope,
+                                                viewAnnoInterpreter,
+                                                bodyTypes
+                                            )
                                         )
                                         put(viewName, viewResult)
                                     }
@@ -452,6 +459,7 @@ class ProjectsResource(
 
     private fun findViewAnnotations(
         annoRepo: AnnoRepo,
+        annoScope: String,
         viewAnnoInterpreter: AnnoSearchResultInterpreter,
         bodyTypes: Map<String, Set<String>>
     ): Map<String, Any> {
@@ -461,9 +469,9 @@ class ProjectsResource(
         val viewBodyId = viewAnnoInterpreter.bodyId()
 
         val relocatedAnnotations = mutableListOf<Map<String, Any>>()
-        annoRepo.findWithin(
-            viewSource, viewSelector.start(), viewSelector.end(),
+        annoRepo.fetch(
             mapOf(
+                annoScope to region(viewSource, viewSelector.start(), viewSelector.end()),
                 AR_BODY_ID to isNotEqualTo(viewBodyId),
                 AR_BODY_TYPE to bodyTypes
             )
