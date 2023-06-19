@@ -82,18 +82,11 @@ projects:
               value: tei:Note
             - path: body.metadata.lang
               value: en
-      - name: titleWithin
+      - name: title
         conf:
           anno:
             - path: body.type
               value: tei:Title
-          scope: within
-      - name: titleOverlap
-        conf:
-          anno:
-            - path: body.type
-              value: tei:Title
-          scope: overlap
       - name: postalData
         conf:
           anno:
