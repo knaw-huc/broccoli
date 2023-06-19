@@ -1,7 +1,7 @@
 package nl.knaw.huc.broccoli.service.anno
 
+import jakarta.ws.rs.NotFoundException
 import org.slf4j.LoggerFactory
-import javax.ws.rs.NotFoundException
 
 class AnnoSearchResultInterpreter(val searchResult: AnnoRepoSearchResult) {
     private val log = LoggerFactory.getLogger(javaClass)
