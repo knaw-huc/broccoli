@@ -18,10 +18,11 @@
         <maven.build.timestamp.format>yyyy-MM-dd'T'HH:mm:ss'Z'</maven.build.timestamp.format>
 
         <kotlin.code.style>official</kotlin.code.style>
-        <kotlin.version>1.8.0</kotlin.version>
+        <kotlin.version>1.8.21</kotlin.version>
         <java.version>17</java.version>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
+        <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -37,13 +38,13 @@
         <mockito-kotlin.version>4.0.0</mockito-kotlin.version>
         <mockito.version>4.8.0</mockito.version>
 
-        <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
-        <maven-jar-plugin.version>3.2.0</maven-jar-plugin.version>
+        <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
+        <maven-jar-plugin.version>3.2.2</maven-jar-plugin.version>
         <maven-javadoc-plugin.version>3.3.1</maven-javadoc-plugin.version>
-        <maven-project-info-reports-plugin.version>3.4.0</maven-project-info-reports-plugin.version>
-        <maven-shade-plugin.version>3.2.4</maven-shade-plugin.version>
+        <maven-project-info-reports-plugin.version>3.4.3</maven-project-info-reports-plugin.version>
+        <maven-shade-plugin.version>3.4.1</maven-shade-plugin.version>
         <maven-source-plugin.version>3.2.1</maven-source-plugin.version>
-        <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
+        <maven-surefire-plugin.version>3.1.0</maven-surefire-plugin.version>
     </properties>
 
     <dependencyManagement>
@@ -117,6 +118,9 @@
                                 <exclude>META-INF/DEPENDENCIES</exclude>
                                 <exclude>META-INF/LICENSE</exclude>
                                 <exclude>META-INF/NOTICE</exclude>
+                                <exclude>META-INF/arrow-core.kotlin_module</exclude>
+                                <exclude>META-INF/maven/*/*/pom.properties</exclude>
+                                <exclude>META-INF/maven/*/*/pom.xml</exclude>
                                 <exclude>META-INF/versions/*/*.class</exclude>
                                 <exclude>about.html</exclude>
                                 <exclude>module-info.class</exclude>
@@ -170,7 +174,7 @@
                     <execution>
                         <id>attach-sources</id>
                         <goals>
-                            <goal>jar</goal>
+                            <goal>jar-no-fork</goal>
                         </goals>
                     </execution>
                 </executions>
