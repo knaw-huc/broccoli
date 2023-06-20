@@ -54,12 +54,11 @@ class ProjectsResource(
 
     @GET
     @Path("{projectId}")
-    fun exploreIndex(
+    fun showDistinctBodyTypes(
         @PathParam("projectId") projectId: String
-    ): Response {
-        val project = getProject(projectId)
-        log.info("Find bodyTypes in use in [${project.name}]: ")
-        return Response.ok(project.annoRepo.findDistinct()).build()
+    ): Response = getProject(projectId).let {
+        log.info("Find bodyTypes in use in [${it.name}]: ")
+        Response.ok(it.annoRepo.findDistinct(AR_BODY_TYPE)).build()
     }
 
     @GET

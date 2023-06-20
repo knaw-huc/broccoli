@@ -10,11 +10,8 @@ import jakarta.ws.rs.NotFoundException
 import nl.knaw.huc.annorepo.client.AnnoRepoClient
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE
-import nl.knaw.huc.broccoli.api.Constants.AR_PURPOSE
-import nl.knaw.huc.broccoli.api.Constants.AR_TAGGING
 import nl.knaw.huc.broccoli.api.Constants.AR_WITHIN_TEXT_ANCHOR_RANGE
 import nl.knaw.huc.broccoli.api.Constants.isEqualTo
-import nl.knaw.huc.broccoli.api.Constants.isNotIn
 import nl.knaw.huc.broccoli.api.Constants.region
 import nl.knaw.huc.broccoli.service.cache.LRUCache
 import org.slf4j.LoggerFactory
@@ -108,22 +105,10 @@ class AnnoRepo(
         fetch(constraints.plus(AR_WITHIN_TEXT_ANCHOR_RANGE to region(source, start, end)))
 
 
-    fun findDistinct() = annoRepoClient
-        .getDistinctFieldValues(defaultContainerName, AR_BODY_TYPE)
-        .getOrElse { err -> throw BadRequestException("fetch failed -> $err") }
+    fun findDistinct(field: String) = annoRepoClient
+        .getDistinctFieldValues(defaultContainerName, field)
+        .getOrElse { err -> throw BadRequestException("fetch distinct ($field) failed: $err") }
         .distinctValues
-
-    fun findDistinct2(): Set<String> = mutableSetOf<String>().apply {
-        for (maxTries in 0..100) {
-            liveQuery(defaultContainerName, mapOf(AR_PURPOSE to AR_TAGGING, AR_BODY_TYPE to isNotIn(this)))
-                .map(::AnnoRepoSearchResult)
-                .firstOrNull()
-                ?.bodyType()
-                ?.also { log.info("  $it") }
-                ?.let { add(it) }
-                ?: break
-        }
-    }
 
     fun findOffsetRelativeTo(source: String, selector: TextSelector, type: String) =
         findOffsetRelativeTo(defaultContainerName, source, selector, type)
