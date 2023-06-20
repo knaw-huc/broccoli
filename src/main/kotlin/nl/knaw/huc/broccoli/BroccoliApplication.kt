@@ -91,7 +91,6 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             register(BrintaResource(projects, client))
         }
 
-//        registerLegacyResources(configuration, projects, client, environment)
         setupCORSHeaders(environment.servlets())
 
         log.info(
