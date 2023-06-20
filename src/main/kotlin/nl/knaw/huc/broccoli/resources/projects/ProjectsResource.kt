@@ -4,6 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.jayway.jsonpath.ParseContext
 import io.swagger.v3.oas.annotations.Operation
+import jakarta.validation.constraints.Min
+import jakarta.ws.rs.*
+import jakarta.ws.rs.client.Client
+import jakarta.ws.rs.client.Entity
+import jakarta.ws.rs.core.GenericType
+import jakarta.ws.rs.core.HttpHeaders
+import jakarta.ws.rs.core.MediaType
+import jakarta.ws.rs.core.Response
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_ID
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.AR_WITHIN_TEXT_ANCHOR_RANGE
@@ -24,11 +32,6 @@ import nl.knaw.huc.broccoli.service.capitalize
 import nl.knaw.huc.broccoli.service.extractAggregations
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
-import javax.validation.constraints.Min
-import javax.ws.rs.*
-import javax.ws.rs.client.Client
-import javax.ws.rs.client.Entity
-import javax.ws.rs.core.*
 
 @Path(PROJECTS)
 @Produces(MediaType.APPLICATION_JSON)
@@ -56,7 +59,7 @@ class ProjectsResource(
     ): Response {
         val project = getProject(projectId)
         log.info("Find bodyTypes in use in [${project.name}]: ")
-        return Response.ok(project.annoRepo.findDistinct().sorted()).build()
+        return Response.ok(project.annoRepo.findDistinct()).build()
     }
 
     @GET

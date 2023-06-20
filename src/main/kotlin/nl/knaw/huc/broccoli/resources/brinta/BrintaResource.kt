@@ -2,6 +2,15 @@ package nl.knaw.huc.broccoli.resources.brinta
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.jayway.jsonpath.PathNotFoundException
+import jakarta.ws.rs.*
+import jakarta.ws.rs.client.Client
+import jakarta.ws.rs.client.Entity
+import jakarta.ws.rs.core.GenericType
+import jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION
+import jakarta.ws.rs.core.MediaType
+import jakarta.ws.rs.core.Response
+import jakarta.ws.rs.core.Response.Status.OK
+import jakarta.ws.rs.core.Response.Status.UNAUTHORIZED
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.ResourcePaths.BRINTA
 import nl.knaw.huc.broccoli.config.IndexConfiguration
@@ -9,15 +18,6 @@ import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
-import javax.ws.rs.*
-import javax.ws.rs.client.Client
-import javax.ws.rs.client.Entity
-import javax.ws.rs.core.GenericType
-import javax.ws.rs.core.HttpHeaders.AUTHORIZATION
-import javax.ws.rs.core.MediaType
-import javax.ws.rs.core.Response
-import javax.ws.rs.core.Response.Status.OK
-import javax.ws.rs.core.Response.Status.UNAUTHORIZED
 
 @Path("$BRINTA/{projectId}")
 @Produces(MediaType.APPLICATION_JSON)

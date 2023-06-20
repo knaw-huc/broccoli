@@ -6,7 +6,7 @@
 
     <groupId>nl.knaw.huc</groupId>
     <artifactId>broccoli</artifactId>
-    <version>0.19.2</version>
+    <version>0.19.3</version>
 
     <packaging>jar</packaging>
 
@@ -26,11 +26,11 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <annorepo-client.version>0.4.0</annorepo-client.version>
+        <annorepo-client.version>0.5.0-beta</annorepo-client.version>
 
         <assertj-core.version>3.23.1</assertj-core.version>
         <dropwizard-swagger-ui.version>4.6.2</dropwizard-swagger-ui.version>
-        <dropwizard-swagger.version>2.0.28-1</dropwizard-swagger.version>
+        <dropwizard-swagger.version>4.0.0-1</dropwizard-swagger.version>
         <dropwizard.version>4.0.0</dropwizard.version>
         <jackson-module-kotlin.version>2.14.0</jackson-module-kotlin.version>
         <json-path.version>2.8.0</json-path.version>
@@ -247,7 +247,7 @@
         </dependency>
 
         <dependency>
-            <groupId>in.vectorpro.dropwizard</groupId>
+            <groupId>com.smoketurner</groupId>
             <artifactId>dropwizard-swagger</artifactId>
             <version>${dropwizard-swagger.version}</version>
         </dependency>

@@ -35,6 +35,7 @@ class AnnoRepo(
     private fun liveQuery(containerName: String, query: Map<String, Any>) =
         annoRepoClient.filterContainerAnnotations(containerName, query)
             .getOrElse { err -> throw BadRequestException("query failed: $err") }
+            .also { log.info("queryId: ${it.queryId}") }
             .annotations.asSequence()
             .map { it.getOrElse { err -> throw BadRequestException("fetch failed: $err") } }
             .map(jsonParser::parse)
@@ -106,7 +107,13 @@ class AnnoRepo(
     fun findWithin(source: String, start: Int, end: Int, constraints: Map<String, Any>) =
         fetch(constraints.plus(AR_WITHIN_TEXT_ANCHOR_RANGE to region(source, start, end)))
 
-    fun findDistinct(): Set<String> = mutableSetOf<String>().apply {
+
+    fun findDistinct() = annoRepoClient
+        .getDistinctFieldValues(defaultContainerName, AR_BODY_TYPE)
+        .getOrElse { err -> throw BadRequestException("fetch failed -> $err") }
+        .distinctValues
+
+    fun findDistinct2(): Set<String> = mutableSetOf<String>().apply {
         for (maxTries in 0..100) {
             liveQuery(defaultContainerName, mapOf(AR_PURPOSE to AR_TAGGING, AR_BODY_TYPE to isNotIn(this)))
                 .map(::AnnoRepoSearchResult)

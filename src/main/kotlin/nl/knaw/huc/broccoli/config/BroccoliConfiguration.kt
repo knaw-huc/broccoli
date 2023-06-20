@@ -2,9 +2,9 @@ package nl.knaw.huc.broccoli.config
 
 import arrow.core.identity
 import com.fasterxml.jackson.annotation.JsonProperty
-import `in`.vectorpro.dropwizard.swagger.SwaggerBundleConfiguration
 import io.dropwizard.client.JerseyClientConfiguration
 import io.dropwizard.core.Configuration
+import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration
 import jakarta.validation.Valid
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotNull
