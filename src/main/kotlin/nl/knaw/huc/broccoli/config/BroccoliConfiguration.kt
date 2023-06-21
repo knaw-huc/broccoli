@@ -8,6 +8,7 @@ import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration
 import jakarta.validation.Valid
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotNull
+import jakarta.ws.rs.BadRequestException
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.resources.AboutResource
 
@@ -187,10 +188,17 @@ class TierConfiguration {
     override fun toString(): String = "$name (${type.name.lowercase()})"
 
     enum class Type(val toAnnoRepoQuery: (String) -> Any) {
-        NUM(Integer::valueOf),
+        NUM(::parseIntOrBadRequest),
         STR(::identity);
     }
 }
+
+fun parseIntOrBadRequest(str: String): Int =
+    try {
+        Integer.valueOf(str)
+    } catch (malformed: NumberFormatException) {
+        throw BadRequestException("${malformed.message}: expected 'int' (wrong tier / project?)")
+    }
 
 class BrintaConfiguration {
     @Valid
