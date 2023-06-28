@@ -243,7 +243,7 @@ class ProjectsResource(
 
         val project = getProject(projectId)
 
-        val interestedIn = parseIncludeResults(setOf("anno", "bodyId"), includeResultsParam)
+        val interestedIn = parseRestrictedSubset(setOf("anno", "bodyId"), includeResultsParam)
 
         val formalTiers = project.tiers
         val actualTiers = tierParams.split('/').filter { it.isNotBlank() }
@@ -288,13 +288,14 @@ class ProjectsResource(
     fun getProjectBodyId(
         @PathParam("projectId") projectId: String,
         @PathParam("bodyId") bodyId: String,
-        @QueryParam("includeResults") includeResultsParam: String?,
+        @QueryParam("includeResults") includesParam: String?,
+        @QueryParam("views") viewsParam: String?,
         @QueryParam("overlapTypes") overlapTypesParam: String?,
         @QueryParam("relativeTo") @DefaultValue("Origin") relativeTo: String,
     ): Response {
         log.info(
-            "project=$projectId, bodyId=$bodyId, " +
-                    "includeResults=$includeResultsParam, overlapTypes=$overlapTypesParam, relativeTo=$relativeTo"
+            "project=$projectId, bodyId=$bodyId, views=$viewsParam, includeResults=$includesParam, " +
+                    "overlapTypes=$overlapTypesParam, relativeTo=$relativeTo"
         )
 
         val before = System.currentTimeMillis()
@@ -302,10 +303,12 @@ class ProjectsResource(
         val project = getProject(projectId)
         val annoRepo = project.annoRepo
         val textRepo = project.textRepo
+        val allViews = project.views.keys
+        val allIncludes = setOf("anno", "text", "iiif")
 
-        val definedViews = project.views.keys.plus(setOf("anno", "text", "iiif"))
-        val interestedIn = parseIncludeResults(definedViews, includeResultsParam)
-        val overlapTypes = parseOverlapTypes(overlapTypesParam)
+        val wanted = if (includesParam == null) allIncludes else parseRestrictedSubset(allIncludes, includesParam)
+        val requestedViews = if (viewsParam == null) allViews else parseRestrictedSubset(allViews, viewsParam)
+        val overlapTypes = if (overlapTypesParam == null) emptySet() else parseSet(overlapTypesParam)
 
         val annoTimings = mutableMapOf<String, Any>()
         val textTimings = mutableMapOf<String, Any>()
@@ -315,7 +318,8 @@ class ProjectsResource(
         val request = mutableMapOf(
             "projectId" to projectId,
             "bodyId" to bodyId,
-            "includeResults" to interestedIn,
+            "views" to requestedViews,
+            "include" to wanted,
         )
         if (overlapTypes.isNotEmpty()) {
             request["overlapTypes"] = overlapTypes
@@ -332,69 +336,61 @@ class ProjectsResource(
             { timeSpent -> annoTimings["findByBodyId"] = timeSpent }
         )
 
-        if (interestedIn.contains("anno")) {
+        val interpreter = AnnoSearchResultInterpreter(searchResult)
+        val source = interpreter.findSegmentsSource()
+        val selector = interpreter.findSelector()
+
+        if (wanted.contains("anno")) {
             result["anno"] = if (overlapTypes.isEmpty()) {
                 searchResult.items()
             } else {
-                searchResult.withField<Any>("Text", "selector")
-                    .also { if (it.size > 1) log.warn("multiple Text with selector: $it") }
-                    .first()
-                    .let {
-                        val selector = it["selector"] as Map<*, *>
-                        val subjectSource = it["source"] as String
-                        val subjectStart = selector["start"] as Int
-                        val subjectEnd = selector["end"] as Int
-                        val bodyTypes = isIn(overlapTypes)
-                        mutableMapOf<String, Map<String, Any>>().apply {
-                            interestedViews(project, interestedIn).forEach { (viewName, viewConf) ->
-                                val textRegion = region(subjectSource, subjectStart, subjectEnd)
-                                val annoConstraints = viewConf.anno.associate { it.path to it.value }
-                                    .plus(AR_WITHIN_TEXT_ANCHOR_RANGE to textRegion)
-                                log.info("annoConstraints=$annoConstraints")
-                                annoRepo.fetch(annoConstraints)
-                                    .map(::AnnoRepoSearchResult)
-                                    .firstOrNull()
-                                    ?.let { viewAnnos ->
-                                        val viewAnnoInterpreter = AnnoSearchResultInterpreter(viewAnnos)
-                                        val source = viewAnnoInterpreter.findTextSource()
-                                        val viewResult = mutableMapOf(
-                                            "lines" to fetchTextLines(project.textRepo, source),
-                                            "locations" to findViewAnnotations(
-                                                annoRepo,
-                                                viewConf.scope.toAnnoRepoScope,
-                                                viewAnnoInterpreter,
-                                                bodyTypes
-                                            )
-                                        )
-                                        put(viewName, viewResult)
-                                    }
-                            }
-                            if (isNotEmpty()) result["views"] = this
-                        }
-                        timeExecution({
-                            annoRepo.fetchOverlap(subjectSource, subjectStart, subjectEnd, bodyTypes)
-                                .map { it.read<Map<String, Any>>("$") }.toList()
-                        }, { timeSpent -> annoTimings["fetchOverlap[text]"] = timeSpent })
-                    }
+                timeExecution({
+                    annoRepo.fetchOverlap(source, selector.start(), selector.end(), isIn(overlapTypes))
+                        .map { it.read<Map<String, Any>>("$") }.toList()
+                }, { timeSpent -> annoTimings["fetchOverlap[text]"] = timeSpent })
             }
         }
 
-        if (interestedIn.contains("text")) {
-            val textInterpreter = AnnoSearchResultInterpreter(searchResult)
+        val views = mutableMapOf<String, Any>()
+        interestedViews(project, requestedViews).forEach { (viewName, viewConf) ->
+            val annoConstraints = viewConf.anno.associate { it.path to it.value }
+                .plus(AR_WITHIN_TEXT_ANCHOR_RANGE to region(source, selector.start(), selector.end()))
+            log.info("annoConstraints=$annoConstraints")
+            annoRepo.fetch(annoConstraints)
+                .map(::AnnoRepoSearchResult)
+                .firstOrNull()
+                ?.let { viewAnnos ->
+                    val viewAnnoInterpreter = AnnoSearchResultInterpreter(viewAnnos)
+                    val viewSource = viewAnnoInterpreter.findTextSource()
+                    val viewResult = mutableMapOf<String, Any>()
+                    viewResult["lines"] = fetchTextLines(project.textRepo, viewSource)
+                    if (wanted.contains("anno")) {
+                        viewResult["locations"] = findViewAnnotations(
+                            annoRepo,
+                            viewConf.scope.toAnnoRepoScope,
+                            viewAnnoInterpreter,
+                            isIn(overlapTypes)
+                        )
+                    }
+                    views[viewName] = viewResult
+                }
+        }
 
+        if (wanted.contains("text")) {
             val textLines = timeExecution(
-                { fetchTextLines(textRepo, textInterpreter.findTextSource()) },
+                { fetchTextLines(textRepo, interpreter.findTextSource()) },
                 { timeSpent -> textTimings["fetchTextLines"] = timeSpent }
             )
             val textResult = mutableMapOf<String, Any>("lines" to textLines)
 
-            val selector = textInterpreter.findSelector()
-            val segmentsSource = textInterpreter.findSegmentsSource()
-
-            if (interestedIn.contains("anno") && relativeTo != "Origin") {
-                val offset = timeExecution(
-                    { annoRepo.findOffsetRelativeTo(segmentsSource, selector, relativeTo) },
-                    { timeSpent -> textTimings["findOffsetRelativeTo"] = timeSpent })
+            if (wanted.contains("anno") && relativeTo != "Origin") {
+                val offset = timeExecution({
+                    annoRepo.findOffsetRelativeTo(
+                        interpreter.findSegmentsSource(),
+                        interpreter.findSelector(),
+                        relativeTo
+                    )
+                }, { timeSpent -> textTimings["findOffsetRelativeTo"] = timeSpent })
 
                 val relocatedAnnotations = mutableListOf<Map<String, Any>>()
                 (result["anno"] as List<*>).forEach { anno ->
@@ -424,28 +420,20 @@ class ProjectsResource(
                     }
                 }
             }
-
-            result["text"] = textResult
+            views["self"] = textResult
         }
 
-        if (interestedIn.contains("iiif")) {
-            val manifest = searchResult.withField<Any>("Text", "selector")
-                .also { if (it.size > 1) log.warn("multiple Text with selector: $it") }
-                .first()
-                .let {
-                    val selector = it["selector"] as Map<*, *>
-                    val sourceUrl = it["source"] as String
-                    val start = selector["start"] as Int
-                    val end = selector["end"] as Int
-                    val tier0 = project.tiers[0].let { conf -> conf.anno ?: conf.name.capitalize() }
-                    log.info("tier0: $tier0")
-                    val bodyTypes = isIn(setOf(tier0))
-                    timeExecution({
-                        annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes)
-                            .map { it.read<Map<String, Any>>("$") }.toList()
-                    }, { timeSpent -> annoTimings["fetchManifest"] = timeSpent })
-                }
-                .firstNotNullOfOrNull { extractManifest(it) }
+        if (views.isNotEmpty()) result["views"] = views
+
+        if (wanted.contains("iiif")) {
+            val tier0 = project.tiers[0].let { it.anno ?: it.name.capitalize() }
+            log.info("tier0: $tier0")
+            val bodyTypes = isIn(setOf(tier0))
+            val manifest = timeExecution({
+                annoRepo.fetchOverlap(source, selector.start(), selector.end(), bodyTypes)
+                    .map { it.read<Map<String, Any>>("$") }.toList()
+            }, { timeSpent -> annoTimings["fetchManifest"] = timeSpent }
+            ).firstNotNullOfOrNull { extractManifest(it) }
 
             result["iiif"] = mapOf(
                 "manifest" to manifest,
@@ -566,39 +554,22 @@ class ProjectsResource(
             }
             ?: project.brinta.indices.first() // if unspecified, use first available index from config
 
-    private fun parseIncludeResults(all: Set<String>, includeResultString: String?): Set<String> {
-        if (includeResultString == null) {
-            return all
-        }
-
-        val requested = if (includeResultString.startsWith('[')) {
-            jsonWriter.readValue(includeResultString)
-        } else {
-            includeResultString
-                .removeSurrounding("\"")
-                .split(',')
-                .map { it.trim() }
-                .filter { it.isNotBlank() }
-                .toSet()
-        }
-
-        val includes = all.intersect(requested)
+    private fun parseRestrictedSubset(all: Set<String>, subsetString: String): Set<String> {
+        val requested = parseSet(subsetString)
 
         val undefined = requested.minus(all)
         if (undefined.isNotEmpty()) {
-            throw BadRequestException("Undefined include: $undefined not in $all")
+            throw BadRequestException("Undefined parameter: $undefined not in $all")
         }
 
-        return includes
+        return all.intersect(requested)
     }
 
-    private fun parseOverlapTypes(overlapTypes: String?): Set<String> =
-        if (overlapTypes == null) {
-            emptySet()
-        } else if (overlapTypes.startsWith('[')) {
-            jsonWriter.readValue(overlapTypes)
+    private fun parseSet(items: String): Set<String> =
+        if (items.startsWith('[')) {
+            jsonWriter.readValue(items)
         } else {
-            overlapTypes
+            items
                 .removeSurrounding("\"")
                 .split(',')
                 .map { it.trim() }
