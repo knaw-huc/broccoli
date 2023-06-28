@@ -303,7 +303,7 @@ class ProjectsResource(
         val project = getProject(projectId)
         val annoRepo = project.annoRepo
         val textRepo = project.textRepo
-        val allViews = project.views.keys
+        val allViews = project.views.keys.plus("self")
         val allIncludes = setOf("anno", "text", "iiif")
 
         val wanted = if (includesParam == null) allIncludes else parseRestrictedSubset(allIncludes, includesParam)
@@ -376,7 +376,7 @@ class ProjectsResource(
                 }
         }
 
-        if (wanted.contains("text")) {
+        if (wanted.contains("text") && requestedViews.contains("self")) {
             val textLines = timeExecution(
                 { fetchTextLines(textRepo, interpreter.findTextSource()) },
                 { timeSpent -> textTimings["fetchTextLines"] = timeSpent }
