@@ -1,12 +1,12 @@
 package nl.knaw.huc.broccoli.service.mock
 
 import com.jayway.jsonpath.JsonPath
+import jakarta.ws.rs.NotFoundException
+import jakarta.ws.rs.client.Client
 import nl.knaw.huc.broccoli.service.IIIFStore
 import nl.knaw.huc.broccoli.service.ResourceLoader
 import org.slf4j.LoggerFactory
 import java.net.URI
-import javax.ws.rs.NotFoundException
-import javax.ws.rs.client.Client
 
 class MockIIIFStore(private val iiifUri: String, private val client: Client) : IIIFStore {
     private val log = LoggerFactory.getLogger(javaClass)

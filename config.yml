@@ -21,7 +21,7 @@ iiifUri: https://images.diginfra.net/api/pim
 textUri: https://textrepo.republic-caf.diginfra.org/api
 
 projects:
-  - name: 'globalise'
+  - name: globalise
     tiers:
       - name: document
         type: str
@@ -29,15 +29,119 @@ projects:
         type: num
     annoRepo:
       apiKey: ${AR_GLOBALISE_API_KEY:-}
-      containerName: globalise-demo-8
+      containerName: globalise-demo-9
       uri: https://globalise-annorepo.tt.di.huc.knaw.nl
+    brinta:
+      uri: http://localhost:9200
+      indices:
+        - name: docs
+          bodyTypes: [ Document, tt:Entity ]
+          fields:
+            - name: bodyType
+              path: "$.body.type"
+              type: keyword
+            - name: classDescription
+              path: "$.body.class_description"
+              type: keyword
+            - name: className
+              path: "$.body.class_name"
+              type: keyword
     textRepo:
       apiKey: ${TR_GLOBALISE_API_KEY:-}
       uri: https://globalise.tt.di.huc.knaw.nl
     iiif:
       fetch: urn:globalise:manifest
 
-  - name: 'republic'
+  - name: mondriaan
+    tiers:
+      - name: folder
+        type: str
+        anno: tf:Folder
+      - name: letterid
+        type: str
+        anno: tf:Letter
+    views:
+      - name: textOrig
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: original
+      - name: textTrans
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: translation
+      - name: notesEN
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Note
+            - path: body.metadata.lang
+              value: en
+      - name: title
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Title
+      - name: postalData
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: postalData
+    annoRepo:
+      containerName: 'mondriaan-letters-0.8.12'
+      uri: https://mondriaan.annorepo.dev.clariah.nl
+    brinta:
+      uri: http://localhost:9200
+      indices:
+        - name: divs
+          bodyTypes: [ tf:Letter, tei:Div , tei:Rs ]
+          fields:
+            - name: bodyType
+              path: "$.body.type"
+              type: keyword
+            - name: lang
+              path: "$.body.metadata.lang"
+              type: keyword
+            - name: type
+              path: "$.body.metadata.type"
+              type: keyword
+            - name: country
+              path: "$.body.metadata.country"
+              type: keyword
+            - name: institution
+              path: "$.body.metadata.institution"
+              type: keyword
+            - name: msid
+              path: "$.body.metadata.msid"
+              type: keyword
+            - name: period
+              path: "$.body.metadata.period"
+              type: keyword
+            - name: periodLong
+              path: "$.body.metadata.periodlong"
+              type: keyword
+            - name: letterId
+              path: "$.body.metadata.letterid"
+              type: keyword
+            - name: correspondent
+              path: "$.body.metadata.correspondent"
+              type: keyword
+            - name: location
+              path: "$.body.metadata.location"
+              type: keyword
+    textRepo:
+      uri: https://mondriaan.tt.di.huc.knaw.nl
+    iiif:
+      fixed: https://images.diginfra.net/api/pim/imageset/67533019-4ca0-4b08-b87e-fd5590e7a077/manifest
+
+  - name: republic
     tiers:
       - name: volume
         type: str
@@ -45,24 +149,32 @@ projects:
         type: num
     brinta:
       uri: http://localhost:9200
+      joinSeparator: " "
       indices:
         - name: resolutions
-          bodyTypes: [ Resolution ]
+          bodyTypes: [ Resolution, AttendanceList ]
           fields:
             - name: bodyType
               path: "$.body.type"
+              type: keyword
             - name: sessionDate
               path: "$.body.metadata.sessionDate"
+              type: date
             - name: sessionDay
               path: "$.body.metadata.sessionDay"
+              type: byte
             - name: sessionMonth
               path: "$.body.metadata.sessionMonth"
+              type: byte
             - name: sessionYear
               path: "$.body.metadata.sessionYear"
+              type: short
             - name: sessionWeekday
               path: "$.body.metadata.sessionWeekday"
+              type: keyword
             - name: propositionType
               path: "$.body.metadata.propositionType"
+              type: keyword
         - name: attendants
           bodyTypes: [ Attendant, AttendanceList ]
           fields:
@@ -78,57 +190,3 @@ projects:
       uri: https://textrepo.republic-caf.diginfra.org
     iiif:
       fixed: https://images.diginfra.net/api/pim/imageset/67533019-4ca0-4b08-b87e-fd5590e7a077/manifest
-
-#DEPRECATED
-globalise:
-  annoRepo:
-    apiKey: ${AR_GLOBALISE_API_KEY:-}
-    containerName: globalise
-    uri: https://globalise-annorepo.tt.di.huc.knaw.nl
-  textRepo:
-    apiKey: ${TR_GLOBALISE_API_KEY:-}
-    uri: https://globalise.tt.di.huc.knaw.nl
-  archiefNr: '1.04.02'
-  defaultDocument: '316_2'  # quotes needed, or _ will disappear during number parsing
-  defaultOpening: 0048
-  documents:
-    - name: '43'
-      invNr: '1092'
-    - name: '199'
-      invNr: '1297'
-    - name: '316_1'
-      invNr: '1589'
-      manifest: '316'
-    - name: '316_2'
-      invNr: '1589'
-      manifest: '316'
-    - name: '316_3'
-      invNr: '1589'
-      manifest: '316'
-    - name: '405'
-      invNr: '1859'
-    - name: '685_1'
-      invNr: '7573'
-      manifest: '685'
-    - name: '685_2'
-      invNr: '7573'
-      manifest: '685'
-
-#DEPRECATED
-republic:
-  annoRepo:
-    apiKey: ${AR_REPUBLIC_API_KEY:-}
-    containerName: volume-1728-7
-    uri: https://annorepo.republic-caf.diginfra.org
-  #  na_prefix: NL-HaNA
-  #  na_archiefnummer: 1.01.02
-  #  na_inventarisnummer: 3783
-  #  na_opening 0285
-  #  na_format: "{$na_prefix}_{$na_archiefnummer}_{$na_inventarisnummer}_{$opening}"
-  archiefNr: '1.01.02'
-  defaultVolume: '1728'
-  defaultOpening: '0285'
-  volumes:
-    - name: '1728'
-      invNr: '3783'
-      imageset: 67533019-4ca0-4b08-b87e-fd5590e7a077

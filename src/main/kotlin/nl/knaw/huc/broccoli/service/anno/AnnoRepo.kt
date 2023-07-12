@@ -5,15 +5,16 @@ import com.jayway.jsonpath.Configuration.defaultConfiguration
 import com.jayway.jsonpath.DocumentContext
 import com.jayway.jsonpath.JsonPath
 import com.jayway.jsonpath.Option.DEFAULT_PATH_LEAF_TO_NULL
+import jakarta.ws.rs.BadRequestException
+import jakarta.ws.rs.NotFoundException
 import nl.knaw.huc.annorepo.client.AnnoRepoClient
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE
+import nl.knaw.huc.broccoli.api.Constants.AR_WITHIN_TEXT_ANCHOR_RANGE
 import nl.knaw.huc.broccoli.api.Constants.isEqualTo
-import nl.knaw.huc.broccoli.api.Constants.overlap
+import nl.knaw.huc.broccoli.api.Constants.region
 import nl.knaw.huc.broccoli.service.cache.LRUCache
 import org.slf4j.LoggerFactory
-import javax.ws.rs.BadRequestException
-import javax.ws.rs.NotFoundException
 import kotlin.streams.asSequence
 
 class AnnoRepo(
@@ -31,6 +32,7 @@ class AnnoRepo(
     private fun liveQuery(containerName: String, query: Map<String, Any>) =
         annoRepoClient.filterContainerAnnotations(containerName, query)
             .getOrElse { err -> throw BadRequestException("query failed: $err") }
+            .also { log.info("queryId: ${it.queryId}") }
             .annotations.asSequence()
             .map { it.getOrElse { err -> throw BadRequestException("fetch failed: $err") } }
             .map(jsonParser::parse)
@@ -80,28 +82,33 @@ class AnnoRepo(
         return result
     }
 
-    fun fetchOverlap(source: String, start: Int, end: Int, bodyTypes: Map<String, Any>) =
-        fetchOverlap(defaultContainerName, source, start, end, bodyTypes)
+    fun fetch(query: Map<String, Any>) = cacheQuery(defaultContainerName, query)
 
-    fun fetchOverlap(
-        containerName: String, source: String, start: Int, end: Int,
-        bodyTypes: Map<String, Any>,
-    ): List<Map<String, Any>> = cacheQuery(
-        containerName = containerName,
-        query = mapOf(
-            AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to overlap(source, start, end),
-            AR_BODY_TYPE to bodyTypes
+    fun fetchOverlap(source: String, start: Int, end: Int, bodyTypes: Map<String, Any>) =
+        fetch(
+            mapOf(
+                AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to region(source, start, end),
+                AR_BODY_TYPE to bodyTypes
+            )
         )
-    ).map { it.read<Map<String, Any>>("$") }.toList()
 
     fun streamOverlap(source: String, start: Int, end: Int, bodyTypes: Map<String, Any>) =
         liveQuery(
             containerName = defaultContainerName,
             query = mapOf(
-                AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to overlap(source, start, end),
+                AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to region(source, start, end),
                 AR_BODY_TYPE to bodyTypes
             )
         )
+
+    fun findWithin(source: String, start: Int, end: Int, constraints: Map<String, Any>) =
+        fetch(constraints.plus(AR_WITHIN_TEXT_ANCHOR_RANGE to region(source, start, end)))
+
+
+    fun findDistinct(field: String) = annoRepoClient
+        .getDistinctFieldValues(defaultContainerName, field)
+        .getOrElse { err -> throw BadRequestException("fetch distinct ($field) failed: $err") }
+        .distinctValues
 
     fun findOffsetRelativeTo(source: String, selector: TextSelector, type: String) =
         findOffsetRelativeTo(defaultContainerName, source, selector, type)
@@ -110,7 +117,7 @@ class AnnoRepo(
         log.info("findOffsetRelativeTo: containerName=[$containerName], selector=$selector, type=[$type]")
 
         val query = mapOf(
-            AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to overlap(source, selector.start(), selector.end()),
+            AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE to region(source, selector.start(), selector.end()),
             AR_BODY_TYPE to isEqualTo(type)
         )
 
@@ -130,7 +137,7 @@ class AnnoRepo(
     data class Offset(val value: Int, val id: String)
 
     companion object {
-        const val CACHE_CAPACITY = 100
-        const val CACHE_RESULT_SET_SIZE_THRESHOLD = 100
+        const val CACHE_CAPACITY = 10000
+        const val CACHE_RESULT_SET_SIZE_THRESHOLD = 1000
     }
 }

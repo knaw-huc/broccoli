@@ -4,33 +4,47 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.jayway.jsonpath.ParseContext
 import io.swagger.v3.oas.annotations.Operation
+import jakarta.validation.constraints.Min
+import jakarta.ws.rs.*
+import jakarta.ws.rs.client.Client
+import jakarta.ws.rs.client.Entity
+import jakarta.ws.rs.core.GenericType
+import jakarta.ws.rs.core.HttpHeaders
+import jakarta.ws.rs.core.MediaType
+import jakarta.ws.rs.core.Response
+import nl.knaw.huc.broccoli.api.Constants.AR_BODY_ID
+import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
+import nl.knaw.huc.broccoli.api.Constants.AR_WITHIN_TEXT_ANCHOR_RANGE
 import nl.knaw.huc.broccoli.api.Constants.isIn
+import nl.knaw.huc.broccoli.api.Constants.isNotEqualTo
+import nl.knaw.huc.broccoli.api.Constants.region
+import nl.knaw.huc.broccoli.api.IndexQuery
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
 import nl.knaw.huc.broccoli.api.TextMarker
+import nl.knaw.huc.broccoli.config.IndexConfiguration
+import nl.knaw.huc.broccoli.core.ElasticQueryBuilder
 import nl.knaw.huc.broccoli.core.Project
-import nl.knaw.huc.broccoli.resources.projects.ProjectsResource.FragOpts.SCAN
+import nl.knaw.huc.broccoli.service.anno.AnnoRepo
+import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
 import nl.knaw.huc.broccoli.service.anno.TextSelector
+import nl.knaw.huc.broccoli.service.capitalize
+import nl.knaw.huc.broccoli.service.extractAggregations
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
-import javax.ws.rs.*
-import javax.ws.rs.client.Client
-import javax.ws.rs.client.Entity
-import javax.ws.rs.core.*
 
 @Path(PROJECTS)
 @Produces(MediaType.APPLICATION_JSON)
 class ProjectsResource(
     private val projects: Map<String, Project>,
     private val client: Client,
-    private val jsonParser: ParseContext
+    private val jsonParser: ParseContext,
+    private val jsonWriter: ObjectMapper
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    private val objectMapper = ObjectMapper()
-
     init {
-        log.debug("init: projects=$projects, client=$client")
+        log.info("init: projects=$projects, client=$client")
     }
 
     @GET
@@ -38,133 +52,157 @@ class ProjectsResource(
     @Operation(summary = "Get configured projects")
     fun listProjects(): Set<String> = projects.keys
 
+    @GET
+    @Path("{projectId}")
+    fun showDistinctBodyTypes(
+        @PathParam("projectId") projectId: String
+    ): Response = getProject(projectId).let {
+        log.info("Find bodyTypes in use in [${it.name}]: ")
+        Response.ok(it.annoRepo.findDistinct(AR_BODY_TYPE)).build()
+    }
+
+    @GET
+    @Path("{projectId}/views")
+    fun getViews(@PathParam("projectId") projectId: String) = getProject(projectId).views
+
+
     @POST
     @Path("{projectId}/search")
     fun searchIndex(
         @PathParam("projectId") projectId: String,
-        fieldsQuery: String,
-        @QueryParam("indexName") indexName: String?,
-        @QueryParam("frag") @DefaultValue("scan") frag: FragOpts = SCAN,
-        @QueryParam("size") @DefaultValue("100") size: Int,
-        @QueryParam("num") @DefaultValue("10") num: Int
+        queryString: IndexQuery,
+        @QueryParam("indexName") indexParam: String?,
+        @QueryParam("frag") @DefaultValue("scan") frag: FragOpts,
+        @QueryParam("from") @Min(0) @DefaultValue("0") from: Int,
+        @QueryParam("size") @Min(0) @DefaultValue("10") size: Int,
+        @QueryParam("sortBy") @DefaultValue("_score") sortBy: String,
+        @QueryParam("sortOrder") @DefaultValue("desc") sortOrder: SortOrder
     ): Response {
-        // determine project
         val project = getProject(projectId)
-        val brinta = project.brinta
+        val index = getIndex(indexParam, project)
 
-        // determine index to use
-        val index = if (indexName == null) {
-            brinta.indices[0]   // if unspecified, default to first index in project configuration
-        } else {
-            brinta.indices.find { it.name == indexName }
-                ?: throw NotFoundException("index '$indexName' not configured for project: ${project.name}")
-        }
-
-        // construct query for elasticsearch
-        val query = """
-            {
-              "_source": true,
-              "query": $fieldsQuery,
-              "highlight": {
-                "fields": {
-                  "text": {
-                    "type": "experimental",
-                    "fragmenter": "$frag",
-                    "fragment_size": $size,
-                    "number_of_fragments": $num,
-                    "options": { "return_snippets_and_offsets": true }
-                  }
-                }
-              },
-              "sort": "_doc"
+        log.info("sortBy=[$sortBy], sortOrder=[$sortOrder]")
+        index.fields.map { it.name }
+            .plus("_doc")
+            .plus("_score")
+            .apply {
+                find { it == sortBy } ?: throw BadRequestException("query param sortBy must be one of ${this.sorted()}")
             }
-        """.trimIndent()
-            .also { log.info("sending query: $it") }
 
-        return client.target(brinta.uri).path(index.name).path("_search")
-            .request()
-            .post(Entity.json(query))
+        return queryString
+            .also { log.info("queryString: ${jsonWriter.writeValueAsString(it)}") }
+            .let {
+                ElasticQueryBuilder(index)
+                    .from(from)
+                    .size(size)
+                    .sortBy(sortBy)
+                    .sortOrder(sortOrder.toString())
+                    .frag(frag.toString())
+                    .query(it)
+                    .toElasticQuery()
+            }
+            .also { log.info("full ES query: ${jsonWriter.writeValueAsString(it)}") }
+            .let { query ->
+                client.target(project.brinta.uri).path(index.name).path("_search")
+                    .request()
+                    .post(Entity.json(query))
+            }
             .also { log.info("response: $it") }
             .readEntityAsJsonString()
-            .also { log.info("data: $it") }
+            .also { log.info("json: $it") }
             .let { json ->
-                jsonParser.parse(json)
-                    .read<List<Map<String, Any>>>("$.hits.hits[*]")
-                    .map { hit ->
-                        @Suppress("UNCHECKED_CAST")
-                        val highlight = hit["highlight"] as Map<String, Any>
+                val result = mutableMapOf<String, Any>()
+                jsonParser.parse(json).let { context ->
+                    context.read<Map<String, Any>>("$.hits.total")
+                        ?.let { result["total"] = it }
 
-                        @Suppress("UNCHECKED_CAST")
-                        val textLocations = highlight["text"] as List<String>
+                    extractAggregations(context)?.let { result["aggs"] = it }
 
-                        @Suppress("UNCHECKED_CAST")
-                        val source = hit["_source"] as Map<String, Any>
+                    context.read<List<Map<String, Any>>>("$.hits.hits[*]")
+                        ?.map { buildHitResult(index, it) }
+                        ?.let { result["results"] = it }
+                }
+                Response.ok(result).build()
+            }
+    }
 
-                        @Suppress("UNCHECKED_CAST")
-                        val segments = source["lengths"] as List<Int>
+    private fun buildHitResult(index: IndexConfiguration, hit: Map<String, Any>) =
+        mutableMapOf("_id" to hit["_id"]).apply {
+            @Suppress("UNCHECKED_CAST")
+            val source = hit["_source"] as Map<String, Any>
 
-                        // some running vars, updated as we visit each location to keep track of offsets
-                        var runningOffset = 0
-                        var curSegmentIndex = 0
+            // store all configured index fields with a result from elastic
+            index.fields.forEach { field ->
+                source[field.name]?.let { put(field.name, it) }
+            }
 
-                        textLocations
-                            .map { locationsAndPreviewExpr ->
-                                Pair(
-                                    locationsAndPreviewExpr.substringAfter('|'),
-                                    locationsAndPreviewExpr.substringBefore('|')
-                                )
+            // store highlight if available
+            hit["highlight"]
+                ?.let { highlight ->
+                    @Suppress("UNCHECKED_CAST")
+                    val text = (highlight as Map<String, Any>)["text"]
+
+                    @Suppress("UNCHECKED_CAST")
+                    text?.let { buildPreviewAndLocations(source, it as List<String>) }
+                }
+                ?.let { previewAndLocations ->
+                    mutableMapOf<String, MutableList<Map<String, TextMarker>>>()
+                        .apply {
+                            previewAndLocations.forEach { (preview, location) ->
+                                getOrPut(preview) { mutableListOf() } += location
                             }
-                            .map { (preview, rangeAndLocationsExpr) ->
-                                Pair(preview, rangeAndLocationsExpr.substringBetweenOuter(':'))
-                            }
-                            .flatMap { (preview, locationsExpr) ->
-                                locationsExpr
-                                    .split(',')
-                                    .map { locationExpr -> Pair(preview, locationExpr) }
-                            }
-                            .map { (preview, locationExpr) ->
-                                Pair(preview, locationExpr.parseIntoCoordinates('-'))
-                            }
-                            .map { (preview, location) ->
-                                var curSegmentLength = segments[curSegmentIndex]
+                        }
+                }
+                ?.asSequence()
+                ?.map { (k, v) -> mapOf("preview" to k, "locations" to v) }
+                ?.let { put("_hits", it) }
+        }
 
-                                // skip lines entirely before start
-                                while (runningOffset + curSegmentLength < location.start) {
-                                    runningOffset += curSegmentLength + 1
-                                    curSegmentLength = segments[++curSegmentIndex]
-                                }
-                                val startMarker = TextMarker(curSegmentIndex, location.start - runningOffset)
+    private fun buildPreviewAndLocations(
+        source: Map<String, Any>,
+        textLocations: List<String>
+    ): List<Pair<String, Map<String, TextMarker>>> {
+        // some running vars, updated as we visit each location to keep track of offsets
+        var runningOffset = 0
+        var curSegmentIndex = 0
 
-                                // skip lines entirely before end
-                                while (runningOffset + curSegmentLength < location.end) {
-                                    runningOffset += curSegmentLength + 1
-                                    curSegmentLength = segments[++curSegmentIndex]
-                                }
-                                val endMarker = TextMarker(curSegmentIndex, location.end - runningOffset - 1)
+        return textLocations
+            .map { locationsAndPreviewExpr ->
+                Pair(
+                    locationsAndPreviewExpr.substringAfter('|'),
+                    locationsAndPreviewExpr.substringBefore('|')
+                )
+            }
+            .map { (preview, rangeAndLocationsExpr) ->
+                Pair(preview, rangeAndLocationsExpr.substringBetweenOuter(':'))
+            }
+            .flatMap { (preview, locationsExpr) ->
+                locationsExpr
+                    .split(',')
+                    .map { locationExpr -> Pair(preview, locationExpr) }
+            }
+            .map { (preview, locationExpr) -> Pair(preview, locationExpr.parseIntoCoordinates('-')) }
+            .map { (preview, location) ->
+                @Suppress("UNCHECKED_CAST")
+                val segments = source["lengths"] as List<Int>
 
-                                Pair(preview, mapOf("start" to startMarker, "end" to endMarker))
-                            }
-                            .let { previewAndLocationsList ->
-                                mutableMapOf<String, MutableList<Map<String, TextMarker>>>()
-                                    .apply {
-                                        previewAndLocationsList.forEach { (preview, location) ->
-                                            getOrPut(preview) { mutableListOf() } += location
-                                        }
-                                    }
-                            }
-                            .entries
-                            .map { (preview, locations) -> mapOf("preview" to preview, "locations" to locations) }
-                            .let { previewAndLocationsList ->
-                                mutableMapOf("bodyId" to hit["_id"])
-                                    .apply {
-                                        index.fields.forEach { field -> put(field.name, source[field.name]) }
-                                        put("hits", previewAndLocationsList)
-                                    }
-                            }
-                    }
-                    .let { result ->
-                        Response.ok(result).build()
-                    }
+                var curSegmentLength = segments[curSegmentIndex]
+
+                // skip lines entirely before start
+                while (runningOffset + curSegmentLength < location.start) {
+                    runningOffset += curSegmentLength + 1
+                    curSegmentLength = segments[++curSegmentIndex]
+                }
+                val startMarker = TextMarker(curSegmentIndex, location.start - runningOffset)
+
+                // skip lines entirely before end
+                while (runningOffset + curSegmentLength < location.end) {
+                    runningOffset += curSegmentLength + 1
+                    curSegmentLength = segments[++curSegmentIndex]
+                }
+                val endMarker = TextMarker(curSegmentIndex, location.end - runningOffset - 1)
+
+                Pair(preview, mapOf("start" to startMarker, "end" to endMarker))
             }
     }
 
@@ -176,8 +214,16 @@ class ProjectsResource(
     private fun String.parseIntoCoordinates(delimiter: Char): Coordinates<Int> =
         Coordinates(substringBefore(delimiter).toInt(), substringAfter(delimiter).toInt())
 
+    @Suppress("unused")
     enum class FragOpts {
         NONE, SCAN, SENTENCE; // https://github.com/wikimedia/search-highlighter#elasticsearch-options
+
+        override fun toString() = name.lowercase()
+    }
+
+    @Suppress("unused")
+    enum class SortOrder {
+        ASC, DESC;
 
         override fun toString() = name.lowercase()
     }
@@ -197,7 +243,7 @@ class ProjectsResource(
 
         val project = getProject(projectId)
 
-        val interestedIn = parseIncludeResults(setOf("anno", "bodyId"), includeResultsParam)
+        val interestedIn = parseRestrictedSubset(setOf("anno", "bodyId"), includeResultsParam)
 
         val formalTiers = project.tiers
         val actualTiers = tierParams.split('/').filter { it.isNotBlank() }
@@ -242,13 +288,14 @@ class ProjectsResource(
     fun getProjectBodyId(
         @PathParam("projectId") projectId: String,
         @PathParam("bodyId") bodyId: String,
-        @QueryParam("includeResults") includeResultsParam: String?,
+        @QueryParam("includeResults") includesParam: String?,
+        @QueryParam("views") viewsParam: String?,
         @QueryParam("overlapTypes") overlapTypesParam: String?,
         @QueryParam("relativeTo") @DefaultValue("Origin") relativeTo: String,
     ): Response {
         log.info(
-            "project=$projectId, bodyId=$bodyId, " +
-                    "includeResults=$includeResultsParam, overlapTypes=$overlapTypesParam, relativeTo=$relativeTo"
+            "project=$projectId, bodyId=$bodyId, views=$viewsParam, includeResults=$includesParam, " +
+                    "overlapTypes=$overlapTypesParam, relativeTo=$relativeTo"
         )
 
         val before = System.currentTimeMillis()
@@ -256,9 +303,12 @@ class ProjectsResource(
         val project = getProject(projectId)
         val annoRepo = project.annoRepo
         val textRepo = project.textRepo
+        val allViews = project.views.keys.plus("self")
+        val allIncludes = setOf("anno", "text", "iiif")
 
-        val interestedIn = parseIncludeResults(setOf("anno", "text", "iiif"), includeResultsParam)
-        val overlapTypes = parseOverlapTypes(overlapTypesParam)
+        val wanted = if (includesParam == null) allIncludes else parseRestrictedSubset(allIncludes, includesParam)
+        val requestedViews = if (viewsParam == null) allViews else parseRestrictedSubset(allViews, viewsParam)
+        val overlapTypes = if (overlapTypesParam == null) emptySet() else parseSet(overlapTypesParam)
 
         val annoTimings = mutableMapOf<String, Any>()
         val textTimings = mutableMapOf<String, Any>()
@@ -268,7 +318,8 @@ class ProjectsResource(
         val request = mutableMapOf(
             "projectId" to projectId,
             "bodyId" to bodyId,
-            "includeResults" to interestedIn,
+            "views" to requestedViews,
+            "include" to wanted,
         )
         if (overlapTypes.isNotEmpty()) {
             request["overlapTypes"] = overlapTypes
@@ -285,43 +336,61 @@ class ProjectsResource(
             { timeSpent -> annoTimings["findByBodyId"] = timeSpent }
         )
 
-        if (interestedIn.contains("anno")) {
+        val interpreter = AnnoSearchResultInterpreter(searchResult)
+        val source = interpreter.findSegmentsSource()
+        val selector = interpreter.findSelector()
+
+        if (wanted.contains("anno")) {
             result["anno"] = if (overlapTypes.isEmpty()) {
                 searchResult.items()
             } else {
-                searchResult.withField<Any>("Text", "selector")
-                    .also { if (it.size > 1) log.warn("multiple Text with selector: $it") }
-                    .first()
-                    .let {
-                        val selector = it["selector"] as Map<*, *>
-                        val sourceUrl = it["source"] as String
-                        val start = selector["start"] as Int
-                        val end = selector["end"] as Int
-                        val bodyTypes = isIn(overlapTypes)
-                        timeExecution(
-                            { annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes) },
-                            { timeSpent -> annoTimings["fetchOverlap"] = timeSpent }
-                        )
-                    }
+                timeExecution({
+                    annoRepo.fetchOverlap(source, selector.start(), selector.end(), isIn(overlapTypes))
+                        .map { it.read<Map<String, Any>>("$") }.toList()
+                }, { timeSpent -> annoTimings["fetchOverlap[text]"] = timeSpent })
             }
         }
 
-        if (interestedIn.contains("text")) {
-            val textInterpreter = AnnoSearchResultInterpreter(searchResult)
+        val views = mutableMapOf<String, Any>()
+        interestedViews(project, requestedViews).forEach { (viewName, viewConf) ->
+            val annoConstraints = viewConf.anno.associate { it.path to it.value }
+                .plus(AR_WITHIN_TEXT_ANCHOR_RANGE to region(source, selector.start(), selector.end()))
+            log.info("annoConstraints=$annoConstraints")
+            annoRepo.fetch(annoConstraints)
+                .map(::AnnoRepoSearchResult)
+                .firstOrNull()
+                ?.let { viewAnnos ->
+                    val viewAnnoInterpreter = AnnoSearchResultInterpreter(viewAnnos)
+                    val viewSource = viewAnnoInterpreter.findTextSource()
+                    val viewResult = mutableMapOf<String, Any>()
+                    viewResult["lines"] = fetchTextLines(project.textRepo, viewSource)
+                    if (wanted.contains("anno")) {
+                        viewResult["locations"] = findViewAnnotations(
+                            annoRepo,
+                            viewConf.scope.toAnnoRepoScope,
+                            viewAnnoInterpreter,
+                            isIn(overlapTypes)
+                        )
+                    }
+                    views[viewName] = viewResult
+                }
+        }
 
+        if (wanted.contains("text") && requestedViews.contains("self")) {
             val textLines = timeExecution(
-                { fetchTextLines(textRepo, textInterpreter.findTextSource()) },
+                { fetchTextLines(textRepo, interpreter.findTextSource()) },
                 { timeSpent -> textTimings["fetchTextLines"] = timeSpent }
             )
             val textResult = mutableMapOf<String, Any>("lines" to textLines)
 
-            val selector = textInterpreter.findSelector()
-            val segmentsSource = textInterpreter.findSegmentsSource()
-
-            if (interestedIn.contains("anno") && relativeTo != "Origin") {
-                val offset = timeExecution(
-                    { annoRepo.findOffsetRelativeTo(segmentsSource, selector, relativeTo) },
-                    { timeSpent -> textTimings["findOffsetRelativeTo"] = timeSpent })
+            if (wanted.contains("anno") && relativeTo != "Origin") {
+                val offset = timeExecution({
+                    annoRepo.findOffsetRelativeTo(
+                        interpreter.findSegmentsSource(),
+                        interpreter.findSelector(),
+                        relativeTo
+                    )
+                }, { timeSpent -> textTimings["findOffsetRelativeTo"] = timeSpent })
 
                 val relocatedAnnotations = mutableListOf<Map<String, Any>>()
                 (result["anno"] as List<*>).forEach { anno ->
@@ -351,27 +420,20 @@ class ProjectsResource(
                     }
                 }
             }
-
-            result["text"] = textResult
+            views["self"] = textResult
         }
 
-        if (interestedIn.contains("iiif")) {
-            val manifest = searchResult.withField<Any>("Text", "selector")
-                .also { if (it.size > 1) log.warn("multiple Text with selector: $it") }
-                .first()
-                .let {
-                    val selector = it["selector"] as Map<*, *>
-                    val sourceUrl = it["source"] as String
-                    val start = selector["start"] as Int
-                    val end = selector["end"] as Int
-                    val tier0 = project.tiers[0].name.capitalize()
-                    val bodyTypes = isIn(setOf(tier0))
-                    timeExecution(
-                        { annoRepo.fetchOverlap(sourceUrl, start, end, bodyTypes) },
-                        { timeSpent -> annoTimings["fetchManifest"] = timeSpent }
-                    )
-                }
-                .firstNotNullOfOrNull { extractManifest(it) }
+        if (views.isNotEmpty()) result["views"] = views
+
+        if (wanted.contains("iiif")) {
+            val tier0 = project.tiers[0].let { it.anno ?: it.name.capitalize() }
+            log.info("tier0: $tier0")
+            val bodyTypes = isIn(setOf(tier0))
+            val manifest = timeExecution({
+                annoRepo.fetchOverlap(source, selector.start(), selector.end(), bodyTypes)
+                    .map { it.read<Map<String, Any>>("$") }.toList()
+            }, { timeSpent -> annoTimings["fetchManifest"] = timeSpent }
+            ).firstNotNullOfOrNull { extractManifest(it) }
 
             result["iiif"] = mapOf(
                 "manifest" to manifest,
@@ -385,7 +447,54 @@ class ProjectsResource(
         return Response.ok(result).build()
     }
 
-    private fun String.capitalize(): String = replaceFirstChar(Char::uppercase)
+    private fun findViewAnnotations(
+        annoRepo: AnnoRepo,
+        annoScope: String,
+        viewAnnoInterpreter: AnnoSearchResultInterpreter,
+        bodyTypes: Map<String, Set<String>>
+    ): Map<String, Any> {
+        val viewSource = viewAnnoInterpreter.findSegmentsSource()
+        val viewSelector = viewAnnoInterpreter.findSelector()
+        val viewBodyType = viewAnnoInterpreter.bodyType()
+        val viewBodyId = viewAnnoInterpreter.bodyId()
+
+        val relocatedAnnotations = mutableListOf<Map<String, Any>>()
+        annoRepo.fetch(
+            mapOf(
+                annoScope to region(viewSource, viewSelector.start(), viewSelector.end()),
+                AR_BODY_ID to isNotEqualTo(viewBodyId),
+                AR_BODY_TYPE to bodyTypes
+            )
+        )
+            .map { it.read<Any>("$") }
+            .forEach { anno ->
+                if (anno is Map<*, *>) {
+                    val annoBodyId = extractBodyId(anno)
+                    val annoSelector = extractTextSelector(anno)
+                    if (annoBodyId != null && annoSelector != null) {
+                        val annoStart = TextMarker(annoSelector.start(), annoSelector.beginCharOffset())
+                        val annoEnd = TextMarker(annoSelector.end(), annoSelector.endCharOffset())
+                        val annoMarkers = TextMarkers(annoStart, annoEnd).relativeTo(viewSelector.start())
+                        relocatedAnnotations.add(
+                            mapOf(
+                                "bodyId" to annoBodyId,
+                                "start" to annoMarkers.start,
+                                "end" to annoMarkers.end
+                            )
+                        )
+                    }
+                }
+            }
+
+        return mapOf(
+            "relativeTo" to mapOf("bodyType" to viewBodyType, "bodyId" to viewBodyId),
+            "annotations" to relocatedAnnotations
+        )
+    }
+
+    private fun interestedViews(project: Project, interestedIn: Set<String>) =
+        project.views.filterKeys { view -> interestedIn.contains(view) }
+
 
     private fun extractManifest(anno: Map<*, *>): String? {
         if (anno.containsKey("body")) {
@@ -435,39 +544,32 @@ class ProjectsResource(
             ?: throw NotFoundException("Unknown project: $projectId. See /projects for known projects")
     }
 
-    private fun parseIncludeResults(all: Set<String>, includeResultString: String?): Set<String> {
-        if (includeResultString == null) {
-            return all
-        }
+    private fun getIndex(indexParam: String?, project: Project) =
+        indexParam
+            ?.let { indexName ->
+                project.brinta.indices.find { it.name == indexName }
+                    ?: throw NotFoundException(
+                        "Unknown index: $indexParam. See /brinta/${project.name}/indices for known indices"
+                    )
+            }
+            ?: project.brinta.indices.first() // if unspecified, use first available index from config
 
-        val requested = if (includeResultString.startsWith('[')) {
-            objectMapper.readValue(includeResultString)
-        } else {
-            includeResultString
-                .removeSurrounding("\"")
-                .split(',')
-                .map { it.trim() }
-                .filter { it.isNotBlank() }
-                .toSet()
-        }
-
-        val includes = all.intersect(requested)
+    private fun parseRestrictedSubset(all: Set<String>, subsetString: String): Set<String> {
+        val requested = parseSet(subsetString)
 
         val undefined = requested.minus(all)
         if (undefined.isNotEmpty()) {
-            throw BadRequestException("Undefined include: $undefined not in $all")
+            throw BadRequestException("Undefined parameter: $undefined not in $all")
         }
 
-        return includes
+        return all.intersect(requested)
     }
 
-    private fun parseOverlapTypes(overlapTypes: String?): Set<String> =
-        if (overlapTypes == null) {
-            emptySet()
-        } else if (overlapTypes.startsWith('[')) {
-            objectMapper.readValue(overlapTypes)
+    private fun parseSet(items: String): Set<String> =
+        if (items.startsWith('[')) {
+            jsonWriter.readValue(items)
         } else {
-            overlapTypes
+            items
                 .removeSurrounding("\"")
                 .split(',')
                 .map { it.trim() }

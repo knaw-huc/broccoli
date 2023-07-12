@@ -15,3 +15,6 @@ target/
 /.project
 /.make
 *.json
+globalise.http
+/globalise.http
+/mondriaan.http

@@ -1,14 +1,14 @@
 package nl.knaw.huc.broccoli.resources
 
 import io.swagger.v3.oas.annotations.Operation
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.core.MediaType
 import nl.knaw.huc.broccoli.api.AboutInfo
 import nl.knaw.huc.broccoli.api.ResourcePaths
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import java.time.Instant
-import javax.ws.rs.GET
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.core.MediaType
 
 @Path(ResourcePaths.ABOUT)
 @Produces(MediaType.APPLICATION_JSON)
@@ -22,5 +22,5 @@ class AboutResource(configuration: BroccoliConfiguration, appName: String, versi
 
     @Operation(description = "Get basic server information")
     @GET
-    fun getAboutInfo() : AboutInfo = about
+    fun getAboutInfo(): AboutInfo = about
 }
