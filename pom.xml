@@ -33,7 +33,8 @@
         <dropwizard-swagger-ui.version>4.6.2</dropwizard-swagger-ui.version>
         <dropwizard-swagger.version>4.0.0-1</dropwizard-swagger.version>
         <dropwizard.version>4.0.0</dropwizard.version>
-        <jackson-module-kotlin.version>2.14.0</jackson-module-kotlin.version>
+        <jackson-module-kotlin.version>2.14.2</jackson-module-kotlin.version>
+
         <json-path.version>2.8.0</json-path.version>
         <mockito-kotlin.version>4.0.0</mockito-kotlin.version>
         <mockito.version>4.8.0</mockito.version>
@@ -103,6 +104,12 @@
                 <version>${maven-shade-plugin.version}</version>
                 <configuration>
                     <createDependencyReducedPom>true</createDependencyReducedPom>
+                    <transformers>
+                        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                            <mainClass>${mainClass}</mainClass>
+                        </transformer>
+                    </transformers>
                     <!-- exclude signed Manifests -->
                     <filters>
                         <filter>
