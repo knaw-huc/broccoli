@@ -39,7 +39,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                         add(DateQuery(it.name, it.from, it.to))
                     }
                     query.text?.let {
-                        add(FullTextQuery(QueryStringQuery(it)))
+                        add(FullTextQuery(Query(QueryString(it))))
                     }
                 }
             )
