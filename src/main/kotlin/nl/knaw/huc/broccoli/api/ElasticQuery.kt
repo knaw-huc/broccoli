@@ -57,7 +57,7 @@ data class Query(
 )
 
 data class QueryString(
-    val query: String
+    val text: String
 )
 
 data class Sort(
