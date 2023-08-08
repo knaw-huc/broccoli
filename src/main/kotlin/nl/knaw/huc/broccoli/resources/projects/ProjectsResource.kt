@@ -25,6 +25,7 @@ import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.ElasticQueryBuilder
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
+import nl.knaw.huc.broccoli.service.anno.AnnoRepo.Offset
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
 import nl.knaw.huc.broccoli.service.anno.TextSelector
@@ -41,6 +42,10 @@ class ProjectsResource(
     private val jsonParser: ParseContext,
     private val jsonWriter: ObjectMapper
 ) {
+    companion object {
+        const val ORIGIN = "Origin"
+    }
+
     private val log = LoggerFactory.getLogger(javaClass)
 
     init {
@@ -291,8 +296,9 @@ class ProjectsResource(
         @QueryParam("includeResults") includesParam: String?,
         @QueryParam("views") viewsParam: String?,
         @QueryParam("overlapTypes") overlapTypesParam: String?,
-        @QueryParam("relativeTo") @DefaultValue("Origin") relativeTo: String,
+        @QueryParam("relativeTo") @DefaultValue(ORIGIN) relativeTo: String,
     ): Response {
+
         log.info(
             "project=$projectId, bodyId=$bodyId, views=$viewsParam, includeResults=$includesParam, " +
                     "overlapTypes=$overlapTypesParam, relativeTo=$relativeTo"
@@ -383,14 +389,18 @@ class ProjectsResource(
             )
             val textResult = mutableMapOf<String, Any>("lines" to textLines)
 
-            if (wanted.contains("anno") && relativeTo != "Origin") {
-                val offset = timeExecution({
-                    annoRepo.findOffsetRelativeTo(
-                        interpreter.findSegmentsSource(),
-                        interpreter.findSelector(),
-                        relativeTo
-                    )
-                }, { timeSpent -> textTimings["findOffsetRelativeTo"] = timeSpent })
+            if (wanted.contains("anno")) {
+                val offset = when (relativeTo) {
+                    ORIGIN -> Offset(selector.start(), interpreter.bodyId())
+                    else ->
+                        timeExecution({
+                            annoRepo.findOffsetRelativeTo(
+                                interpreter.findSegmentsSource(),
+                                interpreter.findSelector(),
+                                relativeTo
+                            )
+                        }, { timeSpent -> textTimings["findOffsetRelativeTo"] = timeSpent })
+                }
 
                 val relocatedAnnotations = mutableListOf<Map<String, Any>>()
                 (result["anno"] as List<*>).forEach { anno ->
