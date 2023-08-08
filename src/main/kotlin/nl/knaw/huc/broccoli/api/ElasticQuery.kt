@@ -48,10 +48,10 @@ data class TermsQuery(
 ) : BaseQuery()
 
 data class FullTextQuery(
-    @JsonProperty("match_phrase_prefix") val matchPhrasePrefixQuery: MatchPhrasePrefixQuery
+    @JsonProperty("query_string") val query: QueryStringQuery
 ) : BaseQuery()
 
-data class MatchPhrasePrefixQuery(
+data class QueryStringQuery(
     val text: String
 )
 
@@ -78,7 +78,7 @@ data class HighlightTerm(
                 )
             )
         ),
-        "highlight_query" to FullTextQuery(MatchPhrasePrefixQuery(text))
+        "highlight_query" to FullTextQuery(QueryStringQuery(text))
     )
 }
 
