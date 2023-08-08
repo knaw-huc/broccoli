@@ -1,0 +1,45 @@
+### Get overview of indexes
+GET https://annorepo.republic-caf.diginfra.org/services/republic-2023-06-29/indexes
+
+### Show query info
+GET https://annorepo.republic-caf.diginfra.org/services/republic-2023-06-29/search/52b2f1b1-433d-4f25-a7ea-21db2371bae4/info
+
+### This query takes 6s
+POST https://annorepo.republic-caf.diginfra.org/services/republic-2023-06-29/search
+Content-Type: application/json
+
+{
+  ":overlapsWithTextAnchorRange": {
+    "source": "https://textrepo.republic-caf.diginfra.org/api/rest/versions/6fc42339-e5ac-4598-a00d-096b068f5c73/contents",
+    "start": 50525,
+    "end": 50757
+  },
+  "body.type": {
+    ":isIn": [
+      "AttendanceList",
+      "Attendant",
+      "Resolution",
+      "Session",
+      "Scan"
+    ]
+  }
+}
+
+### Fetching the results ALSO takes (another) 6s:
+GET https://annorepo.republic-caf.diginfra.org/services/republic-2023-06-29/search/6afce2bc-b94e-4c1d-bbd1-adf9d9f525fd
+
+
+### Er lijken nog Volume annotaties te missen?
+# In bijv https://annorepo.republic-caf.diginfra.org/w3c/republic-2023-06-29/f0757ae5-b70a-4d7f-a532-9d06ca9fbf33
+# staan 'start' en 'end' op 94808, waardoor de 'overlap' deze annotatie niet kan vinden.
+
+### Ook het ophalen van een specifieke annotatie via z'n ID, direct bij AR duurt 3 seconden, bijv.
+#   https://annorepo.republic-caf.diginfra.org/w3c/republic-2023-06-29/f0757ae5-b70a-4d7f-a532-9d06ca9fbf33
+# Het ophalen van de eerste annotatie uit page 0 van de hele collectie gaat heel snel,
+# vraag je een annotatie op die 'verderop' zit, dan wordt het steeds trager: O(N) ?
+#     0s: https://annorepo.republic-caf.diginfra.org/w3c/republic-2023-06-29/94e63a47-c088-49d5-a406-4cc7322dfe03
+#    22s: https://annorepo.republic-caf.diginfra.org/w3c/republic-2023-06-29/c64b598c-3cfe-4e9d-9119-c6cd305d6d9a
+
+### Create index on 'id':
+PUT https://annorepo.republic-caf.diginfra.org/services/republic-2023-06-29/indexes/id/hashed
+# helpt niet, opvragen c64b598c-3cfe-4e9d-9119-c6cd305d6d9a nog steeds traag.
