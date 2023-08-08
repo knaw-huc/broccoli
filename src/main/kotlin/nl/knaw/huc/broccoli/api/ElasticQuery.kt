@@ -48,16 +48,11 @@ data class TermsQuery(
 ) : BaseQuery()
 
 data class FullTextQuery(
-    @JsonProperty("query") val query: Query,
+    @JsonProperty("query_string") val queryString: QueryString
 ) : BaseQuery()
 
-
-data class Query(
-    @JsonProperty("query_string") val queryString: QueryString
-)
-
 data class QueryString(
-    val text: String
+    val query: String
 )
 
 data class Sort(
@@ -83,7 +78,7 @@ data class HighlightTerm(
                 )
             )
         ),
-        "highlight_query" to FullTextQuery(Query(QueryString(text)))
+        "highlight_query" to FullTextQuery(QueryString(text))
     )
 }
 
