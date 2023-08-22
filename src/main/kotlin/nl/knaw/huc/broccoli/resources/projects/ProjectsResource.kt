@@ -350,10 +350,12 @@ class ProjectsResource(
             result["anno"] = if (overlapTypes.isEmpty()) {
                 searchResult.items()
             } else {
-                timeExecution({
-                    annoRepo.fetchOverlap(source, selector.start(), selector.end(), isIn(overlapTypes))
-                        .map { it.read<Map<String, Any>>("$") }.toList()
-                }, { timeSpent -> annoTimings["fetchOverlap[text]"] = timeSpent })
+                timeExecution(
+                    {
+                        annoRepo.fetchOverlap(source, selector.start(), selector.end(), isIn(overlapTypes))
+                            .map { it.read<Map<String, Any>>("$") }.toList()
+                    },
+                    { timeSpent -> annoTimings["fetchOverlap[text]"] = timeSpent })
             }
         }
 
@@ -362,8 +364,10 @@ class ProjectsResource(
             val annoConstraints = viewConf.anno.associate { it.path to it.value }
                 .plus(AR_WITHIN_TEXT_ANCHOR_RANGE to region(source, selector.start(), selector.end()))
             log.info("annoConstraints=$annoConstraints")
-            annoRepo.fetch(annoConstraints)
-                .map(::AnnoRepoSearchResult)
+            timeExecution(
+                { annoRepo.fetch(annoConstraints) },
+                { timeSpent -> annoTimings["view[$viewName][constraints]"] = timeSpent }
+            ).map(::AnnoRepoSearchResult)
                 .firstOrNull()
                 ?.let { viewAnnos ->
                     val viewAnnoInterpreter = AnnoSearchResultInterpreter(viewAnnos)
@@ -371,12 +375,14 @@ class ProjectsResource(
                     val viewResult = mutableMapOf<String, Any>()
                     viewResult["lines"] = fetchTextLines(project.textRepo, viewSource)
                     if (wanted.contains("anno")) {
-                        viewResult["locations"] = findViewAnnotations(
-                            annoRepo,
-                            viewConf.scope.toAnnoRepoScope,
-                            viewAnnoInterpreter,
-                            isIn(overlapTypes)
-                        )
+                        viewResult["locations"] = timeExecution({
+                            findViewAnnotations(
+                                annoRepo,
+                                viewConf.scope.toAnnoRepoScope,
+                                viewAnnoInterpreter,
+                                isIn(overlapTypes)
+                            )
+                        }, { timeSpent -> annoTimings["view[$viewName][locations]"] = timeSpent })
                     }
                     views[viewName] = viewResult
                 }
