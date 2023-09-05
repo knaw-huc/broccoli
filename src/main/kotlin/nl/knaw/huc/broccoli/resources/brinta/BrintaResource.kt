@@ -15,6 +15,9 @@ import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.ResourcePaths.BRINTA
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.Project
+import nl.knaw.huc.broccoli.service.IndexManager
+import nl.knaw.huc.broccoli.service.IndexTask
+import nl.knaw.huc.broccoli.service.UriFactory
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
@@ -23,9 +26,12 @@ import org.slf4j.LoggerFactory
 @Produces(MediaType.APPLICATION_JSON)
 class BrintaResource(
     private val projects: Map<String, Project>,
-    private val client: Client
+    private val client: Client,
+    private val uriFactory: UriFactory
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
+
+    private val indexManager = IndexManager()
 
     @POST
     @Path("{indexName}")
@@ -113,6 +119,16 @@ class BrintaResource(
             }
     }
 
+    @GET
+    @Path("{indexName}/status")
+    fun getIndexStatus(
+        @PathParam("projectId") projectId: String,
+        @PathParam("indexName") indexName: String
+    ): Response {
+        val task = indexManager.getIndexTask("$projectId/$indexName") ?: throw NotFoundException()
+        return Response.ok(task).build()
+    }
+
     @POST
     @Path("{indexName}/fill")
     fun fillIndex(
@@ -136,90 +152,102 @@ class BrintaResource(
             "err" to err
         )
 
-        project.annoRepo.findByTiers(
-            bodyType = topTier.anno ?: topTier.name.capitalize(),
-            tiers = topTierValue
-        ).forEach { tier ->
-            log.info("Indexing ${tier.bodyType()}: ${tier.bodyId()}")
+        val task = object : IndexTask("$projectId/$indexName") {
+            override fun run() {
+                project.annoRepo.findByTiers(
+                    bodyType = topTier.anno ?: topTier.name.capitalize(),
+                    tiers = topTierValue
+                ).forEach { tier ->
+                    log.info("Indexing ${tier.bodyType()}: ${tier.bodyId()}")
 
-            // extract entire text range of current top tier (for overlap query)
-            val textTarget = tier.withField<Any>("Text", "source").first()
-            val source = textTarget["source"] as String
-            val selector = textTarget["selector"] as Map<*, *>
-            val start = selector["start"] as Int
-            val end = selector["end"] as Int
+                    // extract entire text range of current top tier (for overlap query)
+                    val textTarget = tier.withField<Any>("Text", "source").first()
+                    val source = textTarget["source"] as String
+                    val selector = textTarget["selector"] as Map<*, *>
+                    val start = selector["start"] as Int
+                    val end = selector["end"] as Int
 
-            // find all annotations with body.type matching this index, overlapping with top tier's range
-            var annos = project.annoRepo.streamOverlap(source, start, end, Constants.isIn(index.bodyTypes.toSet()))
+                    // find all annotations with body.type matching this index, overlapping with top tier's range
+                    var annos =
+                        project.annoRepo.streamOverlap(source, start, end, Constants.isIn(index.bodyTypes.toSet()))
 
-            if (take != null) {
-                log.info("limiting: only indexing first $take item(s)")
-                annos = annos.take(take)
-            }
-
-            annos.map(::AnnoRepoSearchResult)
-                .forEach { anno ->
-                    // use anno's body.id as documentId in index
-                    val docId = anno.bodyId()
-
-                    // build index payload for current anno
-                    val payload = mutableMapOf<String, Any>()
-
-                    // First: core payload for index: fetch "full text" from (remote) URL
-                    anno.withoutField<String>("Text", "selector")
-                        .also { if (it.size > 1) log.warn("multiple Text targets without selector: $it") }
-                        .first() // more than one text target without selector? -> arbitrarily choose the first
-                        .let { textTarget ->
-                            val textURL = textTarget["source"] as String
-                            val textSegments = fetchTextSegments(project.textRepo, textURL)
-                            if (textSegments.isNotEmpty()) {
-                                val joinedText = textSegments.joinToString(project.brinta.joinSeparator ?: "")
-                                val segmentLengths = textSegments.map { it.length }
-                                payload["text"] = joinedText
-                                payload["lengths"] = segmentLengths
-                                ok.add(docId)
-                            } else {
-                                log.warn("Failed to fetch text for $docId from $textURL")
-                                err.add(
-                                    mapOf(
-                                        "body.id" to docId,
-                                        "annoURL" to anno.read("$.id"),
-                                        "textURL" to textURL
-                                    )
-                                )
-                            }
-                        }
-
-                    // Then: optional extra payload: fields from config
-                    index.fields.forEach { field ->
-                        try {
-                            anno.read(field.path)?.let { payload[field.name] = it }
-                        } catch (e: PathNotFoundException) {
-                            // Must catch PNF, even though DEFAULT_PATH_LEAF_TO_NULL is set, because intermediate
-                            //   nodes can also be null, i.e., they don't exist, which still yields a PNF Exception.
-                            // Ignore this, just means the annotation doesn't have a value for this field
-                        }
+                    if (take != null) {
+                        log.info("limiting: only indexing first $take item(s)")
+                        annos = annos.take(take)
                     }
 
-                    log.info("Indexing $docId, payload=$payload")
+                    annos.map(::AnnoRepoSearchResult)
+                        .forEach { anno ->
+                            // use anno's body.id as documentId in index
+                            val docId = anno.bodyId()
 
-                    client.target(project.brinta.uri)
-                        .path(index.name).path("_doc").path(docId)
-                        .request()
-                        .put(Entity.json(payload))
-                        .run {
-                            if (statusInfo.family != Response.Status.Family.SUCCESSFUL) {   // could be OK or CREATED
-                                val entity = readEntityAsJsonString()       // reading entity also closes connection
-                                log.warn("Failed to index $docId: $entity")
-                            } else {
-                                close() // explicit close, or connection pool will be exhausted !!!
+                            // build index payload for current anno
+                            val payload = mutableMapOf<String, Any>()
+
+                            // First: core payload for index: fetch "full text" from (remote) URL
+                            anno.withoutField<String>("Text", "selector")
+                                .also { if (it.size > 1) log.warn("multiple Text targets without selector: $it") }
+                                .first() // more than one text target without selector? -> arbitrarily choose the first
+                                .let { textTarget ->
+                                    val textURL = textTarget["source"] as String
+                                    val textSegments = fetchTextSegments(project.textRepo, textURL)
+                                    if (textSegments.isNotEmpty()) {
+                                        val joinedText = textSegments.joinToString(project.brinta.joinSeparator ?: "")
+                                        val segmentLengths = textSegments.map { it.length }
+                                        payload["text"] = joinedText
+                                        payload["lengths"] = segmentLengths
+                                        ok.add(docId)
+                                    } else {
+                                        log.warn("Failed to fetch text for $docId from $textURL")
+                                        err.add(
+                                            mapOf(
+                                                "body.id" to docId,
+                                                "annoURL" to anno.read("$.id"),
+                                                "textURL" to textURL
+                                            )
+                                        )
+                                    }
+                                }
+
+                            // Then: optional extra payload: fields from config
+                            index.fields.forEach { field ->
+                                try {
+                                    anno.read(field.path)?.let { payload[field.name] = it }
+                                } catch (e: PathNotFoundException) {
+                                    // Must catch PNF, even though DEFAULT_PATH_LEAF_TO_NULL is set, because intermediate
+                                    //   nodes can also be null, i.e., they don't exist, which still yields a PNF Exception.
+                                    // Ignore this, just means the annotation doesn't have a value for this field
+                                }
                             }
-                        }
 
+                            log.info("Indexing $docId, payload=$payload")
+
+                            client.target(project.brinta.uri)
+                                .path(index.name).path("_doc").path(docId)
+                                .request()
+                                .put(Entity.json(payload))
+                                .run {
+                                    if (statusInfo.family != Response.Status.Family.SUCCESSFUL) {   // could be OK or CREATED
+                                        val entity =
+                                            readEntityAsJsonString()       // reading entity also closes connection
+                                        log.warn("Failed to index $docId: $entity")
+                                    } else {
+                                        close() // explicit close, or connection pool will be exhausted !!!
+                                    }
+                                }
+
+                        }
                 }
+            }
         }
 
-        return Response.ok(result).build()
+        indexManager.startIndexTask(task)
+
+        val location = uriFactory.indexURL(projectId, indexName)
+        return Response.created(location)
+            .link(uriFactory.indexStatusURL(projectId, indexName), "status")
+            .entity(result)
+            .build()
     }
 
     private fun Response.readEntityAsJsonString(): String = readEntity(String::class.java) ?: ""

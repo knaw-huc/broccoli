@@ -11,9 +11,11 @@ import io.dropwizard.client.JerseyClientConfiguration
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor
 import io.dropwizard.configuration.SubstitutingSourceProvider
 import io.dropwizard.core.Application
+import io.dropwizard.core.ConfiguredBundle
 import io.dropwizard.core.setup.Bootstrap
 import io.dropwizard.core.setup.Environment
 import io.dropwizard.jetty.setup.ServletEnvironment
+import io.dropwizard.jobs.JobsBundle
 import io.federecio.dropwizard.swagger.SwaggerBundle
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration
 import jakarta.servlet.DispatcherType
@@ -23,10 +25,12 @@ import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.Constants.APP_NAME
 import nl.knaw.huc.broccoli.config.*
 import nl.knaw.huc.broccoli.core.Project
+import nl.knaw.huc.broccoli.jobs.ExpiredTasksCleanupJob
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
 import nl.knaw.huc.broccoli.resources.brinta.BrintaResource
 import nl.knaw.huc.broccoli.resources.projects.ProjectsResource
+import nl.knaw.huc.broccoli.service.UriFactory
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.eclipse.jetty.servlets.CrossOriginFilter
@@ -51,7 +55,12 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             )
             addBundle(getSwaggerBundle())
             addBundle(AssetsBundle("/mock"))
+            addBundle(getJobsBundle())
         }
+    }
+
+    private fun getJobsBundle(): ConfiguredBundle<in BroccoliConfiguration?> {
+        return JobsBundle(ExpiredTasksCleanupJob())
     }
 
     private fun getSwaggerBundle() = object : SwaggerBundle<BroccoliConfiguration>() {
@@ -62,7 +71,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
     override fun run(configuration: BroccoliConfiguration, environment: Environment) {
         log.info(
             "BR_ environment variables:\n\n"
-                    + Constants.EnvironmentVariable.values()
+                    + Constants.EnvironmentVariable.entries
                 .joinToString("\n") { e ->
                     " ${e.name}:\t${System.getenv(e.name) ?: "(not set, using default)"}"
                 } +
@@ -84,11 +93,13 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
 
         val objectMapper = ObjectMapper().registerKotlinModule()
 
+        val uriFactory = UriFactory(configuration)
+
         with(environment.jersey()) {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())
             register(ProjectsResource(projects, client, jsonParser, objectMapper))
-            register(BrintaResource(projects, client))
+            register(BrintaResource(projects, client, uriFactory))
         }
 
         setupCORSHeaders(environment.servlets())

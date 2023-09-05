@@ -3,7 +3,7 @@ package nl.knaw.huc.broccoli.config
 import arrow.core.identity
 import com.fasterxml.jackson.annotation.JsonProperty
 import io.dropwizard.client.JerseyClientConfiguration
-import io.dropwizard.core.Configuration
+import io.dropwizard.jobs.JobConfiguration
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration
 import jakarta.validation.Valid
 import jakarta.validation.constraints.Min
@@ -12,7 +12,7 @@ import jakarta.ws.rs.BadRequestException
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.resources.AboutResource
 
-class BroccoliConfiguration : Configuration() {
+class BroccoliConfiguration : JobConfiguration() {
     @Valid
     @NotNull
     @JsonProperty
