@@ -183,12 +183,12 @@ class BrintaResource(
                         .let { textTarget ->
                             val textURL = textTarget["source"] as String
 
-                            val textSegmentsRemote = fetchTextSegmentsRemote(project.textRepo, textURL)
+//                            val textSegmentsRemote = fetchTextSegmentsRemote(project.textRepo, textURL)
 
                             val textSegmentsLocal = fetchTextSegmentsLocal(textLines, textURL)
-                            if (textSegmentsLocal != textSegmentsRemote) {
-                                throw IllegalStateException("Local != Remote")
-                            }
+//                            if (textSegmentsLocal != textSegmentsRemote) {
+//                                throw IllegalStateException("Local != Remote")
+//                            }
 
                             val textSegments = textSegmentsLocal
                             if (textSegments.isNotEmpty()) {
