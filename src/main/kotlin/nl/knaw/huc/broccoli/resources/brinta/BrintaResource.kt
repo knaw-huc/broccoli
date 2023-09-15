@@ -136,11 +136,22 @@ class BrintaResource(
             "err" to err
         )
 
-        project.annoRepo.findByTiers(
+        // eager collect of all top tiers to prevent expiration of query at AR as indexing may take a long time
+        val tiers = project.annoRepo.findByTiers(
             bodyType = topTier.anno ?: topTier.name.capitalize(),
             tiers = topTierValue
-        ).forEach { tier ->
+        ).toList()
+
+        log.info("Indexing todo:")
+        tiers.forEach { tier ->
+            log.info("- ${tier.bodyType()}: ${tier.bodyId()}")
+        }
+
+        tiers.forEach { tier ->
             log.info("Indexing ${tier.bodyType()}: ${tier.bodyId()}")
+
+            // fetch all text lines for this tier
+            val textLines = fetchTextLines(project.textRepo, tier)
 
             // extract entire text range of current top tier (for overlap query)
             val textTarget = tier.withField<Any>("Text", "source").first()
@@ -171,7 +182,15 @@ class BrintaResource(
                         .first() // more than one text target without selector? -> arbitrarily choose the first
                         .let { textTarget ->
                             val textURL = textTarget["source"] as String
-                            val textSegments = fetchTextSegments(project.textRepo, textURL)
+
+                            val textSegmentsRemote = fetchTextSegmentsRemote(project.textRepo, textURL)
+
+                            val textSegmentsLocal = fetchTextSegmentsLocal(textLines, textURL)
+                            if (textSegmentsLocal != textSegmentsRemote) {
+                                throw IllegalStateException("Local != Remote")
+                            }
+
+                            val textSegments = textSegmentsLocal
                             if (textSegments.isNotEmpty()) {
                                 val joinedText = textSegments.joinToString(project.brinta.joinSeparator ?: "")
                                 val segmentLengths = textSegments.map { it.length }
@@ -222,11 +241,53 @@ class BrintaResource(
         return Response.ok(result).build()
     }
 
+    private fun fetchTextLines(textRepo: TextRepo, tier: AnnoRepoSearchResult): List<String> =
+        tier.withoutField<String>("Text", "selector")
+            .also { if (it.size > 1) log.warn("multiple Text targets without selector: $it") }
+            .first() // more than one text target without selector? -> arbitrarily choose the first
+            .let { textTarget ->
+                val textURL = textTarget["source"] as String
+                var builder = client.target(textURL).request()
+
+                with(textRepo) {
+                    if (apiKey != null && canResolve(textURL)) {
+                        log.info("with apiKey {}", apiKey)
+                        builder = builder.header(AUTHORIZATION, "Basic $apiKey")
+                    }
+                }
+
+                val resp = builder.get()
+
+                return when (resp.status) {
+                    OK.statusCode -> {
+                        resp.readEntity(object : GenericType<ArrayList<String>>() {})
+                    }
+
+                    UNAUTHORIZED.statusCode -> {
+                        log.warn("Auth failed fetching $textURL")
+                        throw ClientErrorException("Need credentials for $textURL", UNAUTHORIZED)
+                    }
+
+                    else -> {
+                        log.warn("Failed to fetch $textURL (status: ${resp.status}")
+                        emptyList()
+                    }
+                }
+            }
+
+    private fun fetchTextSegmentsLocal(textLines: List<String>, textURL: String): List<String> {
+        log.info("fetchTextSegmentsLocal: URL=$textURL")
+        val coords = textURL.indexOf("segments/index/") + "segments/index/".length
+        log.info("fetchTextSegmentsLocal: coords=${textURL.substring(coords)}")
+        val (from, to) = textURL.substring(coords).split('/')
+        return textLines.subList(from.toInt(), to.toInt() + 1)
+    }
+
     private fun Response.readEntityAsJsonString(): String = readEntity(String::class.java) ?: ""
 
     private fun Map<String, Any>.toJsonString() = jacksonObjectMapper().writeValueAsString(this)
 
-    private fun fetchTextSegments(textRepo: TextRepo, textURL: String): List<String> {
+    private fun fetchTextSegmentsRemote(textRepo: TextRepo, textURL: String): List<String> {
         var builder = client.target(textURL).request()
 
         with(textRepo) {
