@@ -21,172 +21,97 @@ iiifUri: https://images.diginfra.net/api/pim
 textUri: https://textrepo.republic-caf.diginfra.org/api
 
 projects:
-  - name: globalise
+  - name: 'globalise'
     tiers:
       - name: document
         type: str
+        anno: na:File
       - name: opening
         type: num
     annoRepo:
-      apiKey: ${AR_GLOBALISE_API_KEY:-}
-      containerName: globalise-demo-9
+      apiKey: 02d01d02-be58-4e9e-95c2-387715996bb5
+      containerName: globalise-2023.09.06
       uri: https://globalise-annorepo.tt.di.huc.knaw.nl
     brinta:
       uri: http://localhost:9200
       indices:
         - name: docs
-          bodyTypes: [ Document, tt:Entity ]
+          bodyTypes: [ "GeneralMissive", "px:Page", "px:TextRegion" ]
           fields:
             - name: bodyType
               path: "$.body.type"
               type: keyword
-            - name: classDescription
-              path: "$.body.class_description"
+            - name: structureType
+              path: "$.body.metadata.px:structureType"
               type: keyword
-            - name: className
-              path: "$.body.class_name"
+            - name: N
+              path: "$.body.metadata.n"
+              type: keyword
+            - name: document
+              path: "$.body.metadata.document"
+              type: keyword
+            - name: gmId
+              path: "$.body.metadata.gl:id"
+              type: keyword
+            - name: gmIssuesFound
+              path: "$.body.metadata.gl:problemen_gevonden_tijdens_handmatige_check"
+              type: keyword
+            - name: gmTanapId
+              path: "$.body.metadata.gl:gl:id_in_tanap_database"
+              type: keyword
+            - name: gmInvNr_1_04_02
+              path: "$.body.metadata.gl:gl:inv_nr_nationaal_archief_1_04_02"
+              type: keyword
+            - name: gmDeelVanInvNr
+              path: "$.body.metadata.gl:deel_v_inventarisnummer"
+              type: keyword
+            - name: gmKamer
+              path: "$.body.metadata.gl:kamer"
+              type: keyword
+            - name: gmBeginFolio
+              path: "$.body.metadata.gl:beginfolio"
+              type: keyword
+            - name: gmEindFolio
+              path: "$.body.metadata.gl:eindfolio"
+              type: keyword
+            - name: gmBeginScan
+              path: "$.body.metadata.gl:beginscan"
+              type: keyword
+            - name: gmEindScan
+              path: "$.body.metadata.gl:eindscan"
+              type: keyword
+            - name: gmEnkeleOfDubbelePaginaOpScan
+              path: "$.body.metadata.gl:gl:enkele_of_dubbele_pagina_op_scan"
+              type: keyword
+            - name: gmRgpDeelWaarinMissiveIsOpgenomen
+              path: "$.body.metadata.gl:gl:rgp_deel_waarin_de_missive_is_opgenomen"
+              type: keyword
+            - name: gmERgpPaginaWaaropMissiveBegint
+              path: "$.body.metadata.gl:gl:rgp_pagina_waarop_de_missive_begint"
+              type: keyword
+            - name: gmJaren
+              path: "$.body.metadata.gl:jaren"
+              type: keyword
+            - name: gmVroegsteJaar
+              path: "$.body.metadata.gl:vroegste_jaar"
+              type: keyword
+            - name: gmLaatsteJaar
+              path: "$.body.metadata.gl:laatste_jaar"
+              type: keyword
+            - name: gmDatumNumeriek
+              path: "$.body.metadata.gl:datum_numeriek"
+              type: date
+            - name: gmBestandsnaamEersteScan
+              path: "$.body.metadata.gl:bestandsnaam_van_eerste_scan"
+              type: keyword
+            - name: gmBestandsnaamLaatsteScan
+              path: "$.body.metadata.gl:bestandsnaam_van_laatste_scan"
+              type: keyword
+            - name: gmHtrVanIJsbergBeschikbaar
+              path: "$.body.metadata.gl:htr_van_ijsberg_beschikbaar"
               type: keyword
     textRepo:
-      apiKey: ${TR_GLOBALISE_API_KEY:-}
+      apiKey: YnJhbWI6MmMxNmNmNDQtYjcxZC0xMWVjLTgxZmUtOGYyZWJkZjU1Nzdl
       uri: https://globalise.tt.di.huc.knaw.nl
     iiif:
       fetch: urn:globalise:manifest
-
-  - name: mondriaan
-    tiers:
-      - name: folder
-        type: str
-        anno: tf:Folder
-      - name: letterid
-        type: str
-        anno: tf:Letter
-    views:
-      - name: textOrig
-        conf:
-          anno:
-            - path: body.type
-              value: tei:Div
-            - path: body.metadata.type
-              value: original
-      - name: textTrans
-        conf:
-          anno:
-            - path: body.type
-              value: tei:Div
-            - path: body.metadata.type
-              value: translation
-      - name: notesEN
-        conf:
-          anno:
-            - path: body.type
-              value: tei:Note
-            - path: body.metadata.lang
-              value: en
-      - name: title
-        conf:
-          anno:
-            - path: body.type
-              value: tei:Title
-      - name: postalData
-        conf:
-          anno:
-            - path: body.type
-              value: tei:Div
-            - path: body.metadata.type
-              value: postalData
-    annoRepo:
-      containerName: 'mondriaan-letters-0.8.12'
-      uri: https://mondriaan.annorepo.dev.clariah.nl
-    brinta:
-      uri: http://localhost:9200
-      indices:
-        - name: divs
-          bodyTypes: [ tf:Letter, tei:Div , tei:Rs ]
-          fields:
-            - name: bodyType
-              path: "$.body.type"
-              type: keyword
-            - name: lang
-              path: "$.body.metadata.lang"
-              type: keyword
-            - name: type
-              path: "$.body.metadata.type"
-              type: keyword
-            - name: country
-              path: "$.body.metadata.country"
-              type: keyword
-            - name: institution
-              path: "$.body.metadata.institution"
-              type: keyword
-            - name: msid
-              path: "$.body.metadata.msid"
-              type: keyword
-            - name: period
-              path: "$.body.metadata.period"
-              type: keyword
-            - name: periodLong
-              path: "$.body.metadata.periodlong"
-              type: keyword
-            - name: letterId
-              path: "$.body.metadata.letterid"
-              type: keyword
-            - name: correspondent
-              path: "$.body.metadata.correspondent"
-              type: keyword
-            - name: location
-              path: "$.body.metadata.location"
-              type: keyword
-    textRepo:
-      uri: https://mondriaan.tt.di.huc.knaw.nl
-    iiif:
-      fixed: https://images.diginfra.net/api/pim/imageset/67533019-4ca0-4b08-b87e-fd5590e7a077/manifest
-
-  - name: republic
-    tiers:
-      - name: volume
-        type: str
-      - name: opening
-        type: num
-    brinta:
-      uri: http://localhost:9200
-      joinSeparator: " "
-      indices:
-        - name: resolutions
-          bodyTypes: [ Resolution, AttendanceList ]
-          fields:
-            - name: bodyType
-              path: "$.body.type"
-              type: keyword
-            - name: sessionDate
-              path: "$.body.metadata.sessionDate"
-              type: date
-            - name: sessionDay
-              path: "$.body.metadata.sessionDay"
-              type: byte
-            - name: sessionMonth
-              path: "$.body.metadata.sessionMonth"
-              type: byte
-            - name: sessionYear
-              path: "$.body.metadata.sessionYear"
-              type: short
-            - name: sessionWeekday
-              path: "$.body.metadata.sessionWeekday"
-              type: keyword
-            - name: propositionType
-              path: "$.body.metadata.propositionType"
-              type: keyword
-        - name: attendants
-          bodyTypes: [ Attendant, AttendanceList ]
-          fields:
-            - name: class
-              path: "$.body.metadata.class"
-            - name: delegateId
-              path: "$.body.metadata.delegateId"
-    annoRepo:
-      apiKey: ${AR_REPUBLIC_API_KEY:-}
-      containerName: volume-1728-11
-      uri: https://annorepo.republic-caf.diginfra.org
-    textRepo:
-      uri: https://textrepo.republic-caf.diginfra.org
-    iiif:
-      fixed: https://images.diginfra.net/api/pim/imageset/67533019-4ca0-4b08-b87e-fd5590e7a077/manifest
