@@ -137,7 +137,7 @@ class AnnoRepo(
     data class Offset(val value: Int, val id: String)
 
     companion object {
-        const val CACHE_CAPACITY = 10000
-        const val CACHE_RESULT_SET_SIZE_THRESHOLD = 1000
+        const val CACHE_CAPACITY = 1000
+        const val CACHE_RESULT_SET_SIZE_THRESHOLD = 100
     }
 }
