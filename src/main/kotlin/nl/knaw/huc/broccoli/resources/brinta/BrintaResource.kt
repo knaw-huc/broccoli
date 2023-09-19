@@ -118,7 +118,8 @@ class BrintaResource(
     fun fillIndex(
         @PathParam("projectId") projectId: String,      // e.g., "republic"
         @PathParam("indexName") indexName: String,      // e.g., "resolutions"
-        @QueryParam("tierValue") tierParam: String?,    // e.g., "1728" (optional, if not given: index all)
+        @QueryParam("tierMeta") tierMeta: String?,      // e.g., 'file'
+        @QueryParam("tierValues") tierValues: String?,  // e.g., "1728" (optional, if not given: index all)
         @QueryParam("take") take: Int? = null,          // testing param, only index first 'take' items
     ): Response {
         val project = getProject(projectId)
@@ -127,7 +128,11 @@ class BrintaResource(
         val index = getIndex(project, indexName)
 
         val topTier = project.tiers[0]
-        val topTierValue = if (tierParam == null) emptyList() else listOf(Pair(topTier.name, tierParam))
+        val topTierValue = tierValues
+            ?.split(',')
+            ?.map { tierValue -> Pair(tierMeta ?: topTier.name, tierValue) }
+            .also { log.info(" indexing tier: $it") }
+            ?: emptyList()
 
         val ok = mutableListOf<String>()
         val err = mutableListOf<Map<*, *>>()
