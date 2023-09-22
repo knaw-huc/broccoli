@@ -50,6 +50,8 @@ class AnnoRepo(
         if (value.size < CACHE_RESULT_SET_SIZE_THRESHOLD) {
             log.info("resultSet.size (${value.size}) < $CACHE_RESULT_SET_SIZE_THRESHOLD) -> caching")
             cachedQueryResults.put(key, value)
+        } else {
+            log.info("resultSet.size (${value.size}) < $CACHE_RESULT_SET_SIZE_THRESHOLD) -> not caching")
         }
         return value
     }

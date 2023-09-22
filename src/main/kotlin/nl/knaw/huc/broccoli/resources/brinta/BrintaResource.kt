@@ -145,15 +145,15 @@ class BrintaResource(
         val tiers = project.annoRepo.findByTiers(
             bodyType = topTier.anno ?: topTier.name.capitalize(),
             tiers = topTierValue
-        ).toList()
+        )
 
-        log.info("Indexing todo:")
-        tiers.forEach { tier ->
-            log.info("- ${tier.bodyType()}: ${tier.bodyId()}")
+        log.info("Indexing todo (${tiers.size} items): ")
+        tiers.forEachIndexed { i, tier ->
+            System.err.println(" - todo #${i.toString().padStart(4, '0')} -> ${tier.bodyId()}")
         }
 
-        tiers.forEach { tier ->
-            log.info("Indexing ${tier.bodyType()}: ${tier.bodyId()}")
+        tiers.forEachIndexed { i, tier ->
+            System.err.println("Indexing todo #${i} -> ${tier.bodyType()}: ${tier.bodyId()}")
 
             // fetch all text lines for this tier
             val textLines = fetchTextLines(project.textRepo, tier)
@@ -281,9 +281,9 @@ class BrintaResource(
             }
 
     private fun fetchTextSegmentsLocal(textLines: List<String>, textURL: String): List<String> {
-        log.info("fetchTextSegmentsLocal: URL=$textURL")
+        System.err.println("fetchTextSegmentsLocal: URL=$textURL")
         val coords = textURL.indexOf("segments/index/") + "segments/index/".length
-        log.info("fetchTextSegmentsLocal: coords=${textURL.substring(coords)}")
+        System.err.println("fetchTextSegmentsLocal: coords=${textURL.substring(coords)}")
         val (from, to) = textURL.substring(coords).split('/')
         return textLines.subList(from.toInt(), to.toInt() + 1)
     }
