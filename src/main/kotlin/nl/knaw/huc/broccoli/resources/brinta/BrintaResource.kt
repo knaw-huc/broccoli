@@ -95,11 +95,17 @@ class BrintaResource(
     @Path("{indexName}")
     fun deleteIndex(
         @PathParam("projectId") projectId: String,
-        @PathParam("indexName") indexName: String
+        @PathParam("indexName") indexName: String,
+        @QueryParam("deleteKey") deleteKey: String?
     ): Response {
         val project = getProject(projectId)
         val index = getIndex(project, indexName)
         log.warn("Deleting ${project.name} index: ${index.name}")
+
+        if (project.brinta.deleteKey != deleteKey) {
+            log.warn("Unauthorized request: config: [${project.brinta.deleteKey}] vs param: [$deleteKey]")
+            throw WebApplicationException(UNAUTHORIZED)
+        }
 
         return client.target(project.brinta.uri)
             .path(index.name)
@@ -149,11 +155,11 @@ class BrintaResource(
 
         log.info("Indexing todo (${tiers.size} items): ")
         tiers.forEachIndexed { i, tier ->
-            System.err.println(" - todo #${i.toString().padStart(4, '0')} -> ${tier.bodyId()}")
+            log.info(" - todo #${i.toString().padStart(4, '0')} -> ${tier.bodyId()}")
         }
 
         tiers.forEachIndexed { i, tier ->
-            System.err.println("Indexing todo #${i} -> ${tier.bodyType()}: ${tier.bodyId()}")
+            log.info("Indexing todo #${i} -> ${tier.bodyType()}: ${tier.bodyId()}")
 
             // fetch all text lines for this tier
             val textLines = fetchTextLines(project.textRepo, tier)
@@ -281,9 +287,9 @@ class BrintaResource(
             }
 
     private fun fetchTextSegmentsLocal(textLines: List<String>, textURL: String): List<String> {
-        System.err.println("fetchTextSegmentsLocal: URL=$textURL")
+        log.info("fetchTextSegmentsLocal: URL=$textURL")
         val coords = textURL.indexOf("segments/index/") + "segments/index/".length
-        System.err.println("fetchTextSegmentsLocal: coords=${textURL.substring(coords)}")
+        log.info("fetchTextSegmentsLocal: coords=${textURL.substring(coords)}")
         val (from, to) = textURL.substring(coords).split('/')
         return textLines.subList(from.toInt(), to.toInt() + 1)
     }
