@@ -147,25 +147,20 @@ class BrintaResource(
             "err" to err
         )
 
-        // eager collect of all top tiers to prevent expiration of query at AR as indexing may take a long time
-        val tiers = project.annoRepo.findByTiers(
+        val todo = project.annoRepo.findByTiers(
             bodyType = topTier.anno ?: topTier.name.capitalize(),
             tiers = topTierValue
         )
 
-        log.info("Indexing todo (${tiers.size} items): ")
-        tiers.forEachIndexed { i, tier ->
-            log.info(" - todo #${i.toString().padStart(4, '0')} -> ${tier.bodyId()}")
-        }
-
-        tiers.forEachIndexed { i, tier ->
-            log.info("Indexing todo #${i} -> ${tier.bodyType()}: ${tier.bodyId()}")
+        log.info("Indexing ${todo.size} items: ")
+        todo.forEachIndexed { i, cur ->
+            log.info("Indexing #$i -> ${cur.bodyType()}: ${cur.bodyId()}")
 
             // fetch all text lines for this tier
-            val textLines = fetchTextLines(project.textRepo, tier)
+            val textLines = fetchTextLines(project.textRepo, cur)
 
             // extract entire text range of current top tier (for overlap query)
-            val textTarget = tier.withField<Any>("Text", "source").first()
+            val textTarget = cur.withField<Any>("Text", "source").first()
             val source = textTarget["source"] as String
             val selector = textTarget["selector"] as Map<*, *>
             val start = selector["start"] as Int
@@ -193,15 +188,7 @@ class BrintaResource(
                         .first() // more than one text target without selector? -> arbitrarily choose the first
                         .let { textTarget ->
                             val textURL = textTarget["source"] as String
-
-//                            val textSegmentsRemote = fetchTextSegmentsRemote(project.textRepo, textURL)
-
-                            val textSegmentsLocal = fetchTextSegmentsLocal(textLines, textURL)
-//                            if (textSegmentsLocal != textSegmentsRemote) {
-//                                throw IllegalStateException("Local != Remote")
-//                            }
-
-                            val textSegments = textSegmentsLocal
+                            val textSegments = fetchTextSegmentsLocal(textLines, textURL)
                             if (textSegments.isNotEmpty()) {
                                 val joinedText = textSegments.joinToString(project.brinta.joinSeparator ?: "")
                                 val segmentLengths = textSegments.map { it.length }
@@ -297,35 +284,6 @@ class BrintaResource(
     private fun Response.readEntityAsJsonString(): String = readEntity(String::class.java) ?: ""
 
     private fun Map<String, Any>.toJsonString() = jacksonObjectMapper().writeValueAsString(this)
-
-    private fun fetchTextSegmentsRemote(textRepo: TextRepo, textURL: String): List<String> {
-        var builder = client.target(textURL).request()
-
-        with(textRepo) {
-            if (apiKey != null && canResolve(textURL)) {
-                log.info("with apiKey {}", apiKey)
-                builder = builder.header(AUTHORIZATION, "Basic $apiKey")
-            }
-        }
-
-        val resp = builder.get()
-
-        return when (resp.status) {
-            OK.statusCode -> {
-                resp.readEntity(object : GenericType<List<String>>() {})
-            }
-
-            UNAUTHORIZED.statusCode -> {
-                log.warn("Auth failed fetching $textURL")
-                throw ClientErrorException("Need credentials for $textURL", UNAUTHORIZED)
-            }
-
-            else -> {
-                log.warn("Failed to fetch $textURL (status: ${resp.status}")
-                emptyList()
-            }
-        }
-    }
 
     private fun String.capitalize(): String = replaceFirstChar(Char::uppercase)
 
