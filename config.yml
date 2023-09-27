@@ -9,6 +9,10 @@ server:
 
 logging:
   level: INFO
+  appenders:
+    - type: console
+      queueSize: 1024
+      discardingThreshold: 0
   loggers:
     nl.knaw.huc: DEBUG
     org: WARN
