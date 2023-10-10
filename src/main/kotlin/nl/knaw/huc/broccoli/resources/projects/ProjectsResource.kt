@@ -77,7 +77,7 @@ class ProjectsResource(
         @PathParam("projectId") projectId: String,
         queryString: IndexQuery,
         @QueryParam("indexName") indexParam: String?,
-        @QueryParam("frag") @DefaultValue("scan") frag: FragOpts,
+        @QueryParam("frag") @DefaultValue("scan") frag: FragOpts,   // TODO: remove
         @QueryParam("from") @Min(0) @DefaultValue("0") from: Int,
         @QueryParam("size") @Min(0) @DefaultValue("10") size: Int,
         @QueryParam("sortBy") @DefaultValue("_score") sortBy: String,
@@ -189,7 +189,7 @@ class ProjectsResource(
             .map { (preview, locationExpr) -> Pair(preview, locationExpr.parseIntoCoordinates('-')) }
             .map { (preview, location) ->
                 @Suppress("UNCHECKED_CAST")
-                val segments = source["lengths"] as List<Int>
+                val segments = source["lengths"] as List<Int>   // TODO: remove
 
                 var curSegmentLength = segments[curSegmentIndex]
 

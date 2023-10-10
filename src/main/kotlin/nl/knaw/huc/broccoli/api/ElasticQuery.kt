@@ -71,9 +71,10 @@ data class HighlightTerm(
     fun toJson() = mapOf(
         "fields" to mapOf(
             "text" to mapOf(
-                "type" to "experimental",
-                "fragmenter" to fragmenter,
-                "options" to mapOf(
+                "type" to "experimental",       // change to 'unified'
+                "fragmenter" to fragmenter,     // remove
+// TODO:               "fragment_size" to fragment_size
+                "options" to mapOf(             // remove
                     "return_snippets_and_offsets" to true
                 )
             )

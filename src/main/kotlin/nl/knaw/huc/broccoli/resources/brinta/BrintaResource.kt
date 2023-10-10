@@ -193,7 +193,7 @@ class BrintaResource(
                                 val joinedText = textSegments.joinToString(project.brinta.joinSeparator ?: "")
                                 val segmentLengths = textSegments.map { it.length }
                                 payload["text"] = joinedText
-                                payload["lengths"] = segmentLengths
+                                payload["lengths"] = segmentLengths  // TODO: remove
                                 ok.add(docId)
                             } else {
                                 log.warn("Failed to fetch text for $docId from $textURL")
