@@ -62,7 +62,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
     override fun run(configuration: BroccoliConfiguration, environment: Environment) {
         log.info(
             "BR_ environment variables:\n\n"
-                    + Constants.EnvironmentVariable.values()
+                    + Constants.EnvironmentVariable.entries
                 .joinToString("\n") { e ->
                     " ${e.name}:\t${System.getenv(e.name) ?: "(not set, using default)"}"
                 } +
