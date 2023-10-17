@@ -65,17 +65,14 @@ data class Sort(
 
 data class HighlightTerm(
     @JsonIgnore val text: String,
-    @JsonIgnore val fragmenter: String
+    @JsonIgnore val fragmentSize: Int
 ) {
     @JsonAnyGetter
     fun toJson() = mapOf(
         "fields" to mapOf(
             "text" to mapOf(
-                "type" to "experimental",
-                "fragmenter" to fragmenter,
-                "options" to mapOf(
-                    "return_snippets_and_offsets" to true
-                )
+                "type" to "unified",
+                "fragment_size" to fragmentSize,
             )
         ),
         "highlight_query" to FullTextQuery(QueryString(text))

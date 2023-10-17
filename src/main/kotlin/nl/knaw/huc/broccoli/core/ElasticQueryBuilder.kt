@@ -7,16 +7,16 @@ import kotlin.properties.Delegates
 class ElasticQueryBuilder(private val index: IndexConfiguration) {
     private var from by Delegates.notNull<Int>()
     private var size by Delegates.notNull<Int>()
+    private var fragmentSize by Delegates.notNull<Int>()
     private lateinit var sortBy: String
     private lateinit var sortOrder: String
-    private lateinit var frag: String
     private lateinit var query: IndexQuery
 
     fun sortBy(sortBy: String) = apply { this.sortBy = sortBy }
 
     fun sortOrder(sortOrder: String) = apply { this.sortOrder = sortOrder }
 
-    fun frag(frag: String) = apply { this.frag = frag }
+    fun fragmentSize(size: Int) = apply { this.fragmentSize = size }
 
     fun from(from: Int) = apply { this.from = from }
 
@@ -46,7 +46,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
         ),
 
         highlight = query.text
-            ?.let { HighlightTerm(it, frag) },
+            ?.let { HighlightTerm(it, fragmentSize) },
 
         aggregations = (query.aggregations ?: index.fields.map { it.name })
             .mapNotNull { name ->

@@ -1,6 +1,9 @@
 jerseyClient:
-  timeout: 30s
   connectionTimeout: 1m
+  timeout: 30s
+  tls:
+    verifyHostname: false
+    trustSelfSignedCertificates: true
 
 server:
   applicationConnectors:

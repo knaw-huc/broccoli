@@ -147,6 +147,8 @@ class BrintaResource(
             "err" to err
         )
 
+        val joinSeparator = project.brinta.joinSeparator ?: ""
+
         val todo = project.annoRepo.findByTiers(
             bodyType = topTier.anno ?: topTier.name.capitalize(),
             tiers = topTierValue
@@ -190,10 +192,7 @@ class BrintaResource(
                             val textURL = textTarget["source"] as String
                             val textSegments = fetchTextSegmentsLocal(textLines, textURL)
                             if (textSegments.isNotEmpty()) {
-                                val joinedText = textSegments.joinToString(project.brinta.joinSeparator ?: "")
-                                val segmentLengths = textSegments.map { it.length }
-                                payload["text"] = joinedText
-                                payload["lengths"] = segmentLengths
+                                payload["text"] = textSegments.joinToString(joinSeparator)
                                 ok.add(docId)
                             } else {
                                 log.warn("Failed to fetch text for $docId from $textURL")
