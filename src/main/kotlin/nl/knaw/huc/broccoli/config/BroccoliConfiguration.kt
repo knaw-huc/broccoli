@@ -99,6 +99,10 @@ class ProjectConfiguration {
 
     @Valid
     @JsonProperty
+    val textType: String = "Text"  // e.g., "Text" or "LogicalText"
+
+    @Valid
+    @JsonProperty
     @NotNull
     val tiers: List<TierConfiguration> = ArrayList()
 
@@ -209,10 +213,6 @@ class BrintaConfiguration {
     @Valid
     @JsonProperty
     val joinSeparator: String? = null
-
-    @Valid
-    @JsonProperty
-    val textType: String = "Text"  // e.g., "Text" or "LogicalText"
 
     @Valid
     @NotNull
