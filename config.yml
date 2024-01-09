@@ -45,6 +45,7 @@ projects:
       uri: http://localhost:9200
       deleteKey: "00b9a2d3-0176-46ae-be0c-4909b1df0cfe"
       joinSeparator: " "
+      textType: LogicalText
       indices:
         - name: docs
           bodyTypes: [ "px:Page" ]

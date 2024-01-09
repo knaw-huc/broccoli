@@ -211,6 +211,10 @@ class BrintaConfiguration {
     val joinSeparator: String? = null
 
     @Valid
+    @JsonProperty
+    val textType: String = "Text"  // e.g., "Text" or "LogicalText"
+
+    @Valid
     @NotNull
     @JsonProperty
     val indices: List<IndexConfiguration> = ArrayList()
