@@ -259,7 +259,7 @@ class ProjectsResource(
             { timeSpent -> annoTimings["findByBodyId"] = timeSpent }
         )
 
-        val interpreter = AnnoSearchResultInterpreter(searchResult)
+        val interpreter = AnnoSearchResultInterpreter(searchResult, project.textType)
         val source = interpreter.findSegmentsSource()
         val selector = interpreter.findSelector()
 
@@ -283,12 +283,13 @@ class ProjectsResource(
                 .map(::AnnoRepoSearchResult)
                 .firstOrNull()
                 ?.let { viewAnnos ->
-                    val viewAnnoInterpreter = AnnoSearchResultInterpreter(viewAnnos)
+                    val viewAnnoInterpreter = AnnoSearchResultInterpreter(viewAnnos, project.textType)
                     val viewSource = viewAnnoInterpreter.findTextSource()
                     val viewResult = mutableMapOf<String, Any>()
                     viewResult["lines"] = fetchTextLines(project.textRepo, viewSource)
                     if (wanted.contains("anno")) {
                         viewResult["locations"] = findViewAnnotations(
+                            project.textType,
                             annoRepo,
                             viewConf.scope.toAnnoRepoScope,
                             viewAnnoInterpreter,
@@ -323,7 +324,7 @@ class ProjectsResource(
                 (result["anno"] as List<*>).forEach { anno ->
                     if (anno is Map<*, *>) {
                         val annoBodyId = extractBodyId(anno)
-                        val annoSelector = extractTextSelector(anno)
+                        val annoSelector = extractTextSelector(project.textType, anno)
 
                         if (annoBodyId != null && annoSelector != null) {
                             val start = TextMarker(annoSelector.start(), annoSelector.beginCharOffset())
@@ -375,6 +376,7 @@ class ProjectsResource(
     }
 
     private fun findViewAnnotations(
+        textType: String,
         annoRepo: AnnoRepo,
         annoScope: String,
         viewAnnoInterpreter: AnnoSearchResultInterpreter,
@@ -397,7 +399,7 @@ class ProjectsResource(
             .forEach { anno ->
                 if (anno is Map<*, *>) {
                     val annoBodyId = extractBodyId(anno)
-                    val annoSelector = extractTextSelector(anno)
+                    val annoSelector = extractTextSelector(textType, anno)
                     if (annoBodyId != null && annoSelector != null) {
                         val annoStart = TextMarker(annoSelector.start(), annoSelector.beginCharOffset())
                         val annoEnd = TextMarker(annoSelector.end(), annoSelector.endCharOffset())
@@ -446,10 +448,10 @@ class ProjectsResource(
         return null
     }
 
-    private fun extractTextSelector(anno: Map<*, *>): TextSelector? {
+    private fun extractTextSelector(textType: String, anno: Map<*, *>): TextSelector? {
         if (anno.containsKey("target")) {
             (anno["target"] as List<*>).forEach { target ->
-                if (target is Map<*, *> && target["type"] == "Text" && target.containsKey("selector")) {
+                if (target is Map<*, *> && target["type"] == textType && target.containsKey("selector")) {
                     @Suppress("UNCHECKED_CAST")
                     val selector = target["selector"] as Map<String, Any>
                     return TextSelector(selector)
