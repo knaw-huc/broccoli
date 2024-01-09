@@ -16,7 +16,7 @@ class AnnoRepoTest {
 
     init {
         annoRepoClient = AnnoRepoClient(serverURI = URI.create("https://annorepo.republic-caf.diginfra.org"))
-        sut = AnnoRepo(annoRepoClient, "volume-1728-7")
+        sut = AnnoRepo(annoRepoClient, "volume-1728-7", "Text")
     }
 
     @Test

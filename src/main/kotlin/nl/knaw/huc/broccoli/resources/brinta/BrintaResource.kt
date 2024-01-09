@@ -16,7 +16,6 @@ import nl.knaw.huc.broccoli.api.ResourcePaths.BRINTA
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
-import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
 
 @Path("$BRINTA/{projectId}")
@@ -159,10 +158,10 @@ class BrintaResource(
             log.info("Indexing #$i -> ${cur.bodyType()}: ${cur.bodyId()}")
 
             // fetch all text lines for this tier
-            val textLines = fetchTextLines(project.textRepo, cur)
+            val textLines = fetchTextLines(project, cur)
 
             // extract entire text range of current top tier (for overlap query)
-            val textTarget = cur.withField<Any>("Text", "source").first()
+            val textTarget = cur.withField<Any>(project.textType, "source").first()
             val source = textTarget["source"] as String
             val selector = textTarget["selector"] as Map<*, *>
             val start = selector["start"] as Int
@@ -185,7 +184,7 @@ class BrintaResource(
                     val payload = mutableMapOf<String, Any>()
 
                     // First: core payload for index: fetch "full text" from (remote) URL
-                    anno.withoutField<String>("Text", "selector")
+                    anno.withoutField<String>(project.textType, "selector")
                         .also { if (it.size > 1) log.warn("multiple Text targets without selector: $it") }
                         .first() // more than one text target without selector? -> arbitrarily choose the first
                         .let { textTarget ->
@@ -238,15 +237,15 @@ class BrintaResource(
         return Response.ok(result).build()
     }
 
-    private fun fetchTextLines(textRepo: TextRepo, tier: AnnoRepoSearchResult): List<String> =
-        tier.withoutField<String>("Text", "selector")
+    private fun fetchTextLines(project: Project, tier: AnnoRepoSearchResult): List<String> =
+        tier.withoutField<String>(project.textType, "selector")
             .also { if (it.size > 1) log.warn("multiple Text targets without selector: $it") }
             .first() // more than one text target without selector? -> arbitrarily choose the first
             .let { textTarget ->
                 val textURL = textTarget["source"] as String
                 var builder = client.target(textURL).request()
 
-                with(textRepo) {
+                with(project.textRepo) {
                     if (apiKey != null && canResolve(textURL)) {
                         log.info("with apiKey {}", apiKey)
                         builder = builder.header(AUTHORIZATION, "Basic $apiKey")

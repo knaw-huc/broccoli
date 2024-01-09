@@ -122,11 +122,12 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             log.info("configuring project: ${config.name}:")
             config.name to Project(
                 name = config.name,
+                textType = config.textType,
                 tiers = config.tiers,
                 views = config.views.associate { view -> view.name to view.conf },
                 brinta = config.brinta,
                 textRepo = createTextRepo(config.textRepo),
-                annoRepo = createAnnoRepo(config.annoRepo)
+                annoRepo = createAnnoRepo(config.annoRepo, config.textType)
             )
         }
     }
@@ -136,13 +137,13 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             TextRepo(uri, apiKey)
         }
 
-    private fun createAnnoRepo(annoRepoConfig: AnnoRepoConfiguration) =
+    private fun createAnnoRepo(annoRepoConfig: AnnoRepoConfiguration, textType: String) =
         with(annoRepoConfig) {
             val serverURI = URI.create(uri)
             val userAgent = "$name (${this@BroccoliApplication.javaClass.name}/$appVersion)"
             log.info("- setting up AnnoRepo: uri=$serverURI, container=$containerName, apiKey=$apiKey, userAgent=$userAgent")
 
-            AnnoRepo(AnnoRepoClient(serverURI, apiKey, userAgent), containerName)
+            AnnoRepo(AnnoRepoClient(serverURI, apiKey, userAgent), containerName, textType)
         }
 
     private fun setupCORSHeaders(environment: ServletEnvironment) {
