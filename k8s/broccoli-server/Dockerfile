@@ -5,7 +5,7 @@ COPY ./src /build/src
 COPY ./pom.xml /build/
 RUN mvn --no-transfer-progress --batch-mode --update-snapshots --also-make package
 
-FROM openjdk:22-slim
+FROM openjdk:20-slim
 
 WORKDIR /apps/broccoli
 COPY --from=builder /build/target/broccoli-*.jar /apps/broccoli/broccoli.jar
