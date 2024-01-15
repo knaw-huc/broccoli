@@ -259,16 +259,16 @@ class ProjectsResource(
             { timeSpent -> annoTimings["findByBodyId"] = timeSpent }
         )
 
-        val interpreter = AnnoSearchResultInterpreter(searchResult, project.textType)
-        val source = interpreter.findSegmentsSource()
-        val selector = interpreter.findSelector()
+        val textInterpreter = AnnoSearchResultInterpreter(searchResult, "text")
+        val textSource = textInterpreter.findSegmentsSource()
+        val textSelector = textInterpreter.findSelector()
 
         if (wanted.contains("anno")) {
             result["anno"] = if (overlapTypes.isEmpty()) {
                 searchResult.items()
             } else {
                 timeExecution({
-                    annoRepo.fetchOverlap(source, selector.start(), selector.end(), isIn(overlapTypes))
+                    annoRepo.fetchOverlap(textSource, textSelector.start(), textSelector.end(), isIn(overlapTypes))
                         .map { it.read<Map<String, Any>>("$") }.toList()
                 }, { timeSpent -> annoTimings["fetchOverlap[text]"] = timeSpent })
             }
@@ -277,7 +277,7 @@ class ProjectsResource(
         val views = mutableMapOf<String, Any>()
         interestedViews(project, requestedViews).forEach { (viewName, viewConf) ->
             val annoConstraints = viewConf.anno.associate { it.path to it.value }
-                .plus(AR_WITHIN_TEXT_ANCHOR_RANGE to region(source, selector.start(), selector.end()))
+                .plus(AR_WITHIN_TEXT_ANCHOR_RANGE to region(textSource, textSelector.start(), textSelector.end()))
             log.info("annoConstraints=$annoConstraints")
             annoRepo.fetch(annoConstraints)
                 .map(::AnnoRepoSearchResult)
@@ -302,19 +302,19 @@ class ProjectsResource(
 
         if (wanted.contains("text") && requestedViews.contains("self")) {
             val textLines = timeExecution(
-                { fetchTextLines(textRepo, interpreter.findTextSource()) },
+                { fetchTextLines(textRepo, textInterpreter.findTextSource()) },
                 { timeSpent -> textTimings["fetchTextLines"] = timeSpent }
             )
             val textResult = mutableMapOf<String, Any>("lines" to textLines)
 
             if (wanted.contains("anno")) {
                 val offset = when (relativeTo) {
-                    ORIGIN -> Offset(selector.start(), interpreter.bodyId())
+                    ORIGIN -> Offset(textSelector.start(), textInterpreter.bodyId())
                     else ->
                         timeExecution({
                             annoRepo.findOffsetRelativeTo(
-                                interpreter.findSegmentsSource(),
-                                interpreter.findSelector(),
+                                textInterpreter.findSegmentsSource(),
+                                textInterpreter.findSelector(),
                                 relativeTo
                             )
                         }, { timeSpent -> textTimings["findOffsetRelativeTo"] = timeSpent })
@@ -358,7 +358,7 @@ class ProjectsResource(
             log.info("tier0: $tier0")
             val bodyTypes = isIn(setOf(tier0))
             val manifest = timeExecution({
-                annoRepo.fetchOverlap(source, selector.start(), selector.end(), bodyTypes)
+                annoRepo.fetchOverlap(textSource, textSelector.start(), textSelector.end(), bodyTypes)
                     .map { it.read<Map<String, Any>>("$") }.toList()
             }, { timeSpent -> annoTimings["fetchManifest"] = timeSpent }
             ).firstNotNullOfOrNull { extractManifest(it) }
