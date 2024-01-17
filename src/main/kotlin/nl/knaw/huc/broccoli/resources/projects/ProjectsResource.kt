@@ -259,7 +259,7 @@ class ProjectsResource(
             { timeSpent -> annoTimings["findByBodyId"] = timeSpent }
         )
 
-        val textInterpreter = AnnoSearchResultInterpreter(searchResult, "text")
+        val textInterpreter = AnnoSearchResultInterpreter(searchResult, "Text")
         val textSource = textInterpreter.findSegmentsSource()
         val textSelector = textInterpreter.findSelector()
 
@@ -301,20 +301,21 @@ class ProjectsResource(
         }
 
         if (wanted.contains("text") && requestedViews.contains("self")) {
+            val interpreter = AnnoSearchResultInterpreter(searchResult, project.textType)
             val textLines = timeExecution(
-                { fetchTextLines(textRepo, textInterpreter.findTextSource()) },
+                { fetchTextLines(textRepo, interpreter.findTextSource()) },
                 { timeSpent -> textTimings["fetchTextLines"] = timeSpent }
             )
             val textResult = mutableMapOf<String, Any>("lines" to textLines)
 
             if (wanted.contains("anno")) {
                 val offset = when (relativeTo) {
-                    ORIGIN -> Offset(textSelector.start(), textInterpreter.bodyId())
+                    ORIGIN -> Offset(interpreter.findSelector().start(), interpreter.bodyId())
                     else ->
                         timeExecution({
                             annoRepo.findOffsetRelativeTo(
-                                textInterpreter.findSegmentsSource(),
-                                textInterpreter.findSelector(),
+                                interpreter.findSegmentsSource(),
+                                interpreter.findSelector(),
                                 relativeTo
                             )
                         }, { timeSpent -> textTimings["findOffsetRelativeTo"] = timeSpent })
@@ -339,13 +340,13 @@ class ProjectsResource(
                             )
                         }
                     }
+                }
 
-                    if (relocatedAnnotations.isNotEmpty()) {
-                        textResult["locations"] = mapOf(
-                            "relativeTo" to mapOf("type" to relativeTo, "bodyId" to offset.id),
-                            "annotations" to relocatedAnnotations
-                        )
-                    }
+                if (relocatedAnnotations.isNotEmpty()) {
+                    textResult["locations"] = mapOf(
+                        "relativeTo" to mapOf("type" to relativeTo, "bodyId" to offset.id),
+                        "annotations" to relocatedAnnotations
+                    )
                 }
             }
             views["self"] = textResult
