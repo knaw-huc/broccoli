@@ -160,15 +160,15 @@ class BrintaResource(
             // fetch all text lines for this tier
             val textLines = fetchTextLines(project, cur)
 
-            // extract entire text range of current top tier (for overlap query)
-            val textTarget = cur.withField<Any>(project.textType, "source").first()
-            val source = textTarget["source"] as String
-            val selector = textTarget["selector"] as Map<*, *>
-            val start = selector["start"] as Int
-            val end = selector["end"] as Int
-
-            // find all annotations with body.type matching this index, overlapping with top tier's range
-            var annos = project.annoRepo.streamOverlap(source, start, end, Constants.isIn(index.bodyTypes.toSet()))
+            // find all annotations with body.type matching this index, overlapping with top tier's range of lines
+            val target = cur.withField<Any>("Text", "source").first()
+            val selector = target["selector"] as Map<*, *>
+            var annos = project.annoRepo.streamOverlap(
+                source = target["source"] as String,
+                start = selector["start"] as Int,
+                end = selector["end"] as Int,
+                bodyTypes = Constants.isIn(index.bodyTypes.toSet())
+            )
 
             if (take != null) {
                 log.info("limiting: only indexing first $take item(s)")
