@@ -189,9 +189,16 @@ class BrintaResource(
                         .first() // more than one text target without selector? -> arbitrarily choose the first
                         .let { textTarget ->
                             val textURL = textTarget["source"] as String
-                            val textSegments = fetchTextSegmentsLocal(textLines, textURL)
-                            if (textSegments.isNotEmpty()) {
-                                payload["text"] = textSegments.joinToString(joinSeparator)
+                            val fetchedSegments = fetchTextSegmentsLocal(textLines, textURL)
+                            if (fetchedSegments.isNotEmpty()) {
+                                fetchedSegments.forEachIndexed { index, s ->
+                                    log.debug("fetchedSegments[$index] = [$s]")
+                                }
+
+                                val joinedSegments = fetchedSegments.joinToString(joinSeparator)
+                                log.debug("joinedSegments: $joinedSegments")
+
+                                payload["text"] = joinedSegments
                                 ok.add(docId)
                             } else {
                                 log.warn("Failed to fetch text for $docId from $textURL")
@@ -275,8 +282,38 @@ class BrintaResource(
         log.info("fetchTextSegmentsLocal: URL=$textURL")
         val coords = textURL.indexOf("segments/index/") + "segments/index/".length
         log.info("fetchTextSegmentsLocal: coords=${textURL.substring(coords)}")
-        val (from, to) = textURL.substring(coords).split('/')
-        return textLines.subList(from.toInt(), to.toInt() + 1)
+        val parts = textURL.substring(coords).split('/')
+        return when (parts.size) {
+            2 -> {
+                val from = parts[0].toInt()
+                val to = parts[1].toInt()
+                log.debug("2 coords: from=$from,to=$to")
+
+                textLines.subList(from, to + 1)
+            }
+
+            4 -> {
+                val from = parts[0].toInt()
+                val startIndex = parts[1].toInt()
+                val to = parts[2].toInt()
+                val endIndex = parts[3].toInt()
+                log.debug("4 coords: from=$from,startIndex=$startIndex,to=$to,endIndex=$endIndex")
+
+                // start out with correct sublist from all segments
+                val result = textLines.subList(from, to + 1).toMutableList()
+
+                // adjust first and last segments according to start-/endIndex
+                result[0] = result.first().substring(startIndex)
+                result[result.lastIndex] = result.last().substring(0, endIndex + 1)
+
+                result
+            }
+
+            else -> {
+                log.warn("Failed to extract coordinates from $coords")
+                emptyList()
+            }
+        }
     }
 
     private fun Response.readEntityAsJsonString(): String = readEntity(String::class.java) ?: ""
