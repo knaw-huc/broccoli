@@ -311,14 +311,15 @@ class ProjectsResource(
             if (wanted.contains("anno")) {
                 val offset = when (relativeTo) {
                     ORIGIN -> Offset(interpreter.findSelector().start(), interpreter.bodyId())
-                    else ->
+                    else -> {
                         timeExecution({
                             annoRepo.findOffsetRelativeTo(
-                                interpreter.findSegmentsSource(),
-                                interpreter.findSelector(),
+                                textInterpreter.findSegmentsSource(),
+                                textInterpreter.findSelector(),
                                 relativeTo
                             )
                         }, { timeSpent -> textTimings["findOffsetRelativeTo"] = timeSpent })
+                    }
                 }
 
                 val relocatedAnnotations = mutableListOf<Map<String, Any>>()
