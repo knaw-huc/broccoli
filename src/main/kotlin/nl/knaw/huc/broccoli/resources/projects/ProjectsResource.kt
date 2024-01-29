@@ -33,6 +33,7 @@ import nl.knaw.huc.broccoli.service.capitalize
 import nl.knaw.huc.broccoli.service.extractAggregations
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
+import org.slf4j.MarkerFactory
 
 @Path(PROJECTS)
 @Produces(MediaType.APPLICATION_JSON)
@@ -216,10 +217,21 @@ class ProjectsResource(
         @QueryParam("relativeTo") @DefaultValue(ORIGIN) relativeTo: String,
     ): Response {
 
-        log.info(
-            "project=$projectId, bodyId=$bodyId, views=$viewsParam, includeResults=$includesParam, " +
-                    "overlapTypes=$overlapTypesParam, relativeTo=$relativeTo"
-        )
+//        log.info(
+//            "project=$projectId, bodyId=$bodyId, views=$viewsParam, includeResults=$includesParam, " +
+//                    "overlapTypes=$overlapTypesParam, relativeTo=$relativeTo"
+//        )
+
+        log.atInfo()
+            .setMessage("getProjectBodyId")
+            .addKeyValue("projectId", projectId)
+            .addKeyValue("bodyId", bodyId)
+            .addKeyValue("views", viewsParam)
+            .addKeyValue("includeResults", includesParam)
+            .addKeyValue("overlapTypes", overlapTypesParam)
+            .addKeyValue("relativeTo", relativeTo)
+            .addMarker(MarkerFactory.getMarker("REQ"))
+            .log()
 
         val before = System.currentTimeMillis()
 
