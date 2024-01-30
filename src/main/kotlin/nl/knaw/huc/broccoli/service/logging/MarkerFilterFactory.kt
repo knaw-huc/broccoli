@@ -6,7 +6,6 @@ import ch.qos.logback.core.spi.FilterReply
 import com.fasterxml.jackson.annotation.JsonTypeName
 import io.dropwizard.logging.common.filter.FilterFactory
 import jakarta.validation.constraints.NotNull
-import org.slf4j.Marker
 
 @JsonTypeName("marker")
 class MarkerFilterFactory : FilterFactory<ILoggingEvent> {
@@ -16,8 +15,8 @@ class MarkerFilterFactory : FilterFactory<ILoggingEvent> {
     override fun build(): Filter<ILoggingEvent> {
         return object : Filter<ILoggingEvent>() {
             override fun decide(event: ILoggingEvent): FilterReply {
-                event.markerList.forEach { m: Marker ->
-                    if (markers.contains(m.name)) {
+                event.markerList.forEach {
+                    if (markers.contains(it.name)) {
                         return FilterReply.ACCEPT
                     }
                 }
