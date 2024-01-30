@@ -14,9 +14,26 @@ logging:
   level: INFO
   appenders:
     - type: console
-      logFormat: "%-5p [%d{ISO8601,UTC}] %c: [%marker] %m: %kvp%n%dwREx"
+      logFormat: "%-5p [%d{ISO8601,UTC}] %c: %m %kvp%n%dwREx"
       queueSize: 1024
       discardingThreshold: 0
+    - type: file
+      currentLogFilename: ./query.log
+      threshold: ALL
+      queueSize: 512
+      discardingThreshold: 0
+      archive: true
+      archivedLogFilenamePattern: ./queries-%d.log
+      archivedFileCount: 5
+      timeZone: UTC
+      logFormat: "[%d{ISO8601,UTC}] %marker: %kvp%n"
+      bufferSize: 8KiB
+      immediateFlush: true
+      filterFactories:
+        - type: marker
+          markers:
+            - REQ
+
   loggers:
     nl.knaw.huc: DEBUG
     org: WARN
