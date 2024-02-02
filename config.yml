@@ -23,16 +23,16 @@ logging:
       queueSize: 512
       discardingThreshold: 0
       archive: true
-      archivedLogFilenamePattern: ./queries-%d.log
+      archivedLogFilenamePattern: ./query-log-%d.gz
       archivedFileCount: 5
       timeZone: UTC
-      logFormat: "[%d{ISO8601,UTC}] %marker: %kvp%n"
-      bufferSize: 8KiB
+      logFormat: "%d{ISO8601,UTC}|%m%n"
+      bufferSize: 256KiB
       immediateFlush: true
       filterFactories:
         - type: marker
           markers:
-            - REQ
+            - QRY
 
   loggers:
     nl.knaw.huc: DEBUG

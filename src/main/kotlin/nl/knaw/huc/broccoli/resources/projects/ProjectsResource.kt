@@ -47,10 +47,12 @@ class ProjectsResource(
         const val ORIGIN = "Origin"
     }
 
-    private val log = LoggerFactory.getLogger(javaClass)
+    private val logger = LoggerFactory.getLogger(javaClass)
+
+    private val queryMarker = MarkerFactory.getMarker("QRY")
 
     init {
-        log.info("init: projects=$projects, client=$client")
+        logger.info("init: projects=$projects, client=$client")
     }
 
     @GET
@@ -63,7 +65,7 @@ class ProjectsResource(
     fun showDistinctBodyTypes(
         @PathParam("projectId") projectId: String
     ): Response = getProject(projectId).let {
-        log.info("Find bodyTypes in use in [${it.name}]: ")
+        logger.info("Find bodyTypes in use in [${it.name}]: ")
         Response.ok(it.annoRepo.findDistinct(AR_BODY_TYPE)).build()
     }
 
@@ -87,7 +89,18 @@ class ProjectsResource(
         val project = getProject(projectId)
         val index = getIndex(indexParam, project)
 
-        log.info("sortBy=[$sortBy], sortOrder=[$sortOrder]")
+        logger.atDebug()
+            .setMessage("searchIndex")
+            .addKeyValue("projectId", projectId)
+            .addKeyValue("queryString", queryString)
+            .addKeyValue("indexName", indexParam)
+            .addKeyValue("from", from)
+            .addKeyValue("size", size)
+            .addKeyValue("fragmentSize", fragmentSize)
+            .addKeyValue("sortBy", sortBy)
+            .addKeyValue("sortOrder", sortOrder)
+            .log()
+
         index.fields.map { it.name }
             .plus("_doc")
             .plus("_score")
@@ -96,26 +109,26 @@ class ProjectsResource(
             }
 
         return queryString
-            .also { log.info("queryString: ${jsonWriter.writeValueAsString(it)}") }
+            .also(::logQuery)
             .let {
                 ElasticQueryBuilder(index)
+                    .query(it)
                     .from(from)
                     .size(size)
                     .sortBy(sortBy)
                     .sortOrder(sortOrder.toString())
                     .fragmentSize(fragmentSize)
-                    .query(it)
                     .toElasticQuery()
             }
-            .also { log.info("full ES query: ${jsonWriter.writeValueAsString(it)}") }
+            .also { logger.debug("full ES query: {}", jsonWriter.writeValueAsString(it)) }
             .let { query ->
                 client.target(project.brinta.uri).path(index.name).path("_search")
                     .request()
                     .post(Entity.json(query))
             }
-            .also { log.info("response: $it") }
+            .also { logger.trace("response: {}", it) }
             .readEntityAsJsonString()
-            .also { log.info("json: $it") }
+            .also { logger.trace("json: {}", it) }
             .let { json ->
                 val result = mutableMapOf<String, Any>()
                 jsonParser.parse(json).let { context ->
@@ -130,6 +143,13 @@ class ProjectsResource(
                 }
                 Response.ok(result).build()
             }
+    }
+
+    private fun logQuery(query: IndexQuery) {
+        logger.atDebug()
+            .addMarker(queryMarker)
+            .setMessage() { jsonWriter.writeValueAsString(query.text) }
+            .log()
     }
 
     private fun buildHitResult(index: IndexConfiguration, hit: Map<String, Any>) =
@@ -217,12 +237,7 @@ class ProjectsResource(
         @QueryParam("relativeTo") @DefaultValue(ORIGIN) relativeTo: String,
     ): Response {
 
-//        log.info(
-//            "project=$projectId, bodyId=$bodyId, views=$viewsParam, includeResults=$includesParam, " +
-//                    "overlapTypes=$overlapTypesParam, relativeTo=$relativeTo"
-//        )
-
-        log.atInfo()
+        logger.atInfo()
             .setMessage("getProjectBodyId")
             .addKeyValue("projectId", projectId)
             .addKeyValue("bodyId", bodyId)
@@ -230,7 +245,7 @@ class ProjectsResource(
             .addKeyValue("includeResults", includesParam)
             .addKeyValue("overlapTypes", overlapTypesParam)
             .addKeyValue("relativeTo", relativeTo)
-            .addMarker(MarkerFactory.getMarker("REQ"))
+            .addMarker(queryMarker)
             .log()
 
         val before = System.currentTimeMillis()
@@ -290,7 +305,7 @@ class ProjectsResource(
         interestedViews(project, requestedViews).forEach { (viewName, viewConf) ->
             val annoConstraints = viewConf.anno.associate { it.path to it.value }
                 .plus(AR_WITHIN_TEXT_ANCHOR_RANGE to region(textSource, textSelector.start(), textSelector.end()))
-            log.info("annoConstraints=$annoConstraints")
+            logger.info("annoConstraints=$annoConstraints")
             annoRepo.fetch(annoConstraints)
                 .map(::AnnoRepoSearchResult)
                 .firstOrNull()
@@ -369,7 +384,7 @@ class ProjectsResource(
 
         if (wanted.contains("iiif")) {
             val tier0 = project.tiers[0].let { it.anno ?: it.name.capitalize() }
-            log.info("tier0: $tier0")
+            logger.info("tier0: $tier0")
             val bodyTypes = isIn(setOf(tier0))
             val manifest = timeExecution({
                 annoRepo.fetchOverlap(textSource, textSelector.start(), textSelector.end(), bodyTypes)
@@ -521,13 +536,13 @@ class ProjectsResource(
         }
 
     private fun fetchTextLines(textRepo: TextRepo, textSourceUrl: String): List<String> {
-        log.info("GET {}", textSourceUrl)
+        logger.info("GET {}", textSourceUrl)
 
         var builder = client.target(textSourceUrl).request()
 
         with(textRepo) {
             if (apiKey != null && canResolve(textSourceUrl)) {
-                log.info("with apiKey {}", apiKey)
+                logger.info("with apiKey {}", apiKey)
                 builder = builder.header(HttpHeaders.AUTHORIZATION, "Basic $apiKey")
             }
         }
@@ -535,7 +550,7 @@ class ProjectsResource(
         val resp = builder.get()
 
         if (resp.status == Response.Status.UNAUTHORIZED.statusCode) {
-            log.warn("Auth failed fetching $textSourceUrl")
+            logger.warn("Auth failed fetching $textSourceUrl")
             throw ClientErrorException("Need credentials for $textSourceUrl", Response.Status.UNAUTHORIZED)
         }
 
