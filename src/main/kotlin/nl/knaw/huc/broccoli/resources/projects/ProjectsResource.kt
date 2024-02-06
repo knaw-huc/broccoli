@@ -146,10 +146,12 @@ class ProjectsResource(
     }
 
     private fun logQuery(query: IndexQuery) {
-        logger.atDebug()
-            .addMarker(queryMarker)
-            .setMessage() { jsonWriter.writeValueAsString(query.text) }
-            .log()
+        if (query.text != null) {
+            logger.atDebug()
+                .addMarker(queryMarker)
+                .setMessage() { jsonWriter.writeValueAsString(query.text) }
+                .log()
+        }
     }
 
     private fun buildHitResult(index: IndexConfiguration, hit: Map<String, Any>) =
