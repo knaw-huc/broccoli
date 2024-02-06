@@ -245,7 +245,6 @@ class ProjectsResource(
             .addKeyValue("includeResults", includesParam)
             .addKeyValue("overlapTypes", overlapTypesParam)
             .addKeyValue("relativeTo", relativeTo)
-            .addMarker(queryMarker)
             .log()
 
         val before = System.currentTimeMillis()
