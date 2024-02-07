@@ -71,6 +71,7 @@ projects:
             - name: bodyType
               path: "$.body.type"
               type: keyword
+              default: "🥦unknownBodyType"
             - name: N
               path: "$.body.metadata.n"
               type: keyword

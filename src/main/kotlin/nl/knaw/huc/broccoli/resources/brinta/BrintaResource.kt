@@ -222,7 +222,7 @@ class BrintaResource(
                     // Then: optional extra payload: fields from config
                     index.fields.forEach { field ->
                         try {
-                            anno.read(field.path)?.let { payload[field.name] = it }
+                            anno.read(field.path) ?: field.default?.let { payload[field.name] = it }
                         } catch (e: PathNotFoundException) {
                             // Must catch PNF, even though DEFAULT_PATH_LEAF_TO_NULL is set, because intermediate
                             //   nodes can also be null, i.e., they don't exist, which still yields a PNF Exception.

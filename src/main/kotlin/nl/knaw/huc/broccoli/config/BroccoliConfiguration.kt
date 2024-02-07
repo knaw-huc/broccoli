@@ -254,6 +254,10 @@ class IndexFieldConfiguration {
     @Valid
     @JsonProperty
     val type: String? = null
+
+    @Valid
+    @JsonProperty
+    val default: String? = null
 }
 
 
