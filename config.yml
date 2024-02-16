@@ -82,3 +82,137 @@ projects:
       uri: https://globalise.tt.di.huc.knaw.nl
     iiif:
       fetch: urn:globalise:manifest
+
+  - name: 'mondriaan'
+    tiers:
+      - name: folder
+        type: str
+        anno: tf:Folder
+      - name: letterid
+        type: str
+        anno: tf:Letter
+    views:
+      - name: textOrig
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: original
+      - name: textTrans
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: translation
+      - name: notesEN
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Note
+            - path: body.metadata.lang
+              value: en
+      - name: title
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Title
+      - name: postalData
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: postalData
+    brinta:
+      uri: http://localhost:9200
+      indices:
+        - name: divs
+          bodyTypes: [ tf:Letter, tei:Div, tei:Rs ]
+          fields:
+            - name: bodyType
+              path: "$.body.type"
+              type: keyword
+            - name: lang
+              path: "$.body.metadata.lang"
+              type: keyword
+            - name: type
+              path: "$.body.metadata.type"
+              type: keyword
+            - name: anno
+              path: "$.body.metadata.anno"
+              type: keyword
+            - name: country
+              path: "$.body.metadata.country"
+              type: keyword
+            - name: institution
+              path: "$.body.metadata.institution"
+              type: keyword
+            - name: msid
+              path: "$.body.metadata.msid"
+              type: keyword
+            - name: period
+              path: "$.body.metadata.period"
+              type: keyword
+            - name: periodLong
+              path: "$.body.metadata.periodlong"
+              type: keyword
+            - name: letterId
+              path: "$.body.metadata.letterid"
+              type: keyword
+            - name: correspondent
+              path: "$.body.metadata.correspondent"
+              type: keyword
+            - name: location
+              path: "$.body.metadata.location"
+              type: keyword
+    annoRepo:
+      containerName: 'mondriaan-letters-0.8.12'
+      uri: https://mondriaan.annorepo.dev.clariah.nl
+    textRepo:
+      uri: https://mondriaan.tt.di.huc.knaw.nl
+    iiif:
+      fixed: https://images.diginfra.net/api/pim/imageset/67533019-4ca0-4b08-b87e-fd5590e7a077/manifest
+
+
+  - name: 'suriano'
+    tiers:
+      - name: folder
+        type: str
+        anno: tf:Folder
+      - name: file
+        type: str
+        anno: tf:File
+    brinta:
+      uri: http://localhost:9200
+      deleteKey: "local-dev-mag-weg"
+      indices:
+        - name: letters
+          bodyTypes: [ tf:File, tei:Div ]
+          fields:
+            - name: bodyType
+              path: "$.body.type"
+              type: keyword
+            - name: date
+              path: "$.body.metadata.date"
+              type: date
+            - name: recipient
+              path: "$.body.metadata.recipient"
+              type: keyword
+            - name: recipientLoc
+              path: "$.body.metadata.recipientloc"
+              type: keyword
+            - name: sender
+              path: "$.body.metadata.sender"
+              type: keyword
+            - name: senderLoc
+              path: "$.body.metadata.senderloc"
+              type: keyword
+    annoRepo:
+      containerName: 'suriano-0.0.4'
+      uri: https://suriano.annorepo.dev.clariah.nl/
+    textRepo:
+      uri: https://suriano.tt.di.huc.knaw.nl
+    iiif:
+      fixed: https://images.diginfra.net/api/pim/imageset/67533019-4ca0-4b08-b87e-fd5590e7a077/manifest
