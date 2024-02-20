@@ -141,7 +141,7 @@ class BrintaResource(
         val topTierValue = tierValues
             ?.split(',')
             ?.map { tierValue -> Pair(tierMeta ?: topTier.name, tierValue) }
-            .also { logger.info(" indexing tier: $it") }
+            ?.also { logger.info(" indexing tier: $it") }
             ?: emptyList()
 
         val ok = mutableListOf<String>()
@@ -184,6 +184,7 @@ class BrintaResource(
                 .forEach { anno ->
                     // use anno's body.id as documentId in index
                     val docId = anno.bodyId()
+                    logger.atDebug().log("gathering index info for annoId / ES docId: {}", docId)
 
                     // build index payload for current anno
                     val payload = mutableMapOf<String, Any>()
@@ -200,10 +201,10 @@ class BrintaResource(
                                     fetchedSegments.forEachIndexed { i, s ->
                                         logger.atTrace().log("fetchedSegments[{}] = [{}]", i, s)
                                     }
-                                }
+                                } else logger.atDebug().log("fetching {} segments", fetchedSegments.size)
 
                                 val joinedSegments = fetchedSegments.joinToString(joinSeparator)
-                                logger.atTrace().log("joinedSegments: {}", joinedSegments)
+                                logger.atTrace().log("joinedSegments.length: {}", joinedSegments.length)
 
                                 payload["text"] = joinedSegments
                                 ok.add(docId)
@@ -223,6 +224,7 @@ class BrintaResource(
                     index.fields.forEach { field ->
                         try {
                             anno.read(field.path)?.let { payload[field.name] = it }
+                            logger.atTrace().log("payload[{}] -> {}", field.name, payload[field.name])
                         } catch (e: PathNotFoundException) {
                             // Must catch PNF, even though DEFAULT_PATH_LEAF_TO_NULL is set, because intermediate
                             //   nodes can also be null, i.e., they don't exist, which still yields a PNF Exception.
@@ -230,7 +232,7 @@ class BrintaResource(
                         }
                     }
 
-                    logger.atInfo().log("Indexing {}, payload={}", docId, payload)
+                    logger.atInfo().log("Indexing {}, payload.size={}", docId, payload.size)
 
                     client.target(project.brinta.uri)
                         .path(index.name).path("_doc").path(docId)
@@ -297,9 +299,10 @@ class BrintaResource(
                 val from = parts[0].toInt()
                 val to = parts[1].toInt()
 
-                logger.atTrace().setMessage("2 coords")
+                logger.atDebug().setMessage("2 coords")
                     .addKeyValue("from", from)
                     .addKeyValue("to", to)
+                    .addKeyValue("textLines.size", textLines.size)
                     .log()
 
                 textLines.subList(from, to + 1)
@@ -311,7 +314,7 @@ class BrintaResource(
                 val to = parts[2].toInt()
                 val endIndex = parts[3].toInt()
 
-                logger.atTrace().setMessage("4 coords")
+                logger.atDebug().setMessage("4 coords")
                     .addKeyValue("from", from)
                     .addKeyValue("startIndex", startIndex)
                     .addKeyValue("to", to)
