@@ -104,7 +104,7 @@ class TermAggregation(name: String) : Aggregation(name) {
     override fun toJson() = mapOf(
         "terms" to mapOf(
             "field" to name,
-            "size" to 100
+            "size" to 250
         )
     )
 }
