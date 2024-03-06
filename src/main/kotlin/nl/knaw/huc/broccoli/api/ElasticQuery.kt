@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class ElasticQuery(
     @JsonProperty("_source") val source: Boolean = true,
+    @JsonProperty("track_total_hits") val trackTotalHits: Boolean = true,
     val from: Int,
     val size: Int,
     val sort: Sort,
