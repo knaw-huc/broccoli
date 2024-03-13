@@ -58,8 +58,6 @@ projects:
       apiKey: 02d01d02-be58-4e9e-95c2-387715996bb5
       containerName: globalise-minimal
       uri: https://annorepo.globalise.huygens.knaw.nl
-    #      containerName: globalise-2023.09.06
-    #      uri: https://globalise-annorepo.tt.di.huc.knaw.nl
     brinta:
       uri: http://localhost:9200
       deleteKey: 00b9a2d3-0176-46ae-be0c-4909b1df0cfe
