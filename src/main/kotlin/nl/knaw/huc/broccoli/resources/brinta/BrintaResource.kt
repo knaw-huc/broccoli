@@ -46,7 +46,7 @@ class BrintaResource(
                 ),
                 "index_options" to "offsets",
                 "analyzer" to "fulltext_analyzer"
-            ),
+            )
         )
         index.fields.forEach { field ->
             field.type?.let { type -> properties[field.name] = mapOf("type" to type) }
@@ -369,5 +369,13 @@ class BrintaResource(
             }
         }
     }
+
+    private fun getIndex(project: Project, indexName: String?): IndexConfiguration =
+        indexName
+            ?.let {
+                project.brinta.indices.find { index -> index.name == indexName }
+                    ?: throw NotFoundException("index '$indexName' not configured for project: ${project.name}")
+            }
+            ?: project.brinta.indices[0]
 
 }
