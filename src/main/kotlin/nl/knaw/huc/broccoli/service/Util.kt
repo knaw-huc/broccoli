@@ -23,4 +23,4 @@ fun extractAggregations(context: ReadContext) = context.read<Map<String, Any>>("
 
 fun String.capitalize(): String = replaceFirstChar(Char::uppercase)
 
-fun String.wordCount(): Int = this.trim().split(ANY_WHITESPACE_REGEX).size
+fun String.wordCount(): Int = trim().split(ANY_WHITESPACE_REGEX).size
