@@ -35,7 +35,7 @@ logging:
             - QRY
 
   loggers:
-    nl.knaw.huc: DEBUG
+    nl.knaw.huc: TRACE
     org: WARN
     org.glassfish: ERROR
     com.jayway: ERROR
@@ -60,7 +60,7 @@ projects:
       uri: https://annorepo.globalise.huygens.knaw.nl
     brinta:
       uri: http://localhost:9200
-      deleteKey: "00b9a2d3-0176-46ae-be0c-4909b1df0cfe"
+      deleteKey: 00b9a2d3-0176-46ae-be0c-4909b1df0cfe
       joinSeparator: " "
       indices:
         - name: docs
