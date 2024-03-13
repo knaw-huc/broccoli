@@ -159,9 +159,13 @@ class ProjectsResource(
             // store highlight if available
             hit["highlight"]?.let { put("_hits", it) }
 
-            // store all configured index fields with their search result, if any
             @Suppress("UNCHECKED_CAST")
             val source = hit["_source"] as Map<String, Any>
+
+            // copy implicit field 'wordCount'
+            source["wordCount"]?.let { put("wordCount", it) }
+
+            // store all configured index fields with their search result, if any
             index.fields.forEach { field ->
                 source[field.name]?.let { put(field.name, it) }
             }
