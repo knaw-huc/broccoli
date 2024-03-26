@@ -16,7 +16,6 @@ import nl.knaw.huc.broccoli.api.ResourcePaths.BRINTA
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
-import nl.knaw.huc.broccoli.service.wordCount
 import org.slf4j.LoggerFactory
 
 @Path("$BRINTA/{projectId}")
@@ -36,13 +35,18 @@ class BrintaResource(
         val index = getIndex(project, indexName)
         logger.info("Creating ${project.name} index: ${index.name}")
 
-        val properties = mutableMapOf<String, Any>(
+        val properties = mutableMapOf(
             "text" to mapOf(
                 "type" to "text",
+                "fields" to mapOf(
+                    "tokenCount" to mapOf(
+                        "type" to "token_count",
+                        "analyzer" to "fulltext_analyzer"
+                    )
+                ),
                 "index_options" to "offsets",
                 "analyzer" to "fulltext_analyzer"
             ),
-            "wordCount" to mapOf("type" to "integer")
         )
         index.fields.forEach { field ->
             field.type?.let { type -> properties[field.name] = mapOf("type" to type) }
@@ -208,7 +212,6 @@ class BrintaResource(
                                 logger.atTrace().log("joinedSegments.length: {}", joinedSegments.length)
 
                                 payload["text"] = joinedSegments
-                                payload["wordCount"] = joinedSegments.wordCount()
                                 ok.add(docId)
                             } else {
                                 logger.atWarn().log("Failed to fetch text for {} from {}", docId, textURL)
