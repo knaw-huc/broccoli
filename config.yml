@@ -216,3 +216,31 @@ projects:
       uri: https://suriano.tt.di.huc.knaw.nl
     iiif:
       fixed: https://images.diginfra.net/api/pim/imageset/67533019-4ca0-4b08-b87e-fd5590e7a077/manifest
+
+
+  - name: 'hooft'
+    tiers:
+      - name: file
+        type: str
+        anno: File
+      - name: letter
+        type: str
+        anno: Letter
+    annoRepo:
+      containerName: 'brieven-van-hooft'
+      uri: https://brieven-van-hooft.annorepo.dev.clariah.nl/
+    brinta:
+      uri: http://localhost:9200
+      deleteKey: hooft-dev-mag-weg
+      indices:
+        - name: letters-2024-03-20
+          bodyTypes: [ Letter ]
+          fields:
+            - name: bodyType
+              path: "$.body.type"
+              type: keyword
+    textRepo:
+      apiKey: cHJveWNvbjo5Y2I2YTIyZS1jY2M5LTExZWUtYTllZS0zMzNmNDQ2YjBjZTE=
+      uri: https://brieven-van-hooft.tt.di.huc.knaw.nl
+    iiif:
+      fixed: https://images.diginfra.net/api/pim/imageset/67533019-4ca0-4b08-b87e-fd5590e7a077/manifest
