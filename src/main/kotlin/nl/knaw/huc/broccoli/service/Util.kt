@@ -2,9 +2,6 @@ package nl.knaw.huc.broccoli.service
 
 import com.jayway.jsonpath.ReadContext
 
-const val ANY_WHITESPACE_PAT = "\\s+"
-val ANY_WHITESPACE_REGEX = ANY_WHITESPACE_PAT.toRegex()
-
 fun <K, V> List<Map<K, V>>.groupByKey(): Map<K, V> = flatMap { it.asSequence() }.associate { it.key to it.value }
 
 // migrate to ES specific 'util'
@@ -22,5 +19,3 @@ fun extractAggregations(context: ReadContext) = context.read<Map<String, Any>>("
     ?.groupByKey()
 
 fun String.capitalize(): String = replaceFirstChar(Char::uppercase)
-
-fun String.wordCount(): Int = trim().split(ANY_WHITESPACE_REGEX).size
