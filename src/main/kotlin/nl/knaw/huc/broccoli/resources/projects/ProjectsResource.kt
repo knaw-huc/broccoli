@@ -162,8 +162,9 @@ class ProjectsResource(
             @Suppress("UNCHECKED_CAST")
             val source = hit["_source"] as Map<String, Any>
 
-            // copy implicit field 'wordCount'
-            source["wordCount"]?.let { put("wordCount", it) }
+            @Suppress("UNCHECKED_CAST")
+            val fields = hit["fields"] as Map<String, Any>
+            fields["text.tokenCount"]?.let { put("tokenCount", it) }
 
             // store all configured index fields with their search result, if any
             index.fields.forEach { field ->
