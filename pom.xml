@@ -6,7 +6,7 @@
 
     <groupId>nl.knaw.huc</groupId>
     <artifactId>broccoli</artifactId>
-    <version>0.26.3</version>
+    <version>0.29.2</version>
 
     <packaging>jar</packaging>
 
@@ -18,7 +18,7 @@
         <maven.build.timestamp.format>yyyy-MM-dd'T'HH:mm:ss'Z'</maven.build.timestamp.format>
 
         <kotlin.code.style>official</kotlin.code.style>
-        <kotlin.version>1.9.10</kotlin.version>
+        <kotlin.version>1.9.20</kotlin.version>
         <java.version>17</java.version>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
@@ -33,7 +33,7 @@
         <dropwizard-swagger-ui.version>4.6.2</dropwizard-swagger-ui.version>
         <dropwizard-swagger.version>4.0.0-1</dropwizard-swagger.version>
         <dropwizard.version>4.0.1</dropwizard.version>
-        <jackson-module-kotlin.version>2.16.0</jackson-module-kotlin.version>
+        <jackson-module-kotlin.version>2.16.1</jackson-module-kotlin.version>
         <json-path.version>2.9.0</json-path.version>
         <mockito-kotlin.version>5.1.0</mockito-kotlin.version>
         <mockito.version>5.5.0</mockito.version>

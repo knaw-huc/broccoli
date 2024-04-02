@@ -3,7 +3,10 @@ package nl.knaw.huc.broccoli.service.anno
 import jakarta.ws.rs.NotFoundException
 import org.slf4j.LoggerFactory
 
-class AnnoSearchResultInterpreter(val searchResult: AnnoRepoSearchResult) {
+class AnnoSearchResultInterpreter(
+    private val searchResult: AnnoRepoSearchResult,
+    private val textType: String
+) {
     private val log = LoggerFactory.getLogger(javaClass)
 
     fun bodyId() = searchResult.bodyId()
@@ -18,7 +21,7 @@ class AnnoSearchResultInterpreter(val searchResult: AnnoRepoSearchResult) {
     fun findSelector(): TextSelector = TextSelector(findTextTargetWithSelector()["selector"] as Map<String, Any>)
 
     private fun findTextTargetWithSelector(): Map<String, Any> {
-        val withSelectorTargets = searchResult.withField<Any>("Text", "selector")
+        val withSelectorTargets = searchResult.withField<Any>(textType, "selector")
         return when {
             withSelectorTargets.isEmpty() -> throw NotFoundException("no text target with 'selector' found")
             withSelectorTargets.size == 1 -> withSelectorTargets[0]
@@ -30,7 +33,7 @@ class AnnoSearchResultInterpreter(val searchResult: AnnoRepoSearchResult) {
     }
 
     private fun findTextTargetWithoutSelector(): Map<String, Any> {
-        val withoutSelectorTargets = searchResult.withoutField<String>("Text", "selector")
+        val withoutSelectorTargets = searchResult.withoutField<String>(textType, "selector")
         return when {
             withoutSelectorTargets.isEmpty() -> throw NotFoundException("no text targets without 'selector' found")
             withoutSelectorTargets.size == 1 -> withoutSelectorTargets[0]

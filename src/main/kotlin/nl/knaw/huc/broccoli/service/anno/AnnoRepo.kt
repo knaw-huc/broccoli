@@ -20,6 +20,7 @@ import kotlin.streams.asSequence
 class AnnoRepo(
     private val annoRepoClient: AnnoRepoClient,
     private val defaultContainerName: String,
+    private val textType: String
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -128,7 +129,7 @@ class AnnoRepo(
             .firstOrNull()
             ?: throw NotFoundException("overlap not found ($containerName,$source,$selector)")
 
-        val start = anno.targetField<Int>("Text", "selector.start")
+        val start = anno.targetField<Int>(textType, "selector.start")
             .filter { it <= selector.start() }
             .max()
 
