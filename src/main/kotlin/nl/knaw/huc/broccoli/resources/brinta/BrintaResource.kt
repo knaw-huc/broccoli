@@ -24,7 +24,6 @@ class BrintaResource(
     private val projects: Map<String, Project>,
     private val client: Client
 ) {
-    private val logger = LoggerFactory.getLogger(javaClass)
 
     @POST
     @Path("{indexName}")
@@ -287,57 +286,6 @@ class BrintaResource(
                 }
             }
 
-    private fun fetchTextSegmentsLocal(textLines: List<String>, textURL: String): List<String> {
-        logger.atInfo().log("fetchTextSegmentsLocal: URL={}", textURL)
-
-        val coords = textURL.indexOf("segments/index/") + "segments/index/".length
-        logger.atInfo().log("fetchTextSegmentsLocal: coords={}", textURL.substring(coords))
-
-        val parts = textURL.substring(coords).split('/')
-        return when (parts.size) {
-            2 -> {
-                val from = parts[0].toInt()
-                val to = parts[1].toInt()
-
-                logger.atDebug().setMessage("2 coords")
-                    .addKeyValue("from", from)
-                    .addKeyValue("to", to)
-                    .addKeyValue("textLines.size", textLines.size)
-                    .log()
-
-                textLines.subList(from, to + 1)
-            }
-
-            4 -> {
-                val from = parts[0].toInt()
-                val startIndex = parts[1].toInt()
-                val to = parts[2].toInt()
-                val endIndex = parts[3].toInt()
-
-                logger.atDebug().setMessage("4 coords")
-                    .addKeyValue("from", from)
-                    .addKeyValue("startIndex", startIndex)
-                    .addKeyValue("to", to)
-                    .addKeyValue("endIndex", endIndex)
-                    .log()
-
-                // start out with correct sublist from all segments
-                val result = textLines.subList(from, to + 1).toMutableList()
-
-                // adjust first and last segments according to start-/endIndex
-                result[0] = result.first().substring(startIndex)
-                result[result.lastIndex] = result.last().substring(0, endIndex + 1)
-
-                result
-            }
-
-            else -> {
-                logger.atWarn().log("Failed to extract coordinates from {}", coords)
-                emptyList()
-            }
-        }
-    }
-
     private fun Response.readEntityAsJsonString(): String = readEntity(String::class.java) ?: ""
 
     private fun Map<String, Any>.toJsonString() = jacksonObjectMapper().writeValueAsString(this)
@@ -356,5 +304,64 @@ class BrintaResource(
                     ?: throw NotFoundException("index '$indexName' not configured for project: ${project.name}")
             }
             ?: project.brinta.indices[0]
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(BrintaResource::class.java)
+
+        @JvmStatic
+        fun fetchTextSegmentsLocal(textLines: List<String>, textURL: String): List<String> {
+            logger.atInfo().log("fetchTextSegmentsLocal: URL={}", textURL)
+
+            val coords = textURL.indexOf("segments/index/") + "segments/index/".length
+            logger.atInfo().log("fetchTextSegmentsLocal: coords={}", textURL.substring(coords))
+
+            val parts = textURL.substring(coords).split('/')
+            return when (parts.size) {
+                2 -> {
+                    val from = parts[0].toInt()
+                    val to = parts[1].toInt()
+
+                    logger.atDebug().setMessage("2 coords")
+                        .addKeyValue("from", from)
+                        .addKeyValue("to", to)
+                        .addKeyValue("textLines.size", textLines.size)
+                        .log()
+
+                    textLines.subList(from, to + 1)
+                }
+
+                4 -> {
+                    val from = parts[0].toInt()
+                    val startIndex = parts[1].toInt()
+                    val to = parts[2].toInt()
+                    val endIndex = parts[3].toInt()
+
+                    logger.atDebug().setMessage("4 coords")
+                        .addKeyValue("from", from)
+                        .addKeyValue("startIndex", startIndex)
+                        .addKeyValue("to", to)
+                        .addKeyValue("endIndex", endIndex)
+                        .log()
+
+                    // start out with correct sublist from all segments
+                    val result = textLines.subList(from, to + 1).toMutableList()
+
+                    // adjust first and last segments according to start-/endIndex
+                    result[0] = result.first().substring(startIndex)
+                    if (result.lastIndex == 0) {
+                        result[result.lastIndex] = result.last().substring(0, endIndex - startIndex + 1)
+                    } else {
+                        result[result.lastIndex] = result.last().substring(0, endIndex + 1)
+                    }
+                    result
+                }
+
+                else -> {
+                    logger.atWarn().log("Failed to extract coordinates from {}", coords)
+                    emptyList()
+                }
+            }
+        }
+    }
 
 }
