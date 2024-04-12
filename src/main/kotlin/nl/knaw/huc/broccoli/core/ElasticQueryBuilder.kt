@@ -48,16 +48,12 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
         highlight = query.text
             ?.let { HighlightTerm(it, fragmentSize) },
 
-        aggregations = (query.aggregations
-            ?: index.fields.map { it.name }.plus("wordCount"))
+        aggregations = (query.aggregations ?: index.fields.map { it.name })
             .mapNotNull { fieldName ->
-                when (fieldName) {
-                    "wordCount" -> TermAggregation("wordCount")
-                    else -> when (index.fields.find { it.name == fieldName }?.type) {
-                        "keyword", "short", "byte" -> TermAggregation(fieldName)
-                        "date" -> DateAggregation(fieldName)
-                        else -> null
-                    }
+                when (index.fields.find { it.name == fieldName }?.type) {
+                    "keyword", "short", "byte" -> TermAggregation(fieldName)
+                    "date" -> DateAggregation(fieldName)
+                    else -> null
                 }
             }
             .let { Aggregations(it) }

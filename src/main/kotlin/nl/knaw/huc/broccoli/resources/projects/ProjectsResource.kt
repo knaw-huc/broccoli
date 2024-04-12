@@ -162,9 +162,12 @@ class ProjectsResource(
             @Suppress("UNCHECKED_CAST")
             val source = hit["_source"] as Map<String, Any>
 
-            @Suppress("UNCHECKED_CAST")
-            val fields = hit["fields"] as Map<String, Any>
-            fields["text.tokenCount"]?.let { put("tokenCount", it) }
+            hit["fields"]?.let { fields ->
+                @Suppress("UNCHECKED_CAST")
+                (fields as Map<String, Any>)["text.tokenCount"]?.let {
+                    put("textTokenCount", (it as List<*>).first())
+                }
+            }
 
             // store all configured index fields with their search result, if any
             index.fields.forEach { field ->
