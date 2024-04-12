@@ -46,7 +46,7 @@ class BrintaResource(
                 ),
                 "index_options" to "offsets",
                 "analyzer" to "fulltext_analyzer"
-            )
+            ),
         )
         index.fields.forEach { field ->
             field.type?.let { type -> properties[field.name] = mapOf("type" to type) }

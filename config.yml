@@ -35,7 +35,7 @@ logging:
             - QRY
 
   loggers:
-    nl.knaw.huc: TRACE
+    nl.knaw.huc: DEBUG
     org: WARN
     org.glassfish: ERROR
     com.jayway: ERROR
