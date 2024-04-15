@@ -1,6 +1,7 @@
 package nl.knaw.huc.broccoli.core
 
 import nl.knaw.huc.broccoli.api.*
+import nl.knaw.huc.broccoli.api.Constants.TEXT_TOKEN_COUNT
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import kotlin.properties.Delegates
 
@@ -53,7 +54,8 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
 
         aggregations = (query.aggregations ?: index.fields.map { it.name })
             .mapNotNull { fieldName ->
-                when (index.fields.find { it.name == fieldName }?.type) {
+                if (fieldName == TEXT_TOKEN_COUNT) TermAggregation(fieldName)
+                else when (index.fields.find { it.name == fieldName }?.type) {
                     "keyword", "short", "byte" -> TermAggregation(fieldName)
                     "date" -> DateAggregation(fieldName)
                     else -> null
