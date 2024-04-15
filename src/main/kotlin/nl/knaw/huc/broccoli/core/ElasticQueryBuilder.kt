@@ -36,7 +36,10 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                         add(TermsQuery(mapOf(it.key to it.value)))
                     }
                     query.date?.let {
-                        add(DateQuery(it.name, it.from, it.to))
+                        add(RangeQuery(it.name, it.from, it.to, relation = "within"))
+                    }
+                    query.range?.let {
+                        add(RangeQuery(it.name, it.from, it.to))
                     }
                     query.text?.let {
                         add(FullTextQuery(QueryString(it)))

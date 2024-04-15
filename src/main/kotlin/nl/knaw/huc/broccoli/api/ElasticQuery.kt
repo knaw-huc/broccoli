@@ -28,16 +28,17 @@ data class BoolQuery(
 
 abstract class BaseQuery
 
-data class DateQuery(
+data class RangeQuery(
     @JsonIgnore val name: String,
     @JsonIgnore val from: String,
-    @JsonIgnore val to: String
+    @JsonIgnore val to: String,
+    @JsonIgnore val relation: String? = "intersects"
 ) : BaseQuery() {
     @JsonAnyGetter
     fun toJson() = mapOf(
         "range" to mapOf(
             name to mapOf(
-                "relation" to "within",
+                "relation" to relation,
                 "gte" to from,
                 "lte" to to
             )
