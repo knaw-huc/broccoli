@@ -4,12 +4,13 @@ import com.fasterxml.jackson.annotation.JsonAnyGetter
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
+import nl.knaw.huc.broccoli.api.Constants.TEXT_TOKEN_COUNT
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class ElasticQuery(
     @JsonProperty("_source") val source: Boolean = true,
     @JsonProperty("track_total_hits") val trackTotalHits: Boolean = true,
-    @JsonProperty("fields") val getTextTokenCount: List<String> = listOf("text.tokenCount"),
+    @JsonProperty("fields") val getTextTokenCount: List<String> = listOf(TEXT_TOKEN_COUNT),
     val from: Int,
     val size: Int,
     val sort: Sort,
