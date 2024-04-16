@@ -31,18 +31,17 @@ abstract class BaseQuery
 
 data class RangeQuery(
     @JsonIgnore val name: String,
-    @JsonIgnore val from: String,
-    @JsonIgnore val to: String,
+    @JsonIgnore val from: String?,
+    @JsonIgnore val to: String?,
     @JsonIgnore val relation: String? = "intersects"
 ) : BaseQuery() {
     @JsonAnyGetter
     fun toJson() = mapOf(
         "range" to mapOf(
-            name to mapOf(
-                "relation" to relation,
-                "gte" to from,
-                "lte" to to
-            )
+            name to mutableMapOf("relation" to relation).apply {
+                from?.let { put("gte", it) }
+                to?.let { put("lte", it) }
+            }.toMap() // back to read-only map
         )
     )
 }

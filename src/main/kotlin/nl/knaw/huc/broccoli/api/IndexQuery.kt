@@ -16,6 +16,6 @@ typealias IndexTerms = Map<String, List<String>>
 
 data class IndexRange(
     val name: String,
-    val from: String,
-    val to: String
+    val from: String?,
+    val to: String?
 )
