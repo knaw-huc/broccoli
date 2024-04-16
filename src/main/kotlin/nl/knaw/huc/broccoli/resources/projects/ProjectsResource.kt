@@ -127,7 +127,17 @@ class ProjectsResource(
                     .request()
                     .post(Entity.json(query))
             }
-            .also { logger.trace("response: {}", it) }
+            .also {
+                if (it.status != 200) {
+                    logger.atWarn()
+                        .setMessage("ElasticSearch failed")
+                        .addKeyValue("status", it.status)
+                        .addKeyValue("query", queryString)
+                        .addKeyValue("result", it.readEntityAsJsonString())
+                        .log()
+                    throw BadRequestException("Query not understood: $queryString")
+                }
+            }
             .readEntityAsJsonString()
             .also { logger.trace("json: {}", it) }
             .let { json ->
