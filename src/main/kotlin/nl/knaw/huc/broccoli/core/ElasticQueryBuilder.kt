@@ -36,7 +36,10 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                         add(TermsQuery(mapOf(it.key to it.value)))
                     }
                     query.date?.let {
-                        add(DateQuery(it.name, it.from, it.to))
+                        add(RangeQuery(it.name, it.from, it.to, relation = "within"))
+                    }
+                    query.range?.let {
+                        add(RangeQuery(it.name, it.from, it.to))
                     }
                     query.text?.let {
                         add(FullTextQuery(QueryString(it)))
@@ -49,10 +52,10 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
             ?.let { HighlightTerm(it, fragmentSize) },
 
         aggregations = (query.aggregations ?: index.fields.map { it.name })
-            .mapNotNull { name ->
-                when (index.fields.find { it.name == name }?.type) {
-                    "keyword", "short", "byte" -> TermAggregation(name)
-                    "date" -> DateAggregation(name)
+            .mapNotNull { fieldName ->
+                when (index.fields.find { it.name == fieldName }?.type) {
+                    "keyword", "short", "byte" -> TermAggregation(fieldName)
+                    "date" -> DateAggregation(fieldName)
                     else -> null
                 }
             }

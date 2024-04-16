@@ -27,4 +27,6 @@ object Constants {
         BR_EXTERNAL_URL,
         BR_PAGE_SIZE
     }
+
+    const val TEXT_TOKEN_COUNT = "text.tokenCount"
 }

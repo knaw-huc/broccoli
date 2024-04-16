@@ -3,9 +3,10 @@ package nl.knaw.huc.broccoli.api
 import com.fasterxml.jackson.annotation.JsonProperty
 
 data class IndexQuery(
-    val date: IndexDate?,
+    val date: IndexRange?,
     val terms: IndexTerms?,
     val text: String?,
+    val range: IndexRange?,
 
     @JsonProperty("aggs")
     val aggregations: List<String>? = null
@@ -13,8 +14,8 @@ data class IndexQuery(
 
 typealias IndexTerms = Map<String, List<String>>
 
-data class IndexDate(
+data class IndexRange(
     val name: String,
-    val from: String,
-    val to: String
+    val from: String?,
+    val to: String?
 )

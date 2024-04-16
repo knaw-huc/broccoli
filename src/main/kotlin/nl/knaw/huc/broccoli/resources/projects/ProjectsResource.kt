@@ -126,7 +126,17 @@ class ProjectsResource(
                     .request()
                     .post(Entity.json(query))
             }
-            .also { logger.trace("response: {}", it) }
+            .also {
+                if (it.status != 200) {
+                    logger.atWarn()
+                        .setMessage("ElasticSearch failed")
+                        .addKeyValue("status", it.status)
+                        .addKeyValue("query", queryString)
+                        .addKeyValue("result", it.readEntityAsJsonString())
+                        .log()
+                    throw BadRequestException("Query not understood: $queryString")
+                }
+            }
             .readEntityAsJsonString()
             .also { logger.trace("json: {}", it) }
             .let { json ->
@@ -159,9 +169,10 @@ class ProjectsResource(
             // store highlight if available
             hit["highlight"]?.let { put("_hits", it) }
 
-            // store all configured index fields with their search result, if any
             @Suppress("UNCHECKED_CAST")
             val source = hit["_source"] as Map<String, Any>
+
+            // store all configured index fields with their search result, if any
             index.fields.forEach { field ->
                 source[field.name]?.let { put(field.name, it) }
             }

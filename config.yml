@@ -60,7 +60,7 @@ projects:
       uri: https://annorepo.globalise.huygens.knaw.nl
     brinta:
       uri: http://localhost:9200
-      deleteKey: "00b9a2d3-0176-46ae-be0c-4909b1df0cfe"
+      deleteKey: 00b9a2d3-0176-46ae-be0c-4909b1df0cfe
       joinSeparator: " "
       indices:
         - name: docs
@@ -170,6 +170,50 @@ projects:
       uri: https://mondriaan.annorepo.dev.clariah.nl
     textRepo:
       uri: https://mondriaan.tt.di.huc.knaw.nl
+    iiif:
+      fixed: https://images.diginfra.net/api/pim/imageset/67533019-4ca0-4b08-b87e-fd5590e7a077/manifest
+
+  - name: 'republic'
+    tiers:
+      - name: volume
+        type: str
+      - name: opening
+        type: num
+    textType: LogicalText
+    brinta:
+      uri: http://localhost:9200
+      deleteKey: 'republic-acc-mag-weg'
+      joinSeparator: " "
+      indices:
+        - name: 'republic-wordcount'
+          bodyTypes: [ Resolution, AttendanceList ]
+          fields:
+            - name: bodyType
+              path: "$.body.type"
+              type: keyword
+            - name: sessionDate
+              path: "$.body.metadata.sessionDate"
+              type: date
+            - name: sessionDay
+              path: "$.body.metadata.sessionDay"
+              type: byte
+            - name: sessionMonth
+              path: "$.body.metadata.sessionMonth"
+              type: byte
+            - name: sessionYear
+              path: "$.body.metadata.sessionYear"
+              type: short
+            - name: sessionWeekday
+              path: "$.body.metadata.sessionWeekday"
+              type: keyword
+            - name: propositionType
+              path: "$.body.metadata.propositionType"
+              type: keyword
+    annoRepo:
+      containerName: republic-2024.01.19
+      uri: https://annorepo.republic-caf.diginfra.org
+    textRepo:
+      uri: https://textrepo.republic-caf.diginfra.org
     iiif:
       fixed: https://images.diginfra.net/api/pim/imageset/67533019-4ca0-4b08-b87e-fd5590e7a077/manifest
 
