@@ -15,7 +15,6 @@ import jakarta.ws.rs.core.Response
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_ID
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.AR_WITHIN_TEXT_ANCHOR_RANGE
-import nl.knaw.huc.broccoli.api.Constants.TEXT_TOKEN_COUNT
 import nl.knaw.huc.broccoli.api.Constants.isIn
 import nl.knaw.huc.broccoli.api.Constants.isNotEqualTo
 import nl.knaw.huc.broccoli.api.Constants.region
@@ -172,13 +171,6 @@ class ProjectsResource(
 
             @Suppress("UNCHECKED_CAST")
             val source = hit["_source"] as Map<String, Any>
-
-            hit["fields"]?.let { fields ->
-                @Suppress("UNCHECKED_CAST")
-                (fields as Map<String, Any>)[TEXT_TOKEN_COUNT]?.let {
-                    put("textTokenCount", (it as List<*>).first())
-                }
-            }
 
             // store all configured index fields with their search result, if any
             index.fields.forEach { field ->
