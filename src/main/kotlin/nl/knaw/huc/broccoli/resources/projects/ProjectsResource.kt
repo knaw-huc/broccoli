@@ -118,8 +118,14 @@ class ProjectsResource(
                     .sortBy(sortBy)
                     .sortOrder(sortOrder.toString())
                     .fragmentSize(fragmentSize)
-                    .toElasticQuery()
+//                    .toElasticQuery()
             }
+            .also {
+                it.toMultiFacetCountQueries().forEachIndexed { index, elasticQuery ->
+                    logger.atDebug().log("multiFacetQuery[$index]: ${jsonWriter.writeValueAsString(elasticQuery)}")
+                }
+            }
+            .toElasticQuery()
             .also { logger.debug("full ES query: {}", jsonWriter.writeValueAsString(it)) }
             .let { query ->
                 client.target(project.brinta.uri).path(index.name).path("_search")
