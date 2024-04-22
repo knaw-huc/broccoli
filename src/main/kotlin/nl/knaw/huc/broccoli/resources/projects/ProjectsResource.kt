@@ -165,7 +165,7 @@ class ProjectsResource(
         if (query.text != null) {
             logger.atDebug()
                 .addMarker(queryMarker)
-                .setMessage() { jsonWriter.writeValueAsString(query.text) }
+                .setMessage(jsonWriter.writeValueAsString(query.text))
                 .log()
         }
     }
