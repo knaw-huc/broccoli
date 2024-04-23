@@ -62,4 +62,32 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
             .let { Aggregations(it) }
     )
 
+    fun toMultiFacetCountQueries() = mutableListOf<ElasticQuery>().apply {
+        query.terms?.forEach { curTerm ->
+            add(ElasticQuery(
+                from = from,
+                size = size,
+                sort = Sort(sortBy, sortOrder),
+                query = ComplexQuery(
+                    bool = BoolQuery(
+                        must = mutableListOf<BaseQuery>().apply {
+                            query.terms?.forEach {
+                                if (it.key != curTerm.key) add(TermsQuery(mapOf(it.key to it.value)))
+                            }
+                            query.date?.let {
+                                add(RangeQuery(it.name, it.from, it.to, relation = "within"))
+                            }
+                            query.range?.let {
+                                add(RangeQuery(it.name, it.from, it.to))
+                            }
+                            query.text?.let {
+                                add(FullTextQuery(QueryString(it)))
+                            }
+                        }
+                    )
+                ),
+                aggregations = Aggregations(listOf(TermAggregation(curTerm.key)))
+            ))
+        }
+    }.toList()
 }

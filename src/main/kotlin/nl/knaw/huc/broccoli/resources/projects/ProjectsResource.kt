@@ -108,58 +108,75 @@ class ProjectsResource(
                 find { it == sortBy } ?: throw BadRequestException("query param sortBy must be one of ${this.sorted()}")
             }
 
-        return queryString
-            .also(::logQuery)
-            .let {
-                ElasticQueryBuilder(index)
-                    .query(it)
-                    .from(from)
-                    .size(size)
-                    .sortBy(sortBy)
-                    .sortOrder(sortOrder.toString())
-                    .fragmentSize(fragmentSize)
-                    .toElasticQuery()
-            }
-            .also { logger.debug("full ES query: {}", jsonWriter.writeValueAsString(it)) }
-            .let { query ->
-                client.target(project.brinta.uri).path(index.name).path("_search")
-                    .request()
-                    .post(Entity.json(query))
-            }
-            .also {
-                if (it.status != 200) {
-                    logger.atWarn()
-                        .setMessage("ElasticSearch failed")
-                        .addKeyValue("status", it.status)
-                        .addKeyValue("query", queryString)
-                        .addKeyValue("result", it.readEntityAsJsonString())
-                        .log()
-                    throw BadRequestException("Query not understood: $queryString")
+        logQuery(queryString)
+
+        val queryBuilder = ElasticQueryBuilder(index)
+            .query(queryString)
+            .from(from)
+            .size(size)
+            .sortBy(sortBy)
+            .sortOrder(sortOrder.toString())
+            .fragmentSize(fragmentSize)
+
+        val baseQuery = queryBuilder.toElasticQuery()
+        logger.debug("base ES query: {}", jsonWriter.writeValueAsString(baseQuery))
+
+        val baseResult = client
+            .target(project.brinta.uri).path(index.name).path("_search")
+            .request().post(Entity.json(baseQuery))
+        validateElasticResult(baseResult, queryString)
+        val baseJson = baseResult.readEntityAsJsonString()
+            .also { logger.trace("base json: {}", it) }
+
+        val result = mutableMapOf<String, Any>()
+        jsonParser.parse(baseJson).let { context ->
+            context.read<Map<String, Any>>("$.hits.total")
+                ?.let { result["total"] = it }
+
+            extractAggregations(context)?.let { result["aggs"] = it }
+
+            context.read<List<Map<String, Any>>>("$.hits.hits[*]")
+                ?.map { buildHitResult(index, it) }
+                ?.let { result["results"] = it }
+        }
+
+        val auxQueries = queryBuilder.toMultiFacetCountQueries()
+        auxQueries.forEachIndexed { auxIndex, auxQuery ->
+            logger.atDebug().log("aux ES query[$auxIndex]: ${jsonWriter.writeValueAsString(auxQuery)}")
+            val auxResult = client.target(project.brinta.uri).path(index.name).path("_search")
+                .request().post(Entity.json(auxQuery))
+            validateElasticResult(auxResult, queryString)
+            val auxJson = auxResult.readEntityAsJsonString()
+                .also { logger.trace("aux json[{}]: {}", auxIndex, it) }
+            jsonParser.parse(auxJson).let { context ->
+                extractAggregations(context)?.let { aggs ->
+                    logger.debug("AUX[{}] extracted aggs: {}", auxIndex, aggs)
+                    (result["aggs"] as MutableMap<String, Any>).apply {
+                        aggs.forEach { (key, value) -> put(key, value) }
+                    }
                 }
             }
-            .readEntityAsJsonString()
-            .also { logger.trace("json: {}", it) }
-            .let { json ->
-                val result = mutableMapOf<String, Any>()
-                jsonParser.parse(json).let { context ->
-                    context.read<Map<String, Any>>("$.hits.total")
-                        ?.let { result["total"] = it }
+        }
 
-                    extractAggregations(context)?.let { result["aggs"] = it }
+        return Response.ok(result).build()
+    }
 
-                    context.read<List<Map<String, Any>>>("$.hits.hits[*]")
-                        ?.map { buildHitResult(index, it) }
-                        ?.let { result["results"] = it }
-                }
-                Response.ok(result).build()
-            }
+    private fun validateElasticResult(result: Response, queryString: IndexQuery) {
+        if (result.status != 200) {
+            logger.atWarn()
+                .addKeyValue("status", result.status)
+                .addKeyValue("query", queryString)
+                .addKeyValue("result", result.readEntityAsJsonString())
+                .log("ElasticSearch failed")
+            throw BadRequestException("Query not understood: $queryString")
+        }
     }
 
     private fun logQuery(query: IndexQuery) {
         if (query.text != null) {
             logger.atDebug()
                 .addMarker(queryMarker)
-                .setMessage() { jsonWriter.writeValueAsString(query.text) }
+                .setMessage(jsonWriter.writeValueAsString(query.text))
                 .log()
         }
     }
