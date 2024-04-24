@@ -70,7 +70,7 @@ class ProjectConfiguration {
 
     @Valid
     @JsonProperty
-    val textType: String = "Text"  // e.g., "Text" or "LogicalText"
+    var textType: String = "Text"  // e.g., "Text" or "LogicalText"
 
     @Valid
     @JsonProperty
@@ -118,8 +118,9 @@ class ViewConfiguration {
     @Valid
     @NotNull
     @JsonProperty
-    val scope: AnnoScope = AnnoScope.WITHIN
+    var scope: AnnoScope = AnnoScope.WITHIN
 
+    @Suppress("UNUSED") // usage can change via config.yml
     enum class AnnoScope(val toAnnoRepoScope: String) {
         OVERLAP(Constants.AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE),
         WITHIN(Constants.AR_WITHIN_TEXT_ANCHOR_RANGE);
@@ -158,6 +159,7 @@ class TierConfiguration {
 
     override fun toString(): String = "$name (${type.name.lowercase()})"
 
+    @Suppress("UNUSED") // usage can change via config.yml
     enum class Type(val toAnnoRepoQuery: (String) -> Any) {
         NUM(::parseIntOrBadRequest),
         STR(::identity);
