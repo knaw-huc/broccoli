@@ -35,16 +35,6 @@ class BroccoliConfiguration : Configuration() {
     @NotNull
     @JsonProperty
     var projects = ArrayList<ProjectConfiguration>()
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    var globalise = GlobaliseConfiguration()
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    var republic = RepublicConfiguration()
 }
 
 class AnnoRepoConfiguration {
@@ -231,98 +221,4 @@ class IndexFieldConfiguration {
     @Valid
     @JsonProperty
     val type: String? = null
-}
-
-
-class GlobaliseConfiguration {
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    val annoRepo = AnnoRepoConfiguration()
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    val textRepo = TextRepoConfiguration()
-
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    var archiefNr = ""
-
-    @JsonProperty
-    var documents: List<GlobaliseDocument> = ArrayList()
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    val defaultDocument: String = ""
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    @Min(1)
-    val defaultOpening: Int = 1
-
-}
-
-class GlobaliseDocument {
-    @Valid
-    @NotNull
-    @JsonProperty
-    var name: String = ""
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    var invNr: String = ""
-
-    @Valid
-    @JsonProperty
-    var manifest: String? = null
-}
-
-class RepublicConfiguration {
-    @Valid
-    @NotNull
-    @JsonProperty
-    val annoRepo: AnnoRepoConfiguration = AnnoRepoConfiguration()
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    var archiefNr = ""
-
-    @JsonProperty
-    var volumes: List<RepublicVolume> = ArrayList()
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    var defaultVolume: String = ""
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    @Min(1)
-    var defaultOpening: Int = 1
-}
-
-class RepublicVolume {
-    @Valid
-    @NotNull
-    @JsonProperty
-    var name: String = ""
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    var invNr: String = ""
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    var imageset: String = ""
 }
