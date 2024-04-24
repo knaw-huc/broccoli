@@ -6,23 +6,12 @@ import io.dropwizard.client.JerseyClientConfiguration
 import io.dropwizard.core.Configuration
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration
 import jakarta.validation.Valid
-import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotNull
 import jakarta.ws.rs.BadRequestException
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.resources.AboutResource
 
 class BroccoliConfiguration : Configuration() {
-    @Valid
-    @NotNull
-    @JsonProperty
-    var textUri = "textrepo"
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    var iiifUri = "iiif"
-
     @Valid
     @NotNull
     @JsonProperty("swagger")
@@ -84,14 +73,6 @@ class TextRepoConfiguration {
     var apiKey: String? = null
 }
 
-class IIIFConfiguration {
-    @JsonProperty
-    var fixed: String? = null
-
-    @JsonProperty
-    var fetch: String? = null
-}
-
 class ProjectConfiguration {
     @Valid
     @JsonProperty
@@ -124,10 +105,6 @@ class ProjectConfiguration {
     @NotNull
     @JsonProperty
     val textRepo = TextRepoConfiguration()
-
-    @Valid
-    @JsonProperty
-    val iiif = IIIFConfiguration()
 }
 
 class NamedViewConfiguration {

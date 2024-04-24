@@ -42,9 +42,6 @@ logging:
 
 externalBaseUrl: ${BR_EXTERNAL_BASE_URL:-http://localhost:8080}
 
-iiifUri: https://images.diginfra.net/api/pim
-textUri: https://textrepo.republic-caf.diginfra.org/api
-
 projects:
   - name: 'globalise'
     textType: LogicalText
@@ -78,8 +75,6 @@ projects:
     textRepo:
       apiKey: YnJhbWI6MmMxNmNmNDQtYjcxZC0xMWVjLTgxZmUtOGYyZWJkZjU1Nzdl
       uri: https://globalise.tt.di.huc.knaw.nl
-    iiif:
-      fetch: urn:globalise:manifest
 
   - name: 'mondriaan'
     tiers:
@@ -170,8 +165,6 @@ projects:
       uri: https://mondriaan.annorepo.dev.clariah.nl
     textRepo:
       uri: https://mondriaan.tt.di.huc.knaw.nl
-    iiif:
-      fixed: https://images.diginfra.net/api/pim/imageset/67533019-4ca0-4b08-b87e-fd5590e7a077/manifest
 
   - name: 'republic'
     tiers:
@@ -214,8 +207,6 @@ projects:
       uri: https://annorepo.republic-caf.diginfra.org
     textRepo:
       uri: https://textrepo.republic-caf.diginfra.org
-    iiif:
-      fixed: https://images.diginfra.net/api/pim/imageset/67533019-4ca0-4b08-b87e-fd5590e7a077/manifest
 
 
   - name: 'suriano'
@@ -256,9 +247,6 @@ projects:
       uri: https://suriano.annorepo.dev.clariah.nl/
     textRepo:
       uri: https://suriano.tt.di.huc.knaw.nl
-    iiif:
-      fixed: https://images.diginfra.net/api/pim/imageset/67533019-4ca0-4b08-b87e-fd5590e7a077/manifest
-
 
   - name: 'hooft'
     tiers:
@@ -284,5 +272,3 @@ projects:
     textRepo:
       apiKey: cHJveWNvbjo5Y2I2YTIyZS1jY2M5LTExZWUtYTllZS0zMzNmNDQ2YjBjZTE=
       uri: https://brieven-van-hooft.tt.di.huc.knaw.nl
-    iiif:
-      fixed: https://images.diginfra.net/api/pim/imageset/67533019-4ca0-4b08-b87e-fd5590e7a077/manifest
