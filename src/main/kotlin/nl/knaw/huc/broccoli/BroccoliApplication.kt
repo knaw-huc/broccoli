@@ -98,17 +98,6 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         return JerseyClientBuilder(environment)
             .using(jerseyClient)
             .build(name)
-        /*
-        .also {
-            log.info("client.readTimeout (before setting): ${it.configuration.getProperty(READ_TIMEOUT)}")
-            it.property(READ_TIMEOUT, 0)
-            log.info("client.readTimeout (after setting): ${it.configuration.getProperty(READ_TIMEOUT)}")
-
-            log.info("client.connectTimeout (before setting): ${it.configuration.getProperty(CONNECT_TIMEOUT)}")
-            it.property(CONNECT_TIMEOUT, 0)
-            log.info("client.connectTimeout (after setting): ${it.configuration.getProperty(CONNECT_TIMEOUT)}")
-        }
-         */
     }
 
     private fun configureProjects(projectConfigurations: List<ProjectConfiguration>): Map<String, Project> {
