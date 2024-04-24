@@ -6,23 +6,12 @@ import io.dropwizard.client.JerseyClientConfiguration
 import io.dropwizard.core.Configuration
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration
 import jakarta.validation.Valid
-import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotNull
 import jakarta.ws.rs.BadRequestException
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.resources.AboutResource
 
 class BroccoliConfiguration : Configuration() {
-    @Valid
-    @NotNull
-    @JsonProperty
-    var textUri = "textrepo"
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    var iiifUri = "iiif"
-
     @Valid
     @NotNull
     @JsonProperty("swagger")
@@ -46,16 +35,6 @@ class BroccoliConfiguration : Configuration() {
     @NotNull
     @JsonProperty
     var projects = ArrayList<ProjectConfiguration>()
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    var globalise = GlobaliseConfiguration()
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    var republic = RepublicConfiguration()
 }
 
 class AnnoRepoConfiguration {
@@ -84,14 +63,6 @@ class TextRepoConfiguration {
     var apiKey: String? = null
 }
 
-class IIIFConfiguration {
-    @JsonProperty
-    var fixed: String? = null
-
-    @JsonProperty
-    var fetch: String? = null
-}
-
 class ProjectConfiguration {
     @Valid
     @JsonProperty
@@ -99,7 +70,7 @@ class ProjectConfiguration {
 
     @Valid
     @JsonProperty
-    val textType: String = "Text"  // e.g., "Text" or "LogicalText"
+    var textType: String = "Text"  // e.g., "Text" or "LogicalText"
 
     @Valid
     @JsonProperty
@@ -124,10 +95,6 @@ class ProjectConfiguration {
     @NotNull
     @JsonProperty
     val textRepo = TextRepoConfiguration()
-
-    @Valid
-    @JsonProperty
-    val iiif = IIIFConfiguration()
 }
 
 class NamedViewConfiguration {
@@ -151,8 +118,9 @@ class ViewConfiguration {
     @Valid
     @NotNull
     @JsonProperty
-    val scope: AnnoScope = AnnoScope.WITHIN
+    var scope: AnnoScope = AnnoScope.WITHIN
 
+    @Suppress("UNUSED") // usage can change via config.yml
     enum class AnnoScope(val toAnnoRepoScope: String) {
         OVERLAP(Constants.AR_OVERLAP_WITH_TEXT_ANCHOR_RANGE),
         WITHIN(Constants.AR_WITHIN_TEXT_ANCHOR_RANGE);
@@ -191,6 +159,7 @@ class TierConfiguration {
 
     override fun toString(): String = "$name (${type.name.lowercase()})"
 
+    @Suppress("UNUSED") // usage can change via config.yml
     enum class Type(val toAnnoRepoQuery: (String) -> Any) {
         NUM(::parseIntOrBadRequest),
         STR(::identity);
@@ -254,98 +223,4 @@ class IndexFieldConfiguration {
     @Valid
     @JsonProperty
     val type: String? = null
-}
-
-
-class GlobaliseConfiguration {
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    val annoRepo = AnnoRepoConfiguration()
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    val textRepo = TextRepoConfiguration()
-
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    var archiefNr = ""
-
-    @JsonProperty
-    var documents: List<GlobaliseDocument> = ArrayList()
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    val defaultDocument: String = ""
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    @Min(1)
-    val defaultOpening: Int = 1
-
-}
-
-class GlobaliseDocument {
-    @Valid
-    @NotNull
-    @JsonProperty
-    var name: String = ""
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    var invNr: String = ""
-
-    @Valid
-    @JsonProperty
-    var manifest: String? = null
-}
-
-class RepublicConfiguration {
-    @Valid
-    @NotNull
-    @JsonProperty
-    val annoRepo: AnnoRepoConfiguration = AnnoRepoConfiguration()
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    var archiefNr = ""
-
-    @JsonProperty
-    var volumes: List<RepublicVolume> = ArrayList()
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    var defaultVolume: String = ""
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    @Min(1)
-    var defaultOpening: Int = 1
-}
-
-class RepublicVolume {
-    @Valid
-    @NotNull
-    @JsonProperty
-    var name: String = ""
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    var invNr: String = ""
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    var imageset: String = ""
 }
