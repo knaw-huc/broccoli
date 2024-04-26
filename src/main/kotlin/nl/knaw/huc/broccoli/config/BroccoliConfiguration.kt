@@ -1,13 +1,11 @@
 package nl.knaw.huc.broccoli.config
 
-import arrow.core.identity
 import com.fasterxml.jackson.annotation.JsonProperty
 import io.dropwizard.client.JerseyClientConfiguration
 import io.dropwizard.core.Configuration
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotNull
-import jakarta.ws.rs.BadRequestException
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.resources.AboutResource
 
@@ -73,9 +71,9 @@ class ProjectConfiguration {
     var textType: String = "Text"  // e.g., "Text" or "LogicalText"
 
     @Valid
-    @JsonProperty
     @NotNull
-    val tiers: List<TierConfiguration> = ArrayList()
+    @JsonProperty
+    val topTier: String = "tf:File"
 
     @Valid
     @JsonProperty
@@ -141,37 +139,6 @@ class ViewAnnoConstraint {
     @JsonProperty
     val value: String = ""
 }
-
-class TierConfiguration {
-    @Valid
-    @NotNull
-    @JsonProperty
-    val name: String = ""
-
-    @Valid
-    @NotNull
-    @JsonProperty
-    val type = Type.STR
-
-    @Valid
-    @JsonProperty
-    val anno: String? = null
-
-    override fun toString(): String = "$name (${type.name.lowercase()})"
-
-    @Suppress("UNUSED") // usage can change via config.yml
-    enum class Type(val toAnnoRepoQuery: (String) -> Any) {
-        NUM(::parseIntOrBadRequest),
-        STR(::identity);
-    }
-}
-
-fun parseIntOrBadRequest(str: String): Int =
-    try {
-        Integer.valueOf(str)
-    } catch (malformed: NumberFormatException) {
-        throw BadRequestException("${malformed.message}: expected 'int' (wrong tier / project?)")
-    }
 
 class BrintaConfiguration {
     @Valid

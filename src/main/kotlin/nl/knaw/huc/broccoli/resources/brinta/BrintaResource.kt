@@ -128,11 +128,12 @@ class BrintaResource(
     fun fillIndex(
         @PathParam("projectId") projectId: String,      // e.g., "republic"
         @PathParam("indexName") indexName: String,      // e.g., "resolutions"
-        @QueryParam("tierMeta") tierMeta: String?,      // e.g., 'file'
+        @QueryParam("tierAnno") tierAnno: String?,      // e.g., 'tf:File'
         @QueryParam("tierValues") tierValues: String?,  // e.g., "1728" (optional, if not given: index all)
         @QueryParam("take") take: Int? = null,          // testing param, only index first 'take' items
     ): Response {
         val project = getProject(projectId)
+        val joinSeparator = project.brinta.joinSeparator ?: ""
 
         logger.atInfo()
             .setMessage("Filling index")
@@ -142,12 +143,17 @@ class BrintaResource(
 
         val index = getIndex(project, indexName)
 
-        val topTier = project.tiers[0]
-        val topTierValue = tierValues
+        val requestedTiers = tierValues
             ?.split(',')
-            ?.map { tierValue -> Pair(tierMeta ?: topTier.name, tierValue) }
+            ?.map { tierValue -> Pair(tierAnno ?: project.topTier, tierValue) }
             ?.also { logger.info(" indexing tier: $it") }
             ?: emptyList()
+
+        val todo = project.annoRepo.findByTiers(
+            bodyType = project.topTier,
+            tiers = requestedTiers
+        )
+        logger.atInfo().log("Indexing {} items: ", todo.size)
 
         val ok = mutableListOf<String>()
         val err = mutableListOf<Map<*, *>>()
@@ -156,14 +162,6 @@ class BrintaResource(
             "err" to err
         )
 
-        val joinSeparator = project.brinta.joinSeparator ?: ""
-
-        val todo = project.annoRepo.findByTiers(
-            bodyType = topTier.anno ?: topTier.name.capitalize(),
-            tiers = topTierValue
-        )
-
-        logger.atInfo().log("Indexing {} items: ", todo.size)
         todo.forEachIndexed { i, cur ->
             logger.atInfo().log("Indexing #{} -> {}: {}", i, cur.bodyType(), cur.bodyId())
 
@@ -295,8 +293,6 @@ class BrintaResource(
     private fun Response.readEntityAsJsonString(): String = readEntity(String::class.java) ?: ""
 
     private fun Map<String, Any>.toJsonString() = jacksonObjectMapper().writeValueAsString(this)
-
-    private fun String.capitalize(): String = replaceFirstChar(Char::uppercase)
 
     private fun getProject(projectId: String): Project {
         return projects[projectId]
