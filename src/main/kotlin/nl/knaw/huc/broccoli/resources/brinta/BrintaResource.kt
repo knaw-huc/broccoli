@@ -1,6 +1,5 @@
 package nl.knaw.huc.broccoli.resources.brinta
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.jayway.jsonpath.PathNotFoundException
 import jakarta.ws.rs.*
 import jakarta.ws.rs.client.Client
@@ -16,6 +15,8 @@ import nl.knaw.huc.broccoli.api.ResourcePaths.BRINTA
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
+import nl.knaw.huc.broccoli.service.readEntityAsJsonString
+import nl.knaw.huc.broccoli.service.toJsonString
 import org.slf4j.LoggerFactory
 
 @Path("$BRINTA/{projectId}")
@@ -280,10 +281,6 @@ class BrintaResource(
                     }
                 }
             }
-
-    private fun Response.readEntityAsJsonString(): String = readEntity(String::class.java) ?: ""
-
-    private fun Map<String, Any>.toJsonString() = jacksonObjectMapper().writeValueAsString(this)
 
     private fun getProject(projectId: String): Project {
         return projects[projectId]
