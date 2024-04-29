@@ -303,11 +303,7 @@ class BrintaResource(
 
         @JvmStatic
         fun fetchTextSegmentsLocal(textLines: List<String>, textURL: String): List<String> {
-            logger.atInfo().log("fetchTextSegmentsLocal: URL={}", textURL)
-
             val coords = textURL.indexOf("segments/index/") + "segments/index/".length
-            logger.atInfo().log("fetchTextSegmentsLocal: coords={}", textURL.substring(coords))
-
             val parts = textURL.substring(coords).split('/')
             return when (parts.size) {
                 2 -> {
