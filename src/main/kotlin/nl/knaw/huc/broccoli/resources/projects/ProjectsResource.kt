@@ -353,7 +353,7 @@ class ProjectsResource(
         if (views.isNotEmpty()) result["views"] = views
 
         if (wanted.contains("iiif")) {
-            val bodyTypes = isIn(setOf(project.topTier))
+            val bodyTypes = isIn(setOf(project.topTierBodyType))
             val manifest = timeExecution({
                 annoRepo.fetchOverlap(textSource, textSelector.start(), textSelector.end(), bodyTypes)
                     .map { it.read<Map<String, Any>>("$") }.toList()

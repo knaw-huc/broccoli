@@ -73,7 +73,7 @@ class ProjectConfiguration {
     @Valid
     @NotNull
     @JsonProperty
-    val topTier: String = "tf:File"
+    val topTierBodyType: String = "tf:File"
 
     @Valid
     @JsonProperty

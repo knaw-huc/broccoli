@@ -106,7 +106,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             config.name to Project(
                 name = config.name,
                 textType = config.textType,
-                topTier = config.topTier,
+                topTierBodyType = config.topTierBodyType,
                 views = config.views.associate { view -> view.name to view.conf },
                 brinta = config.brinta,
                 textRepo = createTextRepo(config.textRepo),

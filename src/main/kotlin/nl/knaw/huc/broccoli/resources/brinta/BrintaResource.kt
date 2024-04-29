@@ -128,8 +128,8 @@ class BrintaResource(
     fun fillIndex(
         @PathParam("projectId") projectId: String,      // e.g., "republic"
         @PathParam("indexName") indexName: String,      // e.g., "resolutions"
-        @QueryParam("tierAnno") tierAnno: String?,      // e.g., 'tf:File'
-        @QueryParam("tierValues") tierValues: String?,  // e.g., "1728" (optional, if not given: index all)
+        @QueryParam("metaAnno") metaAnno: String?,      // e.g., 'tf:File'
+        @QueryParam("metaValues") metaValues: String?,  // e.g., "1728" (optional, if not given: index all)
         @QueryParam("take") take: Int? = null,          // testing param, only index first 'take' items
     ): Response {
         val project = getProject(projectId)
@@ -143,15 +143,16 @@ class BrintaResource(
 
         val index = getIndex(project, indexName)
 
-        val requestedTiers = tierValues
+        val metadataKey = metaAnno ?: project.topTierBodyType
+        val requestedMetadataPairs = metaValues
             ?.split(',')
-            ?.map { tierValue -> Pair(tierAnno ?: project.topTier, tierValue) }
-            ?.also { logger.info(" indexing tier: $it") }
+            ?.map { metadataValue -> Pair(metadataKey, metadataValue) }
+            ?.also { logger.info(" indexing body.metadata pair: $it") }
             ?: emptyList()
 
-        val todo = project.annoRepo.findByTiers(
-            bodyType = project.topTier,
-            tiers = requestedTiers
+        val todo = project.annoRepo.findByMetadata(
+            bodyType = project.topTierBodyType,
+            metadata = requestedMetadataPairs
         )
         logger.atInfo().log("Indexing {} items: ", todo.size)
 
@@ -165,27 +166,26 @@ class BrintaResource(
         todo.forEachIndexed { i, cur ->
             logger.atInfo().log("Indexing #{} -> {}: {}", i, cur.bodyType(), cur.bodyId())
 
-            // fetch all text lines for this tier
+            // fetch all text lines for current item
             val textLines = fetchTextLines(project, cur)
 
-            // find all annotations with body.type matching this index, overlapping with top tier's range of lines
+            // find annotations with body.type corresponding to this index, overlapping with current item's text range
             val target = cur.withField<Any>("Text", "source").first()
             val selector = target["selector"] as Map<*, *>
-            var annos = project.annoRepo.streamOverlap(
+            project.annoRepo.streamOverlap(
+                bodyTypes = Constants.isIn(index.bodyTypes.toSet()),
                 source = target["source"] as String,
                 start = selector["start"] as Int,
-                end = selector["end"] as Int,
-                bodyTypes = Constants.isIn(index.bodyTypes.toSet())
-            )
-
-            if (take != null) {
-                logger.atInfo().log("limiting: only indexing first {} item(s)", take)
-                annos = annos.take(take)
+                end = selector["end"] as Int
+            ).apply {
+                take?.let { limit ->
+                    logger.atInfo().log("limiting: only indexing first {} item(s)", limit)
+                    take(limit)
+                }
             }
-
-            annos.map(::AnnoRepoSearchResult)
+                .map(::AnnoRepoSearchResult)
                 .forEach { anno ->
-                    // use anno's body.id as documentId in index
+                    // use anno's body.id as Elastic documentId
                     val docId = anno.bodyId()
                     logger.atDebug().log("gathering index info for annoId / ES docId: {}", docId)
 
@@ -200,16 +200,7 @@ class BrintaResource(
                             val textURL = textTarget["source"] as String
                             val fetchedSegments = fetchTextSegmentsLocal(textLines, textURL)
                             if (fetchedSegments.isNotEmpty()) {
-                                if (logger.isTraceEnabled) { // skip iterator if trace is off anyway
-                                    fetchedSegments.forEachIndexed { i, s ->
-                                        logger.atTrace().log("fetchedSegments[{}] = [{}]", i, s)
-                                    }
-                                } else logger.atDebug().log("fetching {} segments", fetchedSegments.size)
-
-                                val joinedSegments = fetchedSegments.joinToString(joinSeparator)
-                                logger.atTrace().log("joinedSegments.length: {}", joinedSegments.length)
-
-                                payload["text"] = joinedSegments
+                                payload["text"] = fetchedSegments.joinToString(joinSeparator)
                                 ok.add(docId)
                             } else {
                                 logger.atWarn().log("Failed to fetch text for {} from {}", docId, textURL)
@@ -256,8 +247,8 @@ class BrintaResource(
         return Response.ok(result).build()
     }
 
-    private fun fetchTextLines(project: Project, tier: AnnoRepoSearchResult): List<String> =
-        tier.withoutField<String>(project.textType, "selector")
+    private fun fetchTextLines(project: Project, anno: AnnoRepoSearchResult): List<String> =
+        anno.withoutField<String>(project.textType, "selector")
             .also { if (it.size > 1) logger.warn("multiple Text targets without selector: $it") }
             .first() // more than one text target without selector? -> arbitrarily choose the first
             .let { textTarget ->
