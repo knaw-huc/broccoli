@@ -45,12 +45,6 @@ externalBaseUrl: ${BR_EXTERNAL_BASE_URL:-http://localhost:8080}
 projects:
   - name: 'globalise'
     textType: LogicalText
-    tiers:
-      - name: document
-        type: str
-        anno: na:File
-      - name: opening
-        type: num
     annoRepo:
       apiKey: 02d01d02-be58-4e9e-95c2-387715996bb5
       containerName: globalise-2024-03-18
@@ -77,13 +71,6 @@ projects:
       uri: https://globalise.tt.di.huc.knaw.nl
 
   - name: 'mondriaan'
-    tiers:
-      - name: folder
-        type: str
-        anno: tf:Folder
-      - name: letterid
-        type: str
-        anno: tf:Letter
     views:
       - name: textOrig
         conf:
@@ -120,6 +107,7 @@ projects:
               value: postalData
     brinta:
       uri: http://localhost:9200
+      deleteKey: "mondriaan-dev-mag-weg"
       indices:
         - name: divs
           bodyTypes: [ tf:Letter, tei:Div, tei:Rs ]
@@ -161,17 +149,12 @@ projects:
               path: "$.body.metadata.location"
               type: keyword
     annoRepo:
-      containerName: 'mondriaan-letters-0.8.12'
+      containerName: 'mondriaan-0.9.0'
       uri: https://mondriaan.annorepo.dev.clariah.nl
     textRepo:
       uri: https://mondriaan.tt.di.huc.knaw.nl
 
   - name: 'republic'
-    tiers:
-      - name: volume
-        type: str
-      - name: opening
-        type: num
     textType: LogicalText
     brinta:
       uri: http://localhost:9200
@@ -210,13 +193,7 @@ projects:
 
 
   - name: 'suriano'
-    tiers:
-      - name: folder
-        type: str
-        anno: tf:Folder
-      - name: file
-        type: str
-        anno: tf:File
+    topTierBodyType: File
     brinta:
       uri: http://localhost:9200
       deleteKey: "local-dev-mag-weg"
@@ -243,19 +220,12 @@ projects:
               path: "$.body.metadata.senderloc"
               type: keyword
     annoRepo:
-      containerName: 'suriano-0.0.4'
+      containerName: 'suriano-0.2.0'
       uri: https://suriano.annorepo.dev.clariah.nl/
     textRepo:
       uri: https://suriano.tt.di.huc.knaw.nl
 
   - name: 'hooft'
-    tiers:
-      - name: file
-        type: str
-        anno: File
-      - name: letter
-        type: str
-        anno: Letter
     annoRepo:
       containerName: 'brieven-van-hooft'
       uri: https://brieven-van-hooft.annorepo.dev.clariah.nl/
@@ -263,7 +233,7 @@ projects:
       uri: http://localhost:9200
       deleteKey: hooft-dev-mag-weg
       indices:
-        - name: letters-2024-03-20
+        - name: letters-2024-03-28
           bodyTypes: [ Letter ]
           fields:
             - name: bodyType
@@ -272,3 +242,50 @@ projects:
     textRepo:
       apiKey: cHJveWNvbjo5Y2I2YTIyZS1jY2M5LTExZWUtYTllZS0zMzNmNDQ2YjBjZTE=
       uri: https://brieven-van-hooft.tt.di.huc.knaw.nl
+
+  - name: 'vangogh'
+    views:
+      - name: textOrig
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: original
+      - name: textTrans
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: translation
+    brinta:
+      deleteKey: vangogh-dev-mag-weg
+      uri: http://localhost:9200
+      indices:
+        - name: "letters-vangogh-0.2.0"
+          bodyTypes: [ tf:Letter ]
+          fields:
+            - name: correspondent
+              path: "$.body.metadata.correspondent"
+              type: keyword
+            - name: institution
+              path: "$.body.metadata.institution"
+              type: keyword
+            - name: location
+              path: "$.body.metadata.location"
+              type: keyword
+            - name: msid
+              path: "$.body.metadata.msid"
+              type: keyword
+            - name: period
+              path: "$.body.metadata.period"
+              type: keyword
+            - name: periodLong
+              path: "$.body.metadata.periodLong"
+              type: keyword
+    annoRepo:
+      containerName: 'vangogh-0.2.0'
+      uri: https://vangogh.annorepo.dev.clariah.nl
+    textRepo:
+      uri: https://vangogh.tt.di.huc.knaw.nl

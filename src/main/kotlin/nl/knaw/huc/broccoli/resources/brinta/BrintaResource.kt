@@ -1,6 +1,5 @@
 package nl.knaw.huc.broccoli.resources.brinta
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.jayway.jsonpath.PathNotFoundException
 import jakarta.ws.rs.*
 import jakarta.ws.rs.client.Client
@@ -16,6 +15,8 @@ import nl.knaw.huc.broccoli.api.ResourcePaths.BRINTA
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
+import nl.knaw.huc.broccoli.service.readEntityAsJsonString
+import nl.knaw.huc.broccoli.service.toJsonString
 import org.slf4j.LoggerFactory
 
 @Path("$BRINTA/{projectId}")
@@ -128,11 +129,12 @@ class BrintaResource(
     fun fillIndex(
         @PathParam("projectId") projectId: String,      // e.g., "republic"
         @PathParam("indexName") indexName: String,      // e.g., "resolutions"
-        @QueryParam("tierMeta") tierMeta: String?,      // e.g., 'file'
-        @QueryParam("tierValues") tierValues: String?,  // e.g., "1728" (optional, if not given: index all)
+        @QueryParam("metaAnno") metaAnno: String?,      // e.g., 'tf:File'
+        @QueryParam("metaValues") metaValues: String?,  // e.g., "1728" (optional, if not given: index all)
         @QueryParam("take") take: Int? = null,          // testing param, only index first 'take' items
     ): Response {
         val project = getProject(projectId)
+        val joinSeparator = project.brinta.joinSeparator ?: ""
 
         logger.atInfo()
             .setMessage("Filling index")
@@ -142,12 +144,18 @@ class BrintaResource(
 
         val index = getIndex(project, indexName)
 
-        val topTier = project.tiers[0]
-        val topTierValue = tierValues
+        val metadataKey = metaAnno ?: project.topTierBodyType
+        val requestedMetadataPairs = metaValues
             ?.split(',')
-            ?.map { tierValue -> Pair(tierMeta ?: topTier.name, tierValue) }
-            ?.also { logger.info(" indexing tier: $it") }
+            ?.map { metadataValue -> Pair(metadataKey, metadataValue) }
+            ?.also { logger.info(" indexing body.metadata pair: $it") }
             ?: emptyList()
+
+        val todo = project.annoRepo.findByMetadata(
+            bodyType = project.topTierBodyType,
+            metadata = requestedMetadataPairs
+        )
+        logger.atInfo().log("Indexing {} items: ", todo.size)
 
         val ok = mutableListOf<String>()
         val err = mutableListOf<Map<*, *>>()
@@ -156,38 +164,29 @@ class BrintaResource(
             "err" to err
         )
 
-        val joinSeparator = project.brinta.joinSeparator ?: ""
-
-        val todo = project.annoRepo.findByTiers(
-            bodyType = topTier.anno ?: topTier.name.capitalize(),
-            tiers = topTierValue
-        )
-
-        logger.atInfo().log("Indexing {} items: ", todo.size)
         todo.forEachIndexed { i, cur ->
             logger.atInfo().log("Indexing #{} -> {}: {}", i, cur.bodyType(), cur.bodyId())
 
-            // fetch all text lines for this tier
+            // fetch all text lines for current item
             val textLines = fetchTextLines(project, cur)
 
-            // find all annotations with body.type matching this index, overlapping with top tier's range of lines
+            // find annotations with body.type corresponding to this index, overlapping with current item's text range
             val target = cur.withField<Any>("Text", "source").first()
             val selector = target["selector"] as Map<*, *>
-            var annos = project.annoRepo.streamOverlap(
+            project.annoRepo.streamOverlap(
+                bodyTypes = Constants.isIn(index.bodyTypes.toSet()),
                 source = target["source"] as String,
                 start = selector["start"] as Int,
-                end = selector["end"] as Int,
-                bodyTypes = Constants.isIn(index.bodyTypes.toSet())
-            )
-
-            if (take != null) {
-                logger.atInfo().log("limiting: only indexing first {} item(s)", take)
-                annos = annos.take(take)
+                end = selector["end"] as Int
+            ).apply {
+                take?.let { limit ->
+                    logger.atInfo().log("limiting: only indexing first {} item(s)", limit)
+                    take(limit)
+                }
             }
-
-            annos.map(::AnnoRepoSearchResult)
+                .map(::AnnoRepoSearchResult)
                 .forEach { anno ->
-                    // use anno's body.id as documentId in index
+                    // use anno's body.id as Elastic documentId
                     val docId = anno.bodyId()
                     logger.atDebug().log("gathering index info for annoId / ES docId: {}", docId)
 
@@ -202,16 +201,7 @@ class BrintaResource(
                             val textURL = textTarget["source"] as String
                             val fetchedSegments = fetchTextSegmentsLocal(textLines, textURL)
                             if (fetchedSegments.isNotEmpty()) {
-                                if (logger.isTraceEnabled) { // skip iterator if trace is off anyway
-                                    fetchedSegments.forEachIndexed { i, s ->
-                                        logger.atTrace().log("fetchedSegments[{}] = [{}]", i, s)
-                                    }
-                                } else logger.atDebug().log("fetching {} segments", fetchedSegments.size)
-
-                                val joinedSegments = fetchedSegments.joinToString(joinSeparator)
-                                logger.atTrace().log("joinedSegments.length: {}", joinedSegments.length)
-
-                                payload["text"] = joinedSegments
+                                payload["text"] = fetchedSegments.joinToString(joinSeparator)
                                 ok.add(docId)
                             } else {
                                 logger.atWarn().log("Failed to fetch text for {} from {}", docId, textURL)
@@ -258,8 +248,8 @@ class BrintaResource(
         return Response.ok(result).build()
     }
 
-    private fun fetchTextLines(project: Project, tier: AnnoRepoSearchResult): List<String> =
-        tier.withoutField<String>(project.textType, "selector")
+    private fun fetchTextLines(project: Project, anno: AnnoRepoSearchResult): List<String> =
+        anno.withoutField<String>(project.textType, "selector")
             .also { if (it.size > 1) logger.warn("multiple Text targets without selector: $it") }
             .first() // more than one text target without selector? -> arbitrarily choose the first
             .let { textTarget ->
@@ -292,12 +282,6 @@ class BrintaResource(
                 }
             }
 
-    private fun Response.readEntityAsJsonString(): String = readEntity(String::class.java) ?: ""
-
-    private fun Map<String, Any>.toJsonString() = jacksonObjectMapper().writeValueAsString(this)
-
-    private fun String.capitalize(): String = replaceFirstChar(Char::uppercase)
-
     private fun getProject(projectId: String): Project {
         return projects[projectId]
             ?: throw NotFoundException("Unknown project: $projectId. See /projects for known projects")
@@ -316,11 +300,7 @@ class BrintaResource(
 
         @JvmStatic
         fun fetchTextSegmentsLocal(textLines: List<String>, textURL: String): List<String> {
-            logger.atInfo().log("fetchTextSegmentsLocal: URL={}", textURL)
-
             val coords = textURL.indexOf("segments/index/") + "segments/index/".length
-            logger.atInfo().log("fetchTextSegmentsLocal: coords={}", textURL.substring(coords))
-
             val parts = textURL.substring(coords).split('/')
             return when (parts.size) {
                 2 -> {

@@ -57,16 +57,13 @@ class AnnoRepo(
         return value
     }
 
-    fun findByTiers(
-        bodyType: String,
-        tiers: List<Pair<String, Any>>
-    ): List<AnnoRepoSearchResult> {
-        val query = mutableMapOf<String, Any>("body.type" to bodyType)
-        tiers.forEach { query["body.metadata.${it.first}"] = it.second }
-        log.info("querying annorepo: $query")
-        return cacheQuery(defaultContainerName, query)
+    fun findByMetadata(bodyType: String, metadata: List<Pair<String, String>>) =
+        mutableMapOf("body.type" to bodyType).apply {
+            metadata.forEach { put("body.metadata.${it.first}", it.second) }
+        }
+            .also { log.atInfo().log("querying annorepo: {}", it) }
+            .let { cacheQuery(defaultContainerName, it) }
             .map(::AnnoRepoSearchResult)
-    }
 
     fun findByBodyId(bodyId: String) = findByBodyId(defaultContainerName, bodyId)
     fun findByBodyId(containerName: String, bodyId: String): AnnoRepoSearchResult {
@@ -104,6 +101,7 @@ class AnnoRepo(
             )
         )
 
+    @Suppress("UNUSED")
     fun findWithin(source: String, start: Int, end: Int, constraints: Map<String, Any>) =
         fetch(constraints.plus(AR_WITHIN_TEXT_ANCHOR_RANGE to region(source, start, end)))
 

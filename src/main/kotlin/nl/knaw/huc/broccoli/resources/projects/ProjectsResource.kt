@@ -29,7 +29,6 @@ import nl.knaw.huc.broccoli.service.anno.AnnoRepo.Offset
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
 import nl.knaw.huc.broccoli.service.anno.TextSelector
-import nl.knaw.huc.broccoli.service.capitalize
 import nl.knaw.huc.broccoli.service.extractAggregations
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
@@ -43,14 +42,6 @@ class ProjectsResource(
     private val jsonParser: ParseContext,
     private val jsonWriter: ObjectMapper
 ) {
-    companion object {
-        const val ORIGIN = "Origin"
-    }
-
-    private val logger = LoggerFactory.getLogger(javaClass)
-
-    private val queryMarker = MarkerFactory.getMarker("QRY")
-
     init {
         logger.info("init: projects=$projects, client=$client")
     }
@@ -204,57 +195,6 @@ class ProjectsResource(
     }
 
     private fun Response.readEntityAsJsonString(): String = readEntity(String::class.java) ?: ""
-
-    @GET
-    @Path("{projectId}/{bodyType}/{tiers: .*}")
-    fun findByTiers(
-        @PathParam("projectId") projectId: String,
-        @PathParam("bodyType") bodyType: String,
-        @PathParam("tiers") tierParams: String,
-        @QueryParam("includeResults") @DefaultValue("bodyId") includeResultsParam: String,
-    ): Response {
-        val result = mutableMapOf<String, Any>()
-
-        val project = getProject(projectId)
-
-        val interestedIn = parseRestrictedSubset(setOf("anno", "bodyId"), includeResultsParam)
-
-        val formalTiers = project.tiers
-        val actualTiers = tierParams.split('/').filter { it.isNotBlank() }
-        if (actualTiers.size != formalTiers.size) {
-            throw BadRequestException("Must specify value for all formal tiers: $formalTiers, got $actualTiers instead")
-        }
-
-        result["request"] = mapOf(
-            "projectId" to projectId,
-            "bodyType" to bodyType,
-            "tiers" to actualTiers,
-            "includeResults" to interestedIn
-        )
-
-        val queryTiers = mutableListOf<Pair<String, Any>>()
-        formalTiers.forEachIndexed { index, formalTier ->
-            queryTiers.add(Pair(formalTier.name, formalTier.type.toAnnoRepoQuery(actualTiers[index])))
-        }
-
-        val searchResult = project.annoRepo.findByTiers(bodyType, queryTiers)
-            .firstOrNull()
-            ?: throw NotFoundException("Nothing found for $bodyType, $queryTiers")
-
-        if (interestedIn.contains("bodyId")) {
-            result["bodyId"] = searchResult.bodyId()
-        }
-
-        if (interestedIn.contains("anno")) {
-            result["anno"] = searchResult.items()
-        }
-
-        return Response.ok(result)
-            // TODO: add a Link header? -> which rel to use?
-            //  https://www.iana.org/assignments/link-relations/link-relations.xhtml
-            // .link(location, "canonical")
-            .build()
-    }
 
     @GET
     @Path("{projectId}/{bodyId}")
@@ -413,9 +353,7 @@ class ProjectsResource(
         if (views.isNotEmpty()) result["views"] = views
 
         if (wanted.contains("iiif")) {
-            val tier0 = project.tiers[0].let { it.anno ?: it.name.capitalize() }
-            logger.info("tier0: $tier0")
-            val bodyTypes = isIn(setOf(tier0))
+            val bodyTypes = isIn(setOf(project.topTierBodyType))
             val manifest = timeExecution({
                 annoRepo.fetchOverlap(textSource, textSelector.start(), textSelector.end(), bodyTypes)
                     .map { it.read<Map<String, Any>>("$") }.toList()
@@ -591,6 +529,12 @@ class ProjectsResource(
         fun relativeTo(offset: Int): TextMarkers {
             return TextMarkers(start.relativeTo(offset), end.relativeTo(offset))
         }
+    }
+
+    companion object {
+        const val ORIGIN = "Origin"
+        private val logger = LoggerFactory.getLogger(ProjectsResource::class.java)
+        private val queryMarker = MarkerFactory.getMarker("QRY")
     }
 
 }
