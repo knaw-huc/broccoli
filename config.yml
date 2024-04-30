@@ -193,7 +193,7 @@ projects:
 
 
   - name: 'suriano'
-    topTierBodyType: File
+    topTierBodyType: tf:File
     brinta:
       uri: http://localhost:9200
       deleteKey: "local-dev-mag-weg"
@@ -219,6 +219,9 @@ projects:
             - name: senderLoc
               path: "$.body.metadata.senderloc"
               type: keyword
+            - name: summary
+              path: "$.body.metadata.summary"
+              type: text
     annoRepo:
       containerName: 'suriano-0.2.0'
       uri: https://suriano.annorepo.dev.clariah.nl/
