@@ -68,16 +68,21 @@ data class Sort(
 
 data class HighlightTerm(
     @JsonIgnore val text: String,
-    @JsonIgnore val fragmentSize: Int
+    @JsonIgnore val fragmentSize: Int,
+    @JsonIgnore val extraFields: List<String>? = null
 ) {
     @JsonAnyGetter
     fun toJson() = mapOf(
-        "fields" to mapOf(
+        "fields" to mutableMapOf(
             "text" to mapOf(
                 "type" to "unified",
                 "fragment_size" to fragmentSize,
             )
-        ),
+        ).apply {
+            extraFields?.forEach {
+                put(it, mapOf("type" to "unified"))
+            }
+        },
         "highlight_query" to FullTextQuery(QueryString(text))
     )
 }
