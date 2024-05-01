@@ -48,8 +48,13 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
             )
         ),
 
-        highlight = query.text
-            ?.let { HighlightTerm(it, fragmentSize) },
+        highlight = query.text?.let { queryText ->
+            HighlightTerm(
+                text = queryText,
+                fragmentSize = fragmentSize,
+                extraFields = index.fields.filter { it.type == "text" }.map { it.name }
+            )
+        },
 
         aggregations = (query.aggregations ?: index.fields.map { it.name })
             .mapNotNull { fieldName ->
