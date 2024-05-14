@@ -155,13 +155,14 @@ projects:
       uri: https://mondriaan.tt.di.huc.knaw.nl
 
   - name: 'republic'
+    topTierBodyType: Volume
     textType: LogicalText
     brinta:
       uri: http://localhost:9200
-      deleteKey: 'republic-acc-mag-weg'
+      deleteKey: 'republic-dev-mag-weg'
       joinSeparator: " "
       indices:
-        - name: 'republic-wordcount'
+        - name: 'republic-2024.01.19'
           bodyTypes: [ Resolution, AttendanceList ]
           fields:
             - name: bodyType
