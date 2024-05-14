@@ -57,15 +57,22 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
         },
 
         aggregations = (query.aggregations ?: index.fields.map { it.name })
-            .mapNotNull { fieldName ->
+            .map { parseOrder(it) }
+            .mapNotNull { (fieldName: String, fieldOrder: Map<String, Any>?) ->
                 when (index.fields.find { it.name == fieldName }?.type) {
-                    "keyword", "short", "byte" -> TermAggregation(fieldName)
+                    "keyword", "short", "byte" -> TermAggregation(fieldName, fieldOrder)
                     "date" -> DateAggregation(fieldName)
                     else -> null
                 }
             }
             .let { Aggregations(it) }
     )
+
+    private fun parseOrder(aggName: String): Pair<String, Map<String, Any>?> =
+        aggName.substringBeforeLast(":") to
+                if (aggName.endsWith(":keyAsc")) mapOf("_key" to "asc")
+                else if (aggName.endsWith(":keyDesc")) mapOf("_key" to "desc")
+                else null
 
     fun toMultiFacetCountQueries() = mutableListOf<ElasticQuery>().apply {
         query.terms?.forEach { curTerm ->
