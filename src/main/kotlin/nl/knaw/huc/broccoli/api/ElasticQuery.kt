@@ -108,12 +108,15 @@ class DateAggregation(name: String) : Aggregation(name) {
     )
 }
 
-class TermAggregation(name: String, private val sortOrder: Map<String, Any>? = null) : Aggregation(name) {
+class TermAggregation(
+    name: String,
+    private val sortOrder: Map<String, Any>? = null,
+    private val optSize: Int? = null
+) : Aggregation(name) {
     override fun toJson() = mapOf(
-        "terms" to mutableMapOf<String, Any>(
-            "field" to name,
-            "size" to 250
-        ).apply {
+        "terms" to mutableMapOf<String, Any>().apply {
+            put("field", name)
+            put("size", optSize ?: 10)
             sortOrder?.let { put("order", it) }
         }
     )
