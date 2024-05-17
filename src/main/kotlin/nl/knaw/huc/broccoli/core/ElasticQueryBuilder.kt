@@ -2,6 +2,7 @@ package nl.knaw.huc.broccoli.core
 
 import nl.knaw.huc.broccoli.api.*
 import nl.knaw.huc.broccoli.config.IndexConfiguration
+import org.slf4j.LoggerFactory
 import kotlin.properties.Delegates
 
 class ElasticQueryBuilder(private val index: IndexConfiguration) {
@@ -57,22 +58,23 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
         },
 
         aggregations = (query.aggregations ?: index.fields.map { it.name })
-            .map { parseOrder(it) }
-            .mapNotNull { (fieldName: String, fieldOrder: Map<String, Any>?) ->
-                when (index.fields.find { it.name == fieldName }?.type) {
-                    "keyword", "short", "byte" -> TermAggregation(fieldName, fieldOrder)
-                    "date" -> DateAggregation(fieldName)
+            .map { parseAggregationParameters(it) }
+            .also { logger.atDebug().addArgument(it).log("parsed aggregation params: {}") }
+            .mapNotNull { args ->
+                when (index.fields.find { it.name == args.fieldName }?.type) {
+                    "keyword", "short", "byte" ->
+                        TermAggregation(
+                            name = args.fieldName,
+                            numResults = args.numResults,
+                            sortOrder = args.sortOrder
+                        )
+
+                    "date" -> DateAggregation(args.fieldName)
                     else -> null
                 }
             }
             .let { Aggregations(it) }
     )
-
-    private fun parseOrder(aggName: String): Pair<String, Map<String, Any>?> =
-        aggName.substringBeforeLast(":") to
-                if (aggName.endsWith(":keyAsc")) mapOf("_key" to "asc")
-                else if (aggName.endsWith(":keyDesc")) mapOf("_key" to "desc")
-                else null
 
     fun toMultiFacetCountQueries() = mutableListOf<ElasticQuery>().apply {
         query.terms?.forEach { curTerm ->
@@ -102,4 +104,29 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
             ))
         }
     }.toList()
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(ElasticQueryBuilder::class.java)
+
+        private data class ParsedAggParams(
+            val fieldName: String,
+            var numResults: Int? = null,
+            var sortOrder: Map<String, Any>? = null
+        )
+
+        private val orderParams = mapOf(
+            "keyAsc" to mapOf("_key" to "asc"),
+            "keyDesc" to mapOf("_key" to "desc")
+        )
+
+        private fun parseAggregationParameters(aggName: String): ParsedAggParams =
+            ParsedAggParams(aggName.substringBeforeLast(delimiter = ':')).apply {
+                aggName.substringAfterLast(delimiter = ':', missingDelimiterValue = "")
+                    .split(',')
+                    .forEach { param ->
+                        param.toIntOrNull()?.let { numResults = it }
+                        orderParams[param]?.let { sortOrder = it }
+                    }
+            }
+    }
 }
