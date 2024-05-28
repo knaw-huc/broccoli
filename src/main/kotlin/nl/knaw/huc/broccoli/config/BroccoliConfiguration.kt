@@ -175,6 +175,37 @@ class IndexConfiguration {
     @NotNull
     @JsonProperty
     val fields: List<IndexFieldConfiguration> = ArrayList()
+
+    @Valid
+    @JsonProperty
+    val enrich: List<IndexEnrichmentConfiguration> = ArrayList()
+}
+
+class IndexEnrichmentConfiguration {
+    @Valid
+    @NotNull
+    @JsonProperty
+    val from: List<String> = ArrayList()
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    val via: List<EnrichmentViaConfiguration> = ArrayList()
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    val fields: List<IndexFieldConfiguration> = ArrayList()
+}
+
+class EnrichmentViaConfiguration {
+    @Valid
+    @JsonProperty
+    val equality: String? = null
+
+    @Valid
+    @JsonProperty
+    val overlap: String? = null
 }
 
 class IndexFieldConfiguration {
