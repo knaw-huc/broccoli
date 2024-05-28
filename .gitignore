@@ -20,4 +20,4 @@ target/
 globalise.http
 /globalise.http
 /mondriaan.http
-/config.yml-
+/config.yml*
