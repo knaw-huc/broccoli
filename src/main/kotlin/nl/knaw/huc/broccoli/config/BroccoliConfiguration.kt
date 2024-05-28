@@ -169,7 +169,7 @@ class IndexConfiguration {
     @Valid
     @NotNull
     @JsonProperty
-    val bodyTypes: List<String> = ArrayList()
+    val bodyTypes: Set<String> = HashSet()
 
     @Valid
     @NotNull
@@ -185,7 +185,7 @@ class IndexEnrichmentConfiguration {
     @Valid
     @NotNull
     @JsonProperty
-    val from: List<String> = ArrayList()
+    val from: Set<String> = HashSet()
 
     @Valid
     @NotNull

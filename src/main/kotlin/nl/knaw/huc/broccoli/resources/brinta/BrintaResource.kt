@@ -164,6 +164,9 @@ class BrintaResource(
             "err" to err
         )
 
+        // gather all interesting bodyTypes into a single set
+        val bodyTypes = index.bodyTypes.union(index.enrich.map { it.from }.flatten())
+
         todo.forEachIndexed { i, cur ->
             logger.atInfo().log("Indexing #{} -> {}: {}", i, cur.bodyType(), cur.bodyId())
 
@@ -174,7 +177,7 @@ class BrintaResource(
             val target = cur.withField<Any>("Text", "source").first()
             val selector = target["selector"] as Map<*, *>
             project.annoRepo.streamOverlap(
-                bodyTypes = Constants.isIn(index.bodyTypes.toSet()),
+                bodyTypes = Constants.isIn(bodyTypes),
                 source = target["source"] as String,
                 start = selector["start"] as Int,
                 end = selector["end"] as Int
