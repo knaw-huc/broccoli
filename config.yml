@@ -162,11 +162,29 @@ projects:
       deleteKey: 'republic-dev-mag-weg'
       joinSeparator: " "
       indices:
-        - name: 'republic-2024.01.19'
-          bodyTypes: [ Resolution, AttendanceList ]
+        - name: 'republic-2024.05.17'
+          bodyTypes: [ Resolution, Entity, AttendanceList ]
           fields:
             - name: bodyType
               path: "$.body.type"
+              type: keyword
+            - name: entityCategory
+              path: "$.body.metadata.category"
+              type: keyword
+            - name: entityId
+              path: "$.body.metadata.entityId"
+              type: keyword
+            - name: entityLabels
+              path: "$.body.metadata.entityLabels"
+              type: keyword
+            - name: entityName
+              path: "$.body.metadata.name"
+              type: keyword
+            - name: propositionType
+              path: "$.body.metadata.propositionType"
+              type: keyword
+            - name: resolutionType
+              path: "$.body.metadata.resolutionType"
               type: keyword
             - name: sessionDate
               path: "$.body.metadata.sessionDate"
@@ -183,11 +201,11 @@ projects:
             - name: sessionWeekday
               path: "$.body.metadata.sessionWeekday"
               type: keyword
-            - name: propositionType
-              path: "$.body.metadata.propositionType"
+            - name: textType
+              path: "$.body.metadata.textType"
               type: keyword
     annoRepo:
-      containerName: republic-2024.01.19
+      containerName: republic-2024.05.17
       uri: https://annorepo.republic-caf.diginfra.org
     textRepo:
       uri: https://textrepo.republic-caf.diginfra.org
