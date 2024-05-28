@@ -189,5 +189,5 @@ class IndexFieldConfiguration {
 
     @Valid
     @JsonProperty
-    val type: String? = null
+    val type: String = "keyword"
 }

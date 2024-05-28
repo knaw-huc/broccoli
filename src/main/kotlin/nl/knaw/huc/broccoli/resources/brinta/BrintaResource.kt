@@ -50,7 +50,7 @@ class BrintaResource(
             ),
         )
         index.fields.forEach { field ->
-            field.type?.let { type -> properties[field.name] = mapOf("type" to type) }
+            field.type.let { type -> properties[field.name] = mapOf("type" to type) }
         }
 
         val mappings = mapOf("properties" to properties)
@@ -93,7 +93,7 @@ class BrintaResource(
     @Path("indices")
     fun getIndices(@PathParam("projectId") projectId: String): Response =
         getProject(projectId).brinta.indices
-            .associate { idx -> idx.name to idx.fields.associate { f -> f.name to (f.type ?: "undefined") } }
+            .associate { idx -> idx.name to idx.fields.associate { f -> f.name to (f.type) } }
             .let { Response.ok(it).build() }
 
     @DELETE

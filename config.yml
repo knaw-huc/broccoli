@@ -59,13 +59,10 @@ projects:
           fields:
             - name: bodyType
               path: "$.body.type"
-              type: keyword
             - name: invNr
               path: "$.body.metadata.inventoryNumber"
-              type: keyword
             - name: document
               path: "$.body.metadata.document"
-              type: keyword
     textRepo:
       apiKey: YnJhbWI6MmMxNmNmNDQtYjcxZC0xMWVjLTgxZmUtOGYyZWJkZjU1Nzdl
       uri: https://globalise.tt.di.huc.knaw.nl
@@ -114,40 +111,28 @@ projects:
           fields:
             - name: bodyType
               path: "$.body.type"
-              type: keyword
             - name: lang
               path: "$.body.metadata.lang"
-              type: keyword
             - name: type
               path: "$.body.metadata.type"
-              type: keyword
             - name: anno
               path: "$.body.metadata.anno"
-              type: keyword
             - name: country
               path: "$.body.metadata.country"
-              type: keyword
             - name: institution
               path: "$.body.metadata.institution"
-              type: keyword
             - name: msid
               path: "$.body.metadata.msid"
-              type: keyword
             - name: period
               path: "$.body.metadata.period"
-              type: keyword
             - name: periodLong
               path: "$.body.metadata.periodlong"
-              type: keyword
             - name: letterId
               path: "$.body.metadata.letterid"
-              type: keyword
             - name: correspondent
               path: "$.body.metadata.correspondent"
-              type: keyword
             - name: location
               path: "$.body.metadata.location"
-              type: keyword
     annoRepo:
       containerName: 'mondriaan-0.9.0'
       uri: https://mondriaan.annorepo.dev.clariah.nl
@@ -167,25 +152,18 @@ projects:
           fields:
             - name: bodyType
               path: "$.body.type"
-              type: keyword
             - name: entityCategory
               path: "$.body.metadata.category"
-              type: keyword
             - name: entityId
               path: "$.body.metadata.entityId"
-              type: keyword
             - name: entityLabels
               path: "$.body.metadata.entityLabels"
-              type: keyword
             - name: entityName
               path: "$.body.metadata.name"
-              type: keyword
             - name: propositionType
               path: "$.body.metadata.propositionType"
-              type: keyword
             - name: resolutionType
               path: "$.body.metadata.resolutionType"
-              type: keyword
             - name: sessionDate
               path: "$.body.metadata.sessionDate"
               type: date
@@ -200,10 +178,8 @@ projects:
               type: short
             - name: sessionWeekday
               path: "$.body.metadata.sessionWeekday"
-              type: keyword
             - name: textType
               path: "$.body.metadata.textType"
-              type: keyword
     annoRepo:
       containerName: republic-2024.05.17
       uri: https://annorepo.republic-caf.diginfra.org
@@ -222,22 +198,17 @@ projects:
           fields:
             - name: bodyType
               path: "$.body.type"
-              type: keyword
             - name: date
               path: "$.body.metadata.date"
               type: date
             - name: recipient
               path: "$.body.metadata.recipient"
-              type: keyword
             - name: recipientLoc
               path: "$.body.metadata.recipientloc"
-              type: keyword
             - name: sender
               path: "$.body.metadata.sender"
-              type: keyword
             - name: senderLoc
               path: "$.body.metadata.senderloc"
-              type: keyword
             - name: summary
               path: "$.body.metadata.summary"
               type: text
@@ -260,7 +231,6 @@ projects:
           fields:
             - name: bodyType
               path: "$.body.type"
-              type: keyword
     textRepo:
       apiKey: cHJveWNvbjo5Y2I2YTIyZS1jY2M5LTExZWUtYTllZS0zMzNmNDQ2YjBjZTE=
       uri: https://brieven-van-hooft.tt.di.huc.knaw.nl
@@ -290,22 +260,16 @@ projects:
           fields:
             - name: correspondent
               path: "$.body.metadata.correspondent"
-              type: keyword
             - name: institution
               path: "$.body.metadata.institution"
-              type: keyword
             - name: location
               path: "$.body.metadata.location"
-              type: keyword
             - name: msid
               path: "$.body.metadata.msid"
-              type: keyword
             - name: period
               path: "$.body.metadata.period"
-              type: keyword
             - name: periodLong
               path: "$.body.metadata.periodLong"
-              type: keyword
     annoRepo:
       containerName: 'vangogh-0.2.0'
       uri: https://vangogh.annorepo.dev.clariah.nl
