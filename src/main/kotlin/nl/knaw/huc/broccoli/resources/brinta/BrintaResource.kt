@@ -12,6 +12,7 @@ import jakarta.ws.rs.core.Response.Status.OK
 import jakarta.ws.rs.core.Response.Status.UNAUTHORIZED
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.ResourcePaths.BRINTA
+import nl.knaw.huc.broccoli.config.EnrichmentViaConfiguration
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
@@ -131,7 +132,7 @@ class BrintaResource(
         @PathParam("indexName") indexName: String,      // e.g., "resolutions"
         @QueryParam("metaAnno") metaAnno: String?,      // e.g., 'tf:File'
         @QueryParam("metaValues") metaValues: String?,  // e.g., "1728" (optional, if not given: index all)
-        @QueryParam("take") take: Int? = null,          // testing param, only index first 'take' items
+        @QueryParam("take") takeParam: Int? = null,     // testing param, only index first 'takeParam' items
     ): Response {
         val project = getProject(projectId)
         val joinSeparator = project.brinta.joinSeparator ?: ""
@@ -166,8 +167,81 @@ class BrintaResource(
 
         // gather all interesting bodyTypes into a single set
         val bodyTypes = index.bodyTypes.union(index.enrich.map { it.from }.flatten())
+        logger.atDebug().addKeyValue("bodyTypes", bodyTypes).log("interesting bodyTypes:")
 
-        todo.forEachIndexed { i, cur ->
+        val coreAnnos = mutableListOf<AnnoRepoSearchResult>()
+        val auxAnnos = mutableMapOf<String, MutableList<AnnoRepoSearchResult>>()
+        todo
+            .take(1) // debug
+            .forEachIndexed { idx, curItem ->
+                logger.atDebug().log("Indexing #{} -> {}: {}", idx, curItem.bodyType(), curItem.bodyId())
+
+                val textLines = fetchTextLines(project, curItem)
+                logger.atDebug().addKeyValue("textLines.size", textLines.size)
+
+                val target = curItem.withField<Any>(type = "Text", field = "source").first()
+                val selector = target["selector"] as Map<*, *>
+                project.annoRepo.streamOverlap(
+                    bodyTypes = Constants.isIn(bodyTypes),
+                    source = target["source"] as String,
+                    start = selector["start"] as Int,
+                    end = selector["end"] as Int
+                ).apply {
+                    takeParam?.let { limit ->
+                        logger.atInfo().addKeyValue("limit", limit).log("limiting taking only first item(s)")
+                        take(limit)
+                    }
+                }
+                    .map(::AnnoRepoSearchResult)
+                    .forEach { anno ->
+                        if (index.bodyTypes.contains(anno.bodyType())) {
+                            coreAnnos.add(anno)
+                        } else {
+                            auxAnnos.computeIfAbsent(anno.bodyType()) { mutableListOf() }.add(anno)
+                        }
+                    }
+                logger.atDebug()
+                    .addKeyValue("core.size", coreAnnos.size).apply {
+                        auxAnnos.forEach { (type, annos) -> addKeyValue("${type}.size", annos.size) }
+                    }
+                    .log("annotation counts:")
+
+                coreAnnos.forEach { coreAnno ->
+                    val docId = coreAnno.bodyId()
+                    val payload = mutableMapOf<String, Any>()
+                    coreAnno.withoutField<String>(project.textType, "selector").first().let { textTarget ->
+                        val textURL = textTarget["source"] as String
+                        val fetchedSegments = fetchTextSegmentsLocal(textLines, textURL)
+                        if (fetchedSegments.isNotEmpty()) {
+                            payload["text"] = fetchedSegments.joinToString(joinSeparator)
+                            ok.add(docId)
+                        }
+                    }
+                    index.fields.forEach { field ->
+                        try {
+                            coreAnno.read(field.path)?.let { payload[field.name] = it }
+                        } catch (_: PathNotFoundException) {
+                        }
+                    }
+                    index.enrich.forEach { enrichment ->
+                        enrichment.from.forEach { type ->
+                            auxAnnos[type]?.filter {
+                                enrichment.via.fold(true) { ok, via -> ok && checkVia(coreAnno, it, via) }
+                            }?.forEach { auxAnno ->
+                                enrichment.fields.forEach { field ->
+                                    try {
+                                        auxAnno.read(field.path)?.let { payload[field.name] = it }
+                                    } catch (_: PathNotFoundException) {
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    logger.atDebug().addKeyValue("payload", payload).log(docId)
+                }
+            }
+
+        /*todo.forEachIndexed*/emptyList<AnnoRepoSearchResult>().forEachIndexed { i, cur ->
             logger.atInfo().log("Indexing #{} -> {}: {}", i, cur.bodyType(), cur.bodyId())
 
             // fetch all text lines for current item
@@ -182,7 +256,7 @@ class BrintaResource(
                 start = selector["start"] as Int,
                 end = selector["end"] as Int
             ).apply {
-                take?.let { limit ->
+                takeParam?.let { limit ->
                     logger.atInfo().log("limiting: only indexing first {} item(s)", limit)
                     take(limit)
                 }
@@ -249,6 +323,19 @@ class BrintaResource(
         }
 
         return Response.ok(result).build()
+    }
+
+    private fun checkVia(anno1: AnnoRepoSearchResult, anno2: AnnoRepoSearchResult, via: EnrichmentViaConfiguration) =
+        via.equality?.let { checkEquality(anno1, anno2, it) } ?: true
+                && via.overlap?.let { checkOverlap(anno1, anno2, it) } ?: true
+
+    private fun checkEquality(anno1: AnnoRepoSearchResult, anno2: AnnoRepoSearchResult, path: String) =
+        // don't use regular 's1 == s2' because we want this to be false when $path is not found in either anno
+        (anno1.read(path)?.let { s1 -> anno2.read(path)?.let { s2 -> s1 == s2 } }) ?: false
+
+    private fun checkOverlap(anno1: AnnoRepoSearchResult, anno2: AnnoRepoSearchResult, textType: String): Boolean {
+        // TODO
+        return false
     }
 
     private fun fetchTextLines(project: Project, anno: AnnoRepoSearchResult): List<String> =
@@ -346,7 +433,7 @@ class BrintaResource(
                 }
 
                 else -> {
-                    logger.atWarn().log("Failed to extract coordinates from {}", coords)
+                    logger.atWarn().log("Failed to extract coordinates from {}", textURL)
                     emptyList()
                 }
             }
