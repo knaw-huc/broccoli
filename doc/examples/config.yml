@@ -1,0 +1,332 @@
+jerseyClient:
+  timeout: 30s
+  connectionTimeout: 1m
+
+server:
+  applicationConnectors:
+    - type: http
+      port: ${BR_SERVER_PORT:-8080}
+
+logging:
+  level: INFO
+  appenders:
+    - type: console
+      logFormat: "%-5p [%d{ISO8601,UTC}] %c: %m %kvp%n%dwREx"
+      target: stderr
+      discardingThreshold: 0
+  loggers:
+    nl.knaw.huc: DEBUG
+    org: WARN
+    org.glassfish: ERROR
+    com.jayway: ERROR
+
+externalBaseUrl: ${BR_EXTERNAL_BASE_URL:-http://localhost:8080}
+
+projects:
+  - name: 'hooft'
+    topTierBodyType: File
+    annoRepo:
+      containerName: 'brieven-van-hooft'
+      uri: https://brieven-van-hooft.annorepo.dev.clariah.nl/
+    brinta:
+      uri: http://broccoli_brinta:9200
+      deleteKey: hooft-acc-mag-weg
+      indices:
+        - name: letters-2024-03-28
+          bodyTypes: [ Letter ]
+          fields:
+            - name: bodyType
+              path: "$.body.type"
+    textRepo:
+      uri: https://brieven-van-hooft.tt.di.huc.knaw.nl
+
+  - name: 'mondriaan'
+    topTierBodyType: tf:File
+    views:
+      - name: textOrig
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: original
+      - name: textTrans
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: translation
+      - name: notesEN
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Note
+            - path: body.metadata.lang
+              value: en
+      - name: title
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Title
+      - name: postalData
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: postalData
+    brinta:
+      uri: http://broccoli_brinta:9200
+      deleteKey: mondriaan-acc-mag-weg
+      indices:
+        - name: divs-mondriaan-0.9.0
+          bodyTypes: [ tf:Letter ]
+          fields:
+            - name: bodyType
+              path: "$.body.type"
+            - name: lang
+              path: "$.body.metadata.lang"
+            - name: type
+              path: "$.body.metadata.type"
+            - name: anno
+              path: "$.body.metadata.anno"
+            - name: country
+              path: "$.body.metadata.country"
+            - name: institution
+              path: "$.body.metadata.institution"
+            - name: msid
+              path: "$.body.metadata.msid"
+            - name: period
+              path: "$.body.metadata.period"
+            - name: periodLong
+              path: "$.body.metadata.periodlong"
+            - name: letterId
+              path: "$.body.metadata.letterid"
+            - name: correspondent
+              path: "$.body.metadata.correspondent"
+            - name: location
+              path: "$.body.metadata.location"
+            - name: sender
+              path: "$.body.metadata.sender"
+    annoRepo:
+      containerName: 'mondriaan-0.9.0'
+      uri: https://mondriaan.annorepo.dev.clariah.nl
+    textRepo:
+      uri: https://mondriaan.tt.di.huc.knaw.nl
+
+  - name: 'republic'
+    topTierBodyType: Volume
+    textType: LogicalText
+    brinta:
+      uri: http://broccoli_brinta:9200
+      deleteKey: 'republic-acc-mag-weg'
+      joinSeparator: " "
+      indices:
+        - name: 'republic-2024.05.17'
+          bodyTypes: [ Resolution ]
+          enrich:
+            - from: [ Attendant ]
+              via:
+                - equality: "$.body.metadata.sessionId"
+              fields:
+                - name: delegateId
+                  path: "$.body.metadata.delegateId"
+            - from: [ Entity ]
+              via:
+                - overlap: LogicalText
+              fields:
+                - name: entityCategory
+                  path: "$.body.metadata.category"
+                - name: entityId
+                  path: "$.body.metadata.entityId"
+                - name: entityLabels
+                  path: "$.body.metadata.entityLabels"
+                - name: entityName
+                  path: "$.body.metadata.name"
+          fields:
+            - name: bodyType
+              path: "$.body.type"
+            - name: propositionType
+              path: "$.body.metadata.propositionType"
+            - name: resolutionType
+              path: "$.body.metadata.resolutionType"
+            - name: sessionDate
+              path: "$.body.metadata.sessionDate"
+              type: date
+            - name: sessionDay
+              path: "$.body.metadata.sessionDay"
+              type: byte
+            - name: sessionMonth
+              path: "$.body.metadata.sessionMonth"
+              type: byte
+            - name: sessionYear
+              path: "$.body.metadata.sessionYear"
+              type: short
+            - name: sessionWeekday
+              path: "$.body.metadata.sessionWeekday"
+            - name: textType
+              path: "$.body.metadata.textType"
+    annoRepo:
+      containerName: republic-2024.05.28
+      uri: https://annorepo.republic-caf.diginfra.org
+    textRepo:
+      uri: https://textrepo.republic-caf.diginfra.org
+
+  - name: 'suriano'
+    topTierBodyType: tf:File
+    views:
+      - name: appendix
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: appendix
+      - name: original
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: original
+      - name: secretarial
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: secretarial
+      - name: text
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: text
+      - name: notes
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: notes
+    brinta:
+      uri: http://broccoli_brinta:9200
+      deleteKey: suriano-acc-mag-weg
+      indices:
+        - name: suriano-0.2.1e
+          bodyTypes: [ tf:File ]
+          fields:
+            - name: bodyType
+              path: "$.body.type"
+            - name: date
+              path: "$.body.metadata.date"
+              type: date
+            - name: recipient
+              path: "$.body.metadata.recipient"
+            - name: recipientLoc
+              path: "$.body.metadata.recipientloc"
+            - name: sender
+              path: "$.body.metadata.sender"
+            - name: senderLoc
+              path: "$.body.metadata.senderloc"
+            - name: shelfmark
+              path: "$.body.metadata.shelfmark"
+            - name: summary
+              path: "$.body.metadata.summary"
+              type: text
+    annoRepo:
+      containerName: 'suriano-0.2.1e'
+      uri: https://suriano.annorepo.dev.clariah.nl/
+    textRepo:
+      uri: https://suriano.tt.di.huc.knaw.nl
+
+  - name: 'translatin'
+    topTierBodyType: tl:Manifestation
+    brinta:
+      uri: http://broccoli_brinta:9200
+      indices:
+        - name: manifestations
+          bodyTypes: [ tl:Manifestation ]
+          fields:
+            - name: bodyType
+              path: "$.body.type"
+            - name: latinTitle
+              path: "$.body.metadata.tl:titleLa"
+            - name: earliest
+              path: "$.body.metadata.tl:earliest"
+              type: date
+            - name: latest
+              path: "$.body.metadata.tl:latest"
+            - name: manifestation
+              path: "$.body.metadata.tl:doc"
+            - name: expression
+              path: "$.body.metadata.tl:expression"
+            - name: form
+              path: "$.body.metadata.tl:form"
+            - name: formType
+              path: "$.body.metadata.tl:formType"
+            - name: title
+              path: "$.body.metadata.tl:title"
+            - name: work
+              path: "$.body.metadata.tl:work"
+            - name: genre
+              path: "$.body.metadata.tl:genre"
+            - name: subgenre
+              path: "$.body.metadata.tl:subgenre"
+            - name: author
+              path: "$.body.metadata.tl:author"
+            - name: publisherPlace
+              path: "$.body.metadata.tl:place"
+            - name: publisher
+              path: "$.body.metadata.tl:publisher"
+    annoRepo:
+      containerName: 'translatin-2023.12.13.1'
+      uri: https://translatin.annorepo.dev.clariah.nl/
+    textRepo:
+      uri: https://translatin.tt.di.huc.knaw.nl
+
+  - name: 'vangogh'
+    topTierBodyType: tf:File
+    views:
+      - name: textOrig
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: original
+      - name: textTrans
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: translation
+    brinta:
+      uri: http://broccoli_brinta:9200
+      deleteKey: vangogh-acc-mag-weg
+      indices:
+        - name: "letters-vangogh-0.2.1"
+          bodyTypes: [ tf:Letter ]
+          fields:
+            - name: correspondent
+              path: "$.body.metadata.correspondent"
+            - name: institution
+              path: "$.body.metadata.institution"
+            - name: location
+              path: "$.body.metadata.location"
+            - name: msid
+              path: "$.body.metadata.msid"
+            - name: period
+              path: "$.body.metadata.period"
+            - name: periodLong
+              path: "$.body.metadata.periodLong"
+            - name: sender
+              path: "$.body.metadata.sender"
+    annoRepo:
+      containerName: 'vangogh-0.2.1'
+      uri: https://vangogh.annorepo.dev.clariah.nl
+    textRepo:
+      uri: https://vangogh.tt.di.huc.knaw.nl
