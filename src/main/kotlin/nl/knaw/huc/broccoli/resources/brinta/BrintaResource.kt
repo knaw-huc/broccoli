@@ -225,12 +225,14 @@ class BrintaResource(
                     }
                     index.enrich.forEach { enrichment ->
                         enrichment.from.forEach { type ->
-                            auxAnnos[type]?.filter {
-                                enrichment.via.fold(true) { ok, via -> ok && checkVia(coreAnno, it, via) }
+                            auxAnnos[type]?.filter { auxAnno ->
+                                enrichment.via.fold(true) { ok, via -> ok && checkVia(coreAnno, auxAnno, via) }
                             }?.forEach { auxAnno ->
                                 enrichment.fields.forEach { field ->
                                     try {
-                                        auxAnno.read(field.path)?.let { payload[field.name] = it }
+                                        auxAnno.read(field.path)?.let { annoValue ->
+                                            payload.merge(field.name, mutableListOf(annoValue), ::combineEnrichments)
+                                        }
                                     } catch (_: PathNotFoundException) {
                                     }
                                 }
@@ -325,6 +327,10 @@ class BrintaResource(
         return Response.ok(result).build()
     }
 
+    private fun combineEnrichments(l1: Any, l2: Any): Any =
+        @Suppress("UNCHECKED_CAST")
+        (l1 as MutableList<Any>).addAll(l2 as List<Any>)
+
     private fun checkVia(anno1: AnnoRepoSearchResult, anno2: AnnoRepoSearchResult, via: EnrichmentViaConfiguration) =
         via.equality?.let { checkEquality(anno1, anno2, it) } ?: true
                 && via.overlap?.let { checkOverlap(anno1, anno2, it) } ?: true
@@ -334,7 +340,9 @@ class BrintaResource(
         (anno1.read(path)?.let { s1 -> anno2.read(path)?.let { s2 -> s1 == s2 } }) ?: false
 
     private fun checkOverlap(anno1: AnnoRepoSearchResult, anno2: AnnoRepoSearchResult, textType: String): Boolean {
-        // TODO
+        val res1 = anno1.withField<String>(textType, "selector").first()
+        val res2 = anno2.withField<String>(textType, "selector").first()
+        logger.atDebug().addKeyValue("res1", res1).addKeyValue("res2", res2).log("checkOverlap:1")
         return false
     }
 
