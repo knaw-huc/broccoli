@@ -122,7 +122,8 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
 
         private val orderParams = mapOf(
             "keyAsc" to mapOf("_key" to "asc"),
-            "keyDesc" to mapOf("_key" to "desc")
+            "keyDesc" to mapOf("_key" to "desc"),
+            "countDesc" to mapOf("_count" to "desc")
         )
 
         private fun parseAggregationParameters(aggName: String): ParsedAggParams =
