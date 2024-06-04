@@ -120,11 +120,12 @@ class ProjectsResource(
             .also { logger.trace("base json: {}", it) }
 
         val result = mutableMapOf<String, Any>()
+        val aggs = mutableMapOf<String, Any>()
         jsonParser.parse(baseJson).let { context ->
             context.read<Map<String, Any>>("$.hits.total")
                 ?.let { result["total"] = it }
 
-            extractAggregations(context)?.let { result["aggs"] = it }
+            extractAggregations(context)?.let { aggs.putAll(it) }
 
             context.read<List<Map<String, Any>>>("$.hits.hits[*]")
                 ?.map { buildHitResult(index, it) }
@@ -140,12 +141,16 @@ class ProjectsResource(
             val auxJson = auxResult.readEntityAsJsonString()
                 .also { logger.trace("aux json[{}]: {}", auxIndex, it) }
             jsonParser.parse(auxJson).let { context ->
-                extractAggregations(context)?.let { aggs ->
-                    logger.debug("AUX[{}] extracted aggs: {}", auxIndex, aggs)
-                    @Suppress("UNCHECKED_CAST")
-                    (result["aggs"] as MutableMap<String, Any>).apply {
-                        aggs.forEach { (key, value) -> put(key, value) }
-                    }
+                extractAggregations(context)?.let { aggs.putAll(it) }
+            }
+        }
+
+        // if aggregations are requested, order them according to query string
+        (queryString.aggregations ?: index.fields.map { it.name }).let { orderedAggregationNames ->
+            result["aggs"] = LinkedHashMap<String, Any?>().apply {
+                orderedAggregationNames.forEach { unparsedName ->
+                    val parsedName = unparsedName.substringBefore(":")
+                    aggs[parsedName]?.let { put(parsedName, it) }
                 }
             }
         }
