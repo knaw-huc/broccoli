@@ -202,12 +202,11 @@ class BrintaResource(
                             val fetchedSegments = fetchTextSegmentsLocal(textLines, textURL)
                             if (fetchedSegments.isNotEmpty()) {
                                 payload["text"] = fetchedSegments.joinToString(joinSeparator)
-                                ok.add(docId)
                             } else {
                                 logger.atWarn().log("Failed to fetch text for {} from {}", docId, textURL)
                                 err.add(
                                     mapOf(
-                                        "body.id" to docId,
+                                        "bodyId" to docId,
                                         "annoURL" to anno.read("$.id"),
                                         "textURL" to textURL
                                     )
@@ -237,11 +236,18 @@ class BrintaResource(
                             if (statusInfo.family != Response.Status.Family.SUCCESSFUL) {   // could be OK or CREATED
                                 val entity = readEntityAsJsonString()       // !! must read entity to close connection!
                                 logger.atWarn().log("Failed to index {}: {}", docId, entity)
+                                err.add(
+                                    mapOf(
+                                        "bodyId" to docId,
+                                        "annoURL" to anno.read("$.id"),
+                                        "elastic" to entity
+                                    )
+                                )
                             } else {
                                 close() // explicit close, or connection pool will be exhausted !!!
+                                ok.add(docId)
                             }
                         }
-
                 }
         }
 
