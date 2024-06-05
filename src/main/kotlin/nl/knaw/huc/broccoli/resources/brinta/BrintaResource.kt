@@ -171,99 +171,97 @@ class BrintaResource(
 
         val coreAnnos = mutableListOf<AnnoRepoSearchResult>()
         val auxAnnos = mutableMapOf<String, MutableList<AnnoRepoSearchResult>>()
-        todo
-            .take(1) // debug
-            .forEachIndexed { idx, curItem ->
-                logger.atDebug().log("Indexing #{} -> {}: {}", idx, curItem.bodyType(), curItem.bodyId())
+        todo.forEachIndexed { idx, curItem ->
+            logger.atDebug().log("Indexing #{} -> {}: {}", idx, curItem.bodyType(), curItem.bodyId())
 
-                val textLines = fetchTextLines(project, curItem)
-                logger.atDebug().addKeyValue("textLines.size", textLines.size)
+            val textLines = fetchTextLines(project, curItem)
+            logger.atDebug().addKeyValue("textLines.size", textLines.size)
 
-                val target = curItem.withField<Any>(type = "Text", field = "source").first()
-                val selector = target["selector"] as Map<*, *>
-                project.annoRepo.streamOverlap(
-                    bodyTypes = Constants.isIn(bodyTypes),
-                    source = target["source"] as String,
-                    start = selector["start"] as Int,
-                    end = selector["end"] as Int
-                ).apply {
-                    takeParam?.let { limit ->
-                        logger.atInfo().addKeyValue("limit", limit).log("limiting taking only first item(s)")
-                        take(limit)
+            val target = curItem.withField<Any>(type = "Text", field = "source").first()
+            val selector = target["selector"] as Map<*, *>
+            project.annoRepo.streamOverlap(
+                bodyTypes = Constants.isIn(bodyTypes),
+                source = target["source"] as String,
+                start = selector["start"] as Int,
+                end = selector["end"] as Int
+            ).apply {
+                takeParam?.let { limit ->
+                    logger.atInfo().addKeyValue("limit", limit).log("limiting taking only first item(s)")
+                    take(limit)
+                }
+            }
+                .map(::AnnoRepoSearchResult)
+                .forEach { anno ->
+                    if (index.bodyTypes.contains(anno.bodyType())) {
+                        coreAnnos.add(anno)
+                    } else {
+                        auxAnnos.computeIfAbsent(anno.bodyType()) { mutableListOf() }.add(anno)
                     }
                 }
-                    .map(::AnnoRepoSearchResult)
-                    .forEach { anno ->
-                        if (index.bodyTypes.contains(anno.bodyType())) {
-                            coreAnnos.add(anno)
-                        } else {
-                            auxAnnos.computeIfAbsent(anno.bodyType()) { mutableListOf() }.add(anno)
-                        }
-                    }
-                logger.atDebug()
-                    .addKeyValue("core.size", coreAnnos.size).apply {
-                        auxAnnos.forEach { (type, annos) -> addKeyValue("${type}.size", annos.size) }
-                    }
-                    .log("annotation counts:")
+            logger.atDebug()
+                .addKeyValue("core.size", coreAnnos.size).apply {
+                    auxAnnos.forEach { (type, annos) -> addKeyValue("${type}.size", annos.size) }
+                }
+                .log("annotation counts:")
 
-                coreAnnos.forEach { coreAnno ->
-                    val docId = coreAnno.bodyId()
-                    val payload = mutableMapOf<String, Any>()
-                    coreAnno.withoutField<String>(project.textType, "selector").first().let { textTarget ->
-                        val textURL = textTarget["source"] as String
-                        val fetchedSegments = fetchTextSegmentsLocal(textLines, textURL)
-                        if (fetchedSegments.isNotEmpty()) {
-                            payload["text"] = fetchedSegments.joinToString(joinSeparator)
-                            ok.add(docId)
-                        }
+            coreAnnos.forEach { coreAnno ->
+                val docId = coreAnno.bodyId()
+                val payload = mutableMapOf<String, Any>()
+                coreAnno.withoutField<String>(project.textType, "selector").first().let { textTarget ->
+                    val textURL = textTarget["source"] as String
+                    val fetchedSegments = fetchTextSegmentsLocal(textLines, textURL)
+                    if (fetchedSegments.isNotEmpty()) {
+                        payload["text"] = fetchedSegments.joinToString(joinSeparator)
+                        ok.add(docId)
                     }
-                    index.fields.forEach { field ->
-                        try {
-                            coreAnno.read(field.path)?.let { payload[field.name] = it }
-                        } catch (_: PathNotFoundException) {
-                            // ignore if any part of path cannot be reached
-                        }
+                }
+                index.fields.forEach { field ->
+                    try {
+                        coreAnno.read(field.path)?.let { payload[field.name] = it }
+                    } catch (_: PathNotFoundException) {
+                        // ignore if any part of path cannot be reached
                     }
-                    index.enrich.forEach { enrichment ->
-                        enrichment.from.forEach { type ->
-                            auxAnnos[type]?.filter { auxAnno ->
-                                enrichment.via.fold(true) { ok, via -> ok && checkVia(coreAnno, auxAnno, via) }
-                            }?.forEach { auxAnno ->
-                                enrichment.fields.forEach { field ->
-                                    try {
-                                        auxAnno.read(field.path)?.let { annoValue ->
-                                            val value = mutableSetOf<Any>().apply {
-                                                if (annoValue is Iterable<*>)
-                                                    @Suppress("UNCHECKED_CAST")
-                                                    addAll(annoValue as Iterable<Any>)
-                                                else
-                                                    add(annoValue)
-                                            }
-                                            payload.merge(field.name, value, ::keepUniqueValues)
+                }
+                index.enrich.forEach { enrichment ->
+                    enrichment.from.forEach { type ->
+                        auxAnnos[type]?.filter { auxAnno ->
+                            enrichment.via.fold(true) { ok, via -> ok && checkVia(coreAnno, auxAnno, via) }
+                        }?.forEach { auxAnno ->
+                            enrichment.fields.forEach { field ->
+                                try {
+                                    auxAnno.read(field.path)?.let { annoValue ->
+                                        val value = mutableSetOf<Any>().apply {
+                                            if (annoValue is Iterable<*>)
+                                                @Suppress("UNCHECKED_CAST")
+                                                addAll(annoValue as Iterable<Any>)
+                                            else
+                                                add(annoValue)
                                         }
-                                    } catch (_: PathNotFoundException) {
-                                        // ignore if any part of path cannot be reached
+                                        payload.merge(field.name, value, ::keepUniqueValues)
                                     }
+                                } catch (_: PathNotFoundException) {
+                                    // ignore if any part of path cannot be reached
                                 }
                             }
                         }
                     }
-                    logger.atDebug().addKeyValue("payload", payload).log(docId)
-
-                    client.target(project.brinta.uri)
-                        .path(index.name).path("_doc").path(docId)
-                        .request()
-                        .put(Entity.json(payload))
-                        .run {
-                            if (statusInfo.family != Response.Status.Family.SUCCESSFUL) {   // could be OK or CREATED
-                                val entity = readEntityAsJsonString()       // !! must read entity to close connection!
-                                logger.atWarn().log("Failed to index {}: {}", docId, entity)
-                            } else {
-                                close() // explicit close, or connection pool will be exhausted !!!
-                            }
-                        }
                 }
+                logger.atDebug().addKeyValue("payload", payload).log(docId)
+
+                client.target(project.brinta.uri)
+                    .path(index.name).path("_doc").path(docId)
+                    .request()
+                    .put(Entity.json(payload))
+                    .run {
+                        if (statusInfo.family != Response.Status.Family.SUCCESSFUL) {   // could be OK or CREATED
+                            val entity = readEntityAsJsonString()       // !! must read entity to close connection!
+                            logger.atWarn().log("Failed to index {}: {}", docId, entity)
+                        } else {
+                            close() // explicit close, or connection pool will be exhausted !!!
+                        }
+                    }
             }
+        }
 
         return Response.ok(result).build()
     }
