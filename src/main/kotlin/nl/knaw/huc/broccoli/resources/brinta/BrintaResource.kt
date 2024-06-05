@@ -221,6 +221,7 @@ class BrintaResource(
                         try {
                             coreAnno.read(field.path)?.let { payload[field.name] = it }
                         } catch (_: PathNotFoundException) {
+                            // ignore if any part of path cannot be reached
                         }
                     }
                     index.enrich.forEach { enrichment ->
