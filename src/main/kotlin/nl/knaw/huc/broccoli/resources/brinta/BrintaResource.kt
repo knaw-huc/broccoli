@@ -167,7 +167,7 @@ class BrintaResource(
 
         // gather all interesting bodyTypes into a single set
         val bodyTypes = index.bodyTypes.union(index.enrich.map { it.from }.flatten())
-        logger.atDebug().addKeyValue("bodyTypes", bodyTypes).log("interesting bodyTypes:")
+        logger.atDebug().addKeyValue("bodyTypes", bodyTypes).log("interested in:")
 
         val coreAnnos = mutableListOf<AnnoRepoSearchResult>()
         val auxAnnos = mutableMapOf<String, MutableList<AnnoRepoSearchResult>>()
@@ -175,7 +175,7 @@ class BrintaResource(
             logger.atDebug().log("Indexing #{} -> {}: {}", idx, curItem.bodyType(), curItem.bodyId())
 
             val textLines = fetchTextLines(project, curItem)
-            logger.atDebug().addKeyValue("textLines.size", textLines.size)
+            logger.atDebug().addKeyValue("size", textLines.size).log("fetched textLines:")
 
             val target = curItem.withField<Any>(type = "Text", field = "source").first()
             val selector = target["selector"] as Map<*, *>
@@ -199,14 +199,16 @@ class BrintaResource(
                     }
                 }
             logger.atDebug()
-                .addKeyValue("core.size", coreAnnos.size).apply {
-                    auxAnnos.forEach { (type, annos) -> addKeyValue("${type}.size", annos.size) }
+                .addKeyValue(index.bodyTypes.toString(), coreAnnos.size)
+                .apply {
+                    auxAnnos.forEach { (type, annos) -> addKeyValue(type, annos.size) }
                 }
                 .log("annotation counts:")
 
             coreAnnos.forEach { coreAnno ->
                 val docId = coreAnno.bodyId()
                 val payload = mutableMapOf<String, Any>()
+
                 coreAnno.withoutField<String>(project.textType, "selector").first().let { textTarget ->
                     val textURL = textTarget["source"] as String
                     val fetchedSegments = fetchTextSegmentsLocal(textLines, textURL)
@@ -215,6 +217,7 @@ class BrintaResource(
                         ok.add(docId)
                     }
                 }
+
                 index.fields.forEach { field ->
                     try {
                         coreAnno.read(field.path)?.let { payload[field.name] = it }
@@ -222,6 +225,7 @@ class BrintaResource(
                         // ignore if any part of path cannot be reached
                     }
                 }
+
                 index.enrich.forEach { enrichment ->
                     enrichment.from.forEach { type ->
                         auxAnnos[type]?.filter { auxAnno ->
