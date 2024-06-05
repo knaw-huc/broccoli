@@ -280,29 +280,32 @@ class BrintaResource(
         (anno1.read(path)?.let { s1 -> anno2.read(path)?.let { s2 -> s1 == s2 } }) ?: false
 
     private fun checkOverlap(anno1: AnnoRepoSearchResult, anno2: AnnoRepoSearchResult, textType: String): Boolean {
-        val res1 = anno1.withField<Any>(textType, "selector").first()
-        val selector1 = res1["selector"] as Map<*, *>
-        val start1 = selector1["start"] as Int
-        val end1 = selector1["end"] as Int
-
-        val res2 = anno2.withField<Any>(textType, "selector").first()
-        val selector2 = res2["selector"] as Map<*, *>
-        val start2 = selector2["start"] as Int
-        val end2 = selector2["end"] as Int
+        val (start1, end1) = extractStartEnd(anno1, textType)
+        val (start2, end2) = extractStartEnd(anno2, textType)
 
         val secondAnnoBeforeFirst = end2 < start1
         val secondAnnoAfterFirst = start2 > end1
         val disjoint = secondAnnoBeforeFirst || secondAnnoAfterFirst
 
         logger.atTrace()
-            .addKeyValue("res1", res1)
-            .addKeyValue("res2", res2)
+            .addKeyValue("start1", start1)
+            .addKeyValue("end1", end1)
+            .addKeyValue("start2", start2)
+            .addKeyValue("end2", end2)
             .addKeyValue("secondAnnoBeforeFirst", secondAnnoBeforeFirst)
             .addKeyValue("secondAnnoAfterFirst", secondAnnoAfterFirst)
             .addKeyValue("disjoint", disjoint)
             .log("checkOverlap")
 
         return !disjoint
+    }
+
+    private fun extractStartEnd(anno: AnnoRepoSearchResult, textType: String): Pair<Int, Int> {
+        val res = anno.withField<Any>(textType, "selector").first()
+        val selector = res["selector"] as Map<*, *>
+        val start = selector["start"] as Int
+        val end = selector["end"] as Int
+        return start to end
     }
 
     private fun fetchTextLines(project: Project, anno: AnnoRepoSearchResult): List<String> =
