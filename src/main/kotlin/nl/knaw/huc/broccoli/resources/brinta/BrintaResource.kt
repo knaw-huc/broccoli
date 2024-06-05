@@ -231,82 +231,23 @@ class BrintaResource(
                                 enrichment.fields.forEach { field ->
                                     try {
                                         auxAnno.read(field.path)?.let { annoValue ->
-                                            payload.merge(field.name, mutableListOf(annoValue), ::combineEnrichments)
+                                            val value = mutableSetOf<Any>().apply {
+                                                if (annoValue is Iterable<*>)
+                                                    @Suppress("UNCHECKED_CAST")
+                                                    addAll(annoValue as Iterable<Any>)
+                                                else
+                                                    add(annoValue)
+                                            }
+                                            payload.merge(field.name, value, ::keepUniqueValues)
                                         }
                                     } catch (_: PathNotFoundException) {
+                                        // ignore if any part of path cannot be reached
                                     }
                                 }
                             }
                         }
                     }
                     logger.atDebug().addKeyValue("payload", payload).log(docId)
-                }
-            }
-
-        /*todo.forEachIndexed*/emptyList<AnnoRepoSearchResult>().forEachIndexed { i, cur ->
-            logger.atInfo().log("Indexing #{} -> {}: {}", i, cur.bodyType(), cur.bodyId())
-
-            // fetch all text lines for current item
-            val textLines = fetchTextLines(project, cur)
-
-            // find annotations with body.type corresponding to this index, overlapping with current item's text range
-            val target = cur.withField<Any>("Text", "source").first()
-            val selector = target["selector"] as Map<*, *>
-            project.annoRepo.streamOverlap(
-                bodyTypes = Constants.isIn(bodyTypes),
-                source = target["source"] as String,
-                start = selector["start"] as Int,
-                end = selector["end"] as Int
-            ).apply {
-                takeParam?.let { limit ->
-                    logger.atInfo().log("limiting: only indexing first {} item(s)", limit)
-                    take(limit)
-                }
-            }
-                .map(::AnnoRepoSearchResult)
-                .forEach { anno ->
-                    // use anno's body.id as Elastic documentId
-                    val docId = anno.bodyId()
-                    logger.atDebug().log("gathering index info for annoId / ES docId: {}", docId)
-
-                    // build index payload for current anno
-                    val payload = mutableMapOf<String, Any>()
-
-                    // First: core payload for index: fetch "full text" from (remote) URL
-                    anno.withoutField<String>(project.textType, "selector")
-                        .also { if (it.size > 1) logger.warn("multiple Text targets without selector: $it") }
-                        .first() // more than one text target without selector? -> arbitrarily choose the first
-                        .let { textTarget ->
-                            val textURL = textTarget["source"] as String
-                            val fetchedSegments = fetchTextSegmentsLocal(textLines, textURL)
-                            if (fetchedSegments.isNotEmpty()) {
-                                payload["text"] = fetchedSegments.joinToString(joinSeparator)
-                                ok.add(docId)
-                            } else {
-                                logger.atWarn().log("Failed to fetch text for {} from {}", docId, textURL)
-                                err.add(
-                                    mapOf(
-                                        "body.id" to docId,
-                                        "annoURL" to anno.read("$.id"),
-                                        "textURL" to textURL
-                                    )
-                                )
-                            }
-                        }
-
-                    // Then: optional extra payload: fields from config
-                    index.fields.forEach { field ->
-                        try {
-                            anno.read(field.path)?.let { payload[field.name] = it }
-                            logger.atTrace().log("payload[{}] -> {}", field.name, payload[field.name])
-                        } catch (e: PathNotFoundException) {
-                            // Must catch PNF, even though DEFAULT_PATH_LEAF_TO_NULL is set, because intermediate
-                            //   nodes can also be null, i.e., they don't exist, which still yields a PNF Exception.
-                            // Ignore this, just means the annotation doesn't have a value for this field
-                        }
-                    }
-
-                    logger.atInfo().log("Indexing {}, payload.size={}", docId, payload.size)
 
                     client.target(project.brinta.uri)
                         .path(index.name).path("_doc").path(docId)
@@ -320,16 +261,15 @@ class BrintaResource(
                                 close() // explicit close, or connection pool will be exhausted !!!
                             }
                         }
-
                 }
-        }
+            }
 
         return Response.ok(result).build()
     }
 
-    private fun combineEnrichments(l1: Any, l2: Any): Any =
+    private fun keepUniqueValues(l1: Any, l2: Any): Set<Any> =
         @Suppress("UNCHECKED_CAST")
-        (l1 as MutableList<Any>).addAll(l2 as List<Any>)
+        (l1 as MutableSet<Any>).union(l2 as Iterable<Any>)
 
     private fun checkVia(anno1: AnnoRepoSearchResult, anno2: AnnoRepoSearchResult, via: EnrichmentViaConfiguration) =
         via.equality?.let { checkEquality(anno1, anno2, it) } ?: true
@@ -340,10 +280,29 @@ class BrintaResource(
         (anno1.read(path)?.let { s1 -> anno2.read(path)?.let { s2 -> s1 == s2 } }) ?: false
 
     private fun checkOverlap(anno1: AnnoRepoSearchResult, anno2: AnnoRepoSearchResult, textType: String): Boolean {
-        val res1 = anno1.withField<String>(textType, "selector").first()
-        val res2 = anno2.withField<String>(textType, "selector").first()
-        logger.atDebug().addKeyValue("res1", res1).addKeyValue("res2", res2).log("checkOverlap:1")
-        return false
+        val res1 = anno1.withField<Any>(textType, "selector").first()
+        val selector1 = res1["selector"] as Map<*, *>
+        val start1 = selector1["start"] as Int
+        val end1 = selector1["end"] as Int
+
+        val res2 = anno2.withField<Any>(textType, "selector").first()
+        val selector2 = res2["selector"] as Map<*, *>
+        val start2 = selector2["start"] as Int
+        val end2 = selector2["end"] as Int
+
+        val secondAnnoBeforeFirst = end2 < start1
+        val secondAnnoAfterFirst = start2 > end1
+        val disjoint = secondAnnoBeforeFirst || secondAnnoAfterFirst
+
+        logger.atTrace()
+            .addKeyValue("res1", res1)
+            .addKeyValue("res2", res2)
+            .addKeyValue("secondAnnoBeforeFirst", secondAnnoBeforeFirst)
+            .addKeyValue("secondAnnoAfterFirst", secondAnnoAfterFirst)
+            .addKeyValue("disjoint", disjoint)
+            .log("checkOverlap")
+
+        return !disjoint
     }
 
     private fun fetchTextLines(project: Project, anno: AnnoRepoSearchResult): List<String> =
