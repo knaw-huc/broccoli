@@ -169,13 +169,14 @@ class BrintaResource(
         val bodyTypes = index.bodyTypes.union(index.enrich.map { it.from }.flatten())
         logger.atDebug().addKeyValue("bodyTypes", bodyTypes).log("interested in:")
 
-        val coreAnnos = mutableListOf<AnnoRepoSearchResult>()
-        val auxAnnos = mutableMapOf<String, MutableList<AnnoRepoSearchResult>>()
         todo.forEachIndexed { idx, curItem ->
             logger.atDebug().log("Indexing #{} -> {}: {}", idx, curItem.bodyType(), curItem.bodyId())
 
             val textLines = fetchTextLines(project, curItem)
             logger.atDebug().addKeyValue("size", textLines.size).log("fetched textLines:")
+
+            val coreAnnos = mutableListOf<AnnoRepoSearchResult>()
+            val auxAnnos = mutableMapOf<String, MutableList<AnnoRepoSearchResult>>()
 
             val target = curItem.withField<Any>(type = "Text", field = "source").first()
             val selector = target["selector"] as Map<*, *>
