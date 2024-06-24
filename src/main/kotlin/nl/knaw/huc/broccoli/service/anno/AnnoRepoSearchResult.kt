@@ -23,4 +23,13 @@ class AnnoRepoSearchResult(val context: DocumentContext) {
 
     fun <T> withoutField(type: String, field: String): List<Map<String, T>> =
         context.read("$.target[?(@.type == '$type')][?(@.$field == null)]")
+
+    fun getSpan(type: String): Pair<Int, Int> =
+        withField<Any>(type, "selector")
+            .first()
+            .let { target ->
+                (target["selector"] as Map<*, *>).let { selector ->
+                    selector["start"] as Int to selector["end"] as Int
+                }
+            }
 }

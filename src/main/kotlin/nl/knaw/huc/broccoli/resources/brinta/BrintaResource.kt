@@ -19,6 +19,8 @@ import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.readEntityAsJsonString
 import nl.knaw.huc.broccoli.service.toJsonString
 import org.slf4j.LoggerFactory
+import java.util.*
+import java.util.stream.IntStream
 
 @Path("$BRINTA/{projectId}")
 @Produces(MediaType.APPLICATION_JSON)
@@ -169,6 +171,11 @@ class BrintaResource(
         val bodyTypes = index.bodyTypes.union(index.enrich.map { it.from }.flatten())
         logger.atDebug().addKeyValue("bodyTypes", bodyTypes).log("interested in:")
 
+        // figure out which enrichment 'from' require overlap
+        val typesNeedingOverlap = index.enrich
+            .filter { it.via.any { evc -> evc.overlap != null } }
+            .flatMap { it.from }
+
         todo.forEachIndexed { idx, curItem ->
             logger.atDebug().log("Indexing #{} -> {}: {}", idx, curItem.bodyType(), curItem.bodyId())
 
@@ -176,18 +183,23 @@ class BrintaResource(
             logger.atDebug().addKeyValue("size", textLines.size).log("fetched textLines:")
 
             val coreAnnos = mutableListOf<AnnoRepoSearchResult>()
-            val auxAnnos = mutableMapOf<String, MutableList<AnnoRepoSearchResult>>()
+            val auxAnnos = mutableListOf<AnnoRepoSearchResult>()
+            val auxAnnosByType = mutableMapOf<String, MutableList<AnnoRepoSearchResult>>() // necessary?
 
-            val target = curItem.withField<Any>(type = "Text", field = "source").first()
+
+            val target = curItem.withField<Any>(type = "Text", field = "selector").first()
             val selector = target["selector"] as Map<*, *>
+            val start = selector["start"] as Int
+            val end = selector["end"] as Int
+
             project.annoRepo.streamOverlap(
                 bodyTypes = Constants.isIn(bodyTypes),
                 source = target["source"] as String,
-                start = selector["start"] as Int,
-                end = selector["end"] as Int
+                start = start,
+                end = end
             ).apply {
                 takeParam?.let { limit ->
-                    logger.atInfo().addKeyValue("limit", limit).log("limiting taking only first item(s)")
+                    logger.atInfo().addKeyValue("limit", limit).log("limiting item(s)")
                     take(limit)
                 }
             }
@@ -196,17 +208,49 @@ class BrintaResource(
                     if (index.bodyTypes.contains(anno.bodyType())) {
                         coreAnnos.add(anno)
                     } else {
-                        auxAnnos.computeIfAbsent(anno.bodyType()) { mutableListOf() }.add(anno)
+                        auxAnnos.add(anno)
+                        auxAnnosByType.computeIfAbsent(anno.bodyType()) { mutableListOf() }.add(anno)
                     }
                 }
+
+            // debug log core and aux annotation counts
             logger.atDebug()
                 .addKeyValue(index.bodyTypes.toString(), coreAnnos.size)
                 .apply {
-                    auxAnnos.forEach { (type, annos) -> addKeyValue(type, annos.size) }
+                    auxAnnosByType.forEach { (type, annos) -> addKeyValue(type, annos.size) }
                 }
                 .log("annotation counts:")
 
-            coreAnnos.forEach { coreAnno ->
+            // allocate space for bitsets per 'Resolution'
+            val overlapStores: Map<String, Array<BitSet?>> = mutableMapOf<String, Array<BitSet?>>().apply {
+                typesNeedingOverlap.forEach { put(it, arrayOfNulls(textLines.size)) }
+            }
+
+            // initialise single bitset per 'Resolution' only where actually needed
+            val bitsetsByCoreAnno = arrayOfNulls<BitSet>(coreAnnos.size)
+            coreAnnos.forEachIndexed { coreAnnoIdx, coreAnno ->
+                val bitSet = BitSet()
+                bitsetsByCoreAnno[coreAnnoIdx] = bitSet
+                coreAnno.getSpan(project.textType).let { (start, end) ->
+                    IntStream.rangeClosed(start, end)
+                        .forEach { i ->
+                            overlapStores.values.forEach {
+                                it[i] = bitSet
+                            }
+                        }
+                }
+            }
+
+            // now pre-compute overlap for each auxAnno
+            auxAnnos.forEachIndexed { annoIndex, anno ->
+                overlapStores[anno.bodyType()]?.let { store ->
+                    anno.getSpan(project.textType)
+                        .let { (start, end) -> IntStream.rangeClosed(start, end) }
+                        .forEach { store[it]?.set(annoIndex) }
+                }
+            }
+
+            coreAnnos.forEachIndexed { coreAnnoIdx, coreAnno ->
                 val docId = coreAnno.bodyId()
                 val payload = mutableMapOf<String, Any>()
 
@@ -227,9 +271,13 @@ class BrintaResource(
                     }
                 }
 
+                bitsetsByCoreAnno[coreAnnoIdx]?.stream()?.forEach { auxAnnoIdx ->
+
+                }
+
                 index.enrich.forEach { enrichment ->
                     enrichment.from.forEach { type ->
-                        auxAnnos[type]?.filter { auxAnno ->
+                        auxAnnosByType[type]?.filter { auxAnno ->
                             enrichment.via.fold(true) { ok, via -> ok && checkVia(coreAnno, auxAnno, via) }
                         }?.forEach { auxAnno ->
                             enrichment.fields.forEach { field ->
