@@ -22,3 +22,9 @@ inline fun <E : Any, T : Collection<E>> T?.withNotNullNorEmpty(func: T.() -> Uni
         with(this) { func() }
     }
 }
+
+inline fun <E : Any, T : Collection<E>> T?.whenNotNullNorEmpty(func: (T) -> Unit) {
+    if (!this.isNullOrEmpty()) {
+        func(this)
+    }
+}
