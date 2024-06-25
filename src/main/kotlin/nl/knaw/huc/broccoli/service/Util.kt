@@ -15,3 +15,10 @@ fun extractAggregations(context: ReadContext) = context.read<Map<String, Any>>("
         }
     }
     ?.groupByKey()
+
+
+inline fun <E : Any, T : Collection<E>> T?.withNotNullNorEmpty(func: T.() -> Unit) {
+    if (!this.isNullOrEmpty()) {
+        with(this) { func() }
+    }
+}

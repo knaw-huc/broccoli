@@ -18,6 +18,7 @@ import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.readEntityAsJsonString
 import nl.knaw.huc.broccoli.service.toJsonString
+import nl.knaw.huc.broccoli.service.withNotNullNorEmpty
 import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.stream.IntStream
@@ -256,12 +257,16 @@ class BrintaResource(
 
                 // fetch core text
                 coreAnno.withoutField<String>(project.textType, "selector").first().let { textTarget ->
-                    val textURL = textTarget["source"] as String
-                    val fetchedSegments = fetchTextSegmentsLocal(textLines, textURL)
-                    if (fetchedSegments.isNotEmpty()) {
-                        payload["text"] = fetchedSegments.joinToString(joinSeparator)
-                        ok.add(docId)
-                    }
+                    fetchTextSegmentsLocal(textLines, textTarget["source"] as String)
+                        .withNotNullNorEmpty {
+                            payload["text"] = joinToString(joinSeparator)
+                            ok.add(docId)
+                        }
+//                    val fetchedSegments = fetchTextSegmentsLocal(textLines, textURL)
+//                    if (fetchedSegments.isNotEmpty()) {
+//                        payload["text"] = fetchedSegments.joinToString(joinSeparator)
+//                        ok.add(docId)
+//                    }
                 }
 
                 // add core fields
@@ -277,19 +282,20 @@ class BrintaResource(
                 index.enrich.forEach { enrichment ->
                     enrichment.from.forEach { type ->
                         auxAnnoIndicesByType[type]?.filter { auxAnnoIdx ->
-                            enrichment.via.fold(true) { ok, via ->
-                                ok &&
+                            enrichment.via.fold(initial = true) { stillOk, via ->
+                                stillOk && // fold previous result with:
                                         (via.equality?.let { path ->
                                             (coreAnno.read(path)
                                                 ?.let { s1 -> auxAnnos[auxAnnoIdx].read(path)?.let { s2 -> s1 == s2 } })
-                                                ?: false
-                                        } ?: true)
+                                                ?: false // not equal, or no such 'path' in either (or both) annos
+                                        } ?: true) // no via.equality -> no constraint
                                         &&
                                         (via.overlap?.let {
+                                            // single bit test to see if this aux anno overlaps with core anno
                                             bitsetsByCoreAnno[coreAnnoIdx]?.get(auxAnnoIdx)
-                                        } ?: true)
+                                        } ?: true) // no via.overlap -> no constraint
                             }
-                        }?.map { auxAnnos[it] } // here we have all matching auxiliary annos
+                        }?.map { auxAnnos[it] } // now we have all auxiliary annos satisfying overlap/equality
                             ?.forEach { auxAnno ->
                                 enrichment.fields.forEach { field ->
                                     try {
