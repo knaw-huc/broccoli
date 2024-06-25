@@ -222,7 +222,7 @@ class BrintaResource(
                 .log("annotation counts:")
 
             // allocate space for bitsets per 'Resolution'
-            val overlapStores: Map<String, Array<BitSet?>> = mutableMapOf<String, Array<BitSet?>>().apply {
+            val overlapStores = mutableMapOf<String, Array<BitSet?>>().apply {
                 typesNeedingOverlap.forEach { put(it, arrayOfNulls(textLines.size)) }
             }
 
