@@ -184,7 +184,7 @@ class BrintaResource(
 
             val coreAnnos = mutableListOf<AnnoRepoSearchResult>()
             val auxAnnos = mutableListOf<AnnoRepoSearchResult>()
-            val auxAnnosByType = mutableMapOf<String, MutableList<AnnoRepoSearchResult>>() // necessary?
+            val auxAnnoIndicesByType = mutableMapOf<String, MutableList<Int>>() // necessary?
 
 
             val target = curItem.withField<Any>(type = "Text", field = "selector").first()
@@ -208,8 +208,8 @@ class BrintaResource(
                     if (index.bodyTypes.contains(anno.bodyType())) {
                         coreAnnos.add(anno)
                     } else {
+                        auxAnnoIndicesByType.computeIfAbsent(anno.bodyType()) { mutableListOf() }.add(auxAnnos.size)
                         auxAnnos.add(anno)
-                        auxAnnosByType.computeIfAbsent(anno.bodyType()) { mutableListOf() }.add(anno)
                     }
                 }
 
@@ -217,7 +217,7 @@ class BrintaResource(
             logger.atDebug()
                 .addKeyValue(index.bodyTypes.toString(), coreAnnos.size)
                 .apply {
-                    auxAnnosByType.forEach { (type, annos) -> addKeyValue(type, annos.size) }
+                    auxAnnoIndicesByType.forEach { (type, annos) -> addKeyValue(type, annos.size) }
                 }
                 .log("annotation counts:")
 
@@ -254,6 +254,7 @@ class BrintaResource(
                 val docId = coreAnno.bodyId()
                 val payload = mutableMapOf<String, Any>()
 
+                // fetch core text
                 coreAnno.withoutField<String>(project.textType, "selector").first().let { textTarget ->
                     val textURL = textTarget["source"] as String
                     val fetchedSegments = fetchTextSegmentsLocal(textLines, textURL)
@@ -263,6 +264,7 @@ class BrintaResource(
                     }
                 }
 
+                // add core fields
                 index.fields.forEach { field ->
                     try {
                         coreAnno.read(field.path)?.let { payload[field.name] = it }
@@ -271,36 +273,46 @@ class BrintaResource(
                     }
                 }
 
-                bitsetsByCoreAnno[coreAnnoIdx]?.stream()?.forEach { auxAnnoIdx ->
-
-                }
-
+                // enrich index by checking for equality / overlap on auxiliary index items
                 index.enrich.forEach { enrichment ->
                     enrichment.from.forEach { type ->
-                        auxAnnosByType[type]?.filter { auxAnno ->
-                            enrichment.via.fold(true) { ok, via -> ok && checkVia(coreAnno, auxAnno, via) }
-                        }?.forEach { auxAnno ->
-                            enrichment.fields.forEach { field ->
-                                try {
-                                    auxAnno.read(field.path)?.let { annoValue ->
-                                        val value = mutableSetOf<Any>().apply {
-                                            if (annoValue is Iterable<*>)
-                                                @Suppress("UNCHECKED_CAST")
-                                                addAll(annoValue as Iterable<Any>)
-                                            else
-                                                add(annoValue)
+                        auxAnnoIndicesByType[type]?.filter { auxAnnoIdx ->
+                            enrichment.via.fold(true) { ok, via ->
+                                ok &&
+                                        (via.equality?.let { path ->
+                                            (coreAnno.read(path)
+                                                ?.let { s1 -> auxAnnos[auxAnnoIdx].read(path)?.let { s2 -> s1 == s2 } })
+                                                ?: false
+                                        } ?: true)
+                                        &&
+                                        (via.overlap?.let {
+                                            bitsetsByCoreAnno[coreAnnoIdx]?.get(auxAnnoIdx)
+                                        } ?: true)
+                            }
+                        }?.map { auxAnnos[it] } // here we have all matching auxiliary annos
+                            ?.forEach { auxAnno ->
+                                enrichment.fields.forEach { field ->
+                                    try {
+                                        auxAnno.read(field.path)?.let { annoValue ->
+                                            val value = mutableSetOf<Any>().apply {
+                                                if (annoValue is Iterable<*>)
+                                                    @Suppress("UNCHECKED_CAST")
+                                                    addAll(annoValue as Iterable<Any>)
+                                                else
+                                                    add(annoValue)
+                                            }
+                                            payload.merge(field.name, value, ::keepUniqueValues)
                                         }
-                                        payload.merge(field.name, value, ::keepUniqueValues)
+                                    } catch (_: PathNotFoundException) {
+                                        // ignore if any part of path cannot be reached
                                     }
-                                } catch (_: PathNotFoundException) {
-                                    // ignore if any part of path cannot be reached
                                 }
                             }
-                        }
                     }
                 }
                 logger.atDebug().addKeyValue("payload", payload).log(docId)
 
+                // store result in Elastic index
                 client.target(project.brinta.uri)
                     .path(index.name).path("_doc").path(docId)
                     .request()
@@ -325,7 +337,7 @@ class BrintaResource(
 
     private fun checkVia(anno1: AnnoRepoSearchResult, anno2: AnnoRepoSearchResult, via: EnrichmentViaConfiguration) =
         via.equality?.let { checkEquality(anno1, anno2, it) } ?: true
-                && via.overlap?.let { checkOverlap(anno1, anno2, it) } ?: true
+//                && via.overlap?.let { checkOverlap(anno1, anno2, it) } ?: true
 
     private fun checkEquality(anno1: AnnoRepoSearchResult, anno2: AnnoRepoSearchResult, path: String) =
         // don't use regular 's1 == s2' because we want this to be false when $path is not found in either anno
