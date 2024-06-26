@@ -18,7 +18,7 @@ import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.readEntityAsJsonString
 import nl.knaw.huc.broccoli.service.toJsonString
-import nl.knaw.huc.broccoli.service.withNotNullNorEmpty
+import nl.knaw.huc.broccoli.service.whenHasElements
 import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.stream.IntStream
@@ -258,8 +258,8 @@ class BrintaResource(
                 // fetch core text
                 coreAnno.withoutField<String>(project.textType, "selector").first().let { textTarget ->
                     fetchTextSegmentsLocal(textLines, textTarget["source"] as String)
-                        .withNotNullNorEmpty {
-                            payload["text"] = joinToString(joinSeparator)
+                        .whenHasElements {
+                            payload["text"] = it.joinToString(joinSeparator)
                             ok.add(docId)
                         }
 //                    val fetchedSegments = fetchTextSegmentsLocal(textLines, textURL)
@@ -316,6 +316,8 @@ class BrintaResource(
                             }
                     }
                 }
+
+                // spam the log file
                 logger.atDebug().addKeyValue("payload", payload).log(docId)
 
                 // store result in Elastic index
