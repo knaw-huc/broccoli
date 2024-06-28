@@ -20,6 +20,7 @@ import nl.knaw.huc.broccoli.service.readEntityAsJsonString
 import nl.knaw.huc.broccoli.service.toJsonString
 import nl.knaw.huc.broccoli.service.whenHasElements
 import org.slf4j.LoggerFactory
+import org.slf4j.MarkerFactory
 import java.util.*
 import java.util.stream.IntStream
 
@@ -262,11 +263,6 @@ class BrintaResource(
                             payload["text"] = it.joinToString(joinSeparator)
                             ok.add(docId)
                         }
-//                    val fetchedSegments = fetchTextSegmentsLocal(textLines, textURL)
-//                    if (fetchedSegments.isNotEmpty()) {
-//                        payload["text"] = fetchedSegments.joinToString(joinSeparator)
-//                        ok.add(docId)
-//                    }
                 }
 
                 // add core fields
@@ -317,8 +313,11 @@ class BrintaResource(
                     }
                 }
 
-                // spam the log file
-                logger.atDebug().addKeyValue("payload", payload).log(docId)
+                // hit the logs, allow for logging to separate location using indexMarker
+                logger.atDebug()
+                    .addMarker(indexMarker)
+                    .addKeyValue("payload", payload)
+                    .log(docId)
 
                 // store result in Elastic index
                 client.target(project.brinta.uri)
@@ -429,6 +428,7 @@ class BrintaResource(
 
     companion object {
         private val logger = LoggerFactory.getLogger(BrintaResource::class.java)
+        private val indexMarker = MarkerFactory.getMarker("IDX")
 
         @JvmStatic
         fun fetchTextSegmentsLocal(textLines: List<String>, textURL: String): List<String> {
