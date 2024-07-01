@@ -99,7 +99,7 @@ class ProjectsResource(
                 find { it == sortBy } ?: throw BadRequestException("query param sortBy must be one of ${this.sorted()}")
             }
 
-        logQuery(queryString)
+        logQuery(queryString, from, size)
 
         val queryBuilder = ElasticQueryBuilder(index)
             .query(queryString)
@@ -169,11 +169,11 @@ class ProjectsResource(
         }
     }
 
-    private fun logQuery(query: IndexQuery) {
+    private fun logQuery(query: IndexQuery, from: Int, size: Int) {
         if (query.text != null) {
             logger.atDebug()
                 .addMarker(queryMarker)
-                .setMessage(jsonWriter.writeValueAsString(query.text))
+                .setMessage("${query}from=$from|size=$size")
                 .log()
         }
     }

@@ -26,7 +26,7 @@ logging:
       archivedLogFilenamePattern: ./query-log-%d.gz
       archivedFileCount: 5
       timeZone: UTC
-      logFormat: "%d{ISO8601,UTC}|%m%n"
+      logFormat: "%d{ISO8601,UTC}|%m|%kvp%n"
       bufferSize: 256KiB
       immediateFlush: true
       filterFactories:
@@ -46,7 +46,6 @@ projects:
   - name: 'globalise'
     textType: LogicalText
     annoRepo:
-      apiKey: 02d01d02-be58-4e9e-95c2-387715996bb5
       containerName: globalise-2024-03-18
       uri: https://annorepo.globalise.huygens.knaw.nl
     brinta:
@@ -67,7 +66,6 @@ projects:
               path: "$.body.metadata.document"
               type: keyword
     textRepo:
-      apiKey: YnJhbWI6MmMxNmNmNDQtYjcxZC0xMWVjLTgxZmUtOGYyZWJkZjU1Nzdl
       uri: https://globalise.tt.di.huc.knaw.nl
 
   - name: 'mondriaan'
@@ -162,29 +160,17 @@ projects:
       deleteKey: 'republic-dev-mag-weg'
       joinSeparator: " "
       indices:
-        - name: 'republic-2024.05.17'
-          bodyTypes: [ Resolution, Entity, AttendanceList ]
+        - name: 'republic-2024.06.18'
+          bodyTypes: [ Resolution ]
           fields:
-            - name: bodyType
-              path: "$.body.type"
-              type: keyword
-            - name: entityCategory
-              path: "$.body.metadata.category"
-              type: keyword
-            - name: entityId
-              path: "$.body.metadata.entityId"
-              type: keyword
-            - name: entityLabels
-              path: "$.body.metadata.entityLabels"
-              type: keyword
-            - name: entityName
-              path: "$.body.metadata.name"
-              type: keyword
             - name: propositionType
               path: "$.body.metadata.propositionType"
               type: keyword
             - name: resolutionType
               path: "$.body.metadata.resolutionType"
+              type: keyword
+            - name: textType
+              path: "$.body.metadata.textType"
               type: keyword
             - name: sessionDate
               path: "$.body.metadata.sessionDate"
@@ -198,18 +184,35 @@ projects:
             - name: sessionYear
               path: "$.body.metadata.sessionYear"
               type: short
+            - name: delegateId
+              path: "$.body.metadata.delegateId"
+              type: keyword
+            - name: delegateName
+              path: "$.body.metadata.delegateName"
+              type: keyword
+            - name: entityCategory
+              path: "$.body.metadata.category"
+              type: keyword
+            - name: entityId
+              path: "$.body.metadata.entityId"
+              type: keyword
+            - name: entityLabels
+              path: "$.body.metadata.entityLabels"
+              type: keyword
+            - name: entityName
+              path: "$.body.metadata.name"
+              type: keyword
+            - name: bodyType
+              path: "$.body.type"
+              type: keyword
             - name: sessionWeekday
               path: "$.body.metadata.sessionWeekday"
               type: keyword
-            - name: textType
-              path: "$.body.metadata.textType"
-              type: keyword
     annoRepo:
-      containerName: republic-2024.05.17
+      containerName: republic-2024.06.18
       uri: https://annorepo.republic-caf.diginfra.org
     textRepo:
       uri: https://textrepo.republic-caf.diginfra.org
-
 
   - name: 'suriano'
     topTierBodyType: tf:File
@@ -262,7 +265,6 @@ projects:
               path: "$.body.type"
               type: keyword
     textRepo:
-      apiKey: cHJveWNvbjo5Y2I2YTIyZS1jY2M5LTExZWUtYTllZS0zMzNmNDQ2YjBjZTE=
       uri: https://brieven-van-hooft.tt.di.huc.knaw.nl
 
   - name: 'vangogh'
