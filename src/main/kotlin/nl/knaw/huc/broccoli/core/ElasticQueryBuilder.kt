@@ -23,7 +23,29 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
 
     fun size(size: Int) = apply { this.size = size }
 
-    fun query(query: IndexQuery) = apply { this.query = query }
+    fun query(query: IndexQuery) = apply { this.query = normalizeQuery(query) }
+
+    private fun normalizeQuery(query: IndexQuery): IndexQuery {
+        return IndexQuery(
+            date = query.date,
+            range = query.range,
+            terms = query.terms,
+            text = query.text
+                ?.trim()
+                ?.let { q ->
+                    if (ES_FIELD_PREFIX.matches(q)) q else buildString {
+                        append("text:$q")
+                        index.fields
+                            .filter { it.type == "text" }
+                            .map { it.name }
+                            .forEach { fieldName ->
+                                append(" OR ")
+                                append("$fieldName:$q")
+                            }
+                    }
+                },
+        )
+    }
 
     fun toElasticQuery() = ElasticQuery(
         from = from,
@@ -113,6 +135,8 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
 
     companion object {
         private val logger = LoggerFactory.getLogger(ElasticQueryBuilder::class.java)
+
+        private val ES_FIELD_PREFIX = """^[a-zA-Z]*:""".toRegex()
 
         private data class ParsedAggParams(
             val fieldName: String,
