@@ -30,6 +30,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
             date = query.date,
             range = query.range,
             terms = query.terms,
+            aggregations = query.aggregations,
             text = query.text
                 ?.trim()
                 ?.let { q ->
