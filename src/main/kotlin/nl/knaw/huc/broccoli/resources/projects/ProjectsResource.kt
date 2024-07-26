@@ -265,7 +265,7 @@ class ProjectsResource(
         val textSource = textInterpreter.findSegmentsSource()
         val textSelector = textInterpreter.findSelector()
 
-        if (wanted.contains("anno")) {
+        if (wanted.includesAnno()) {
             result["anno"] = if (overlapTypes.isEmpty()) {
                 searchResult.items()
             } else {
@@ -289,7 +289,7 @@ class ProjectsResource(
                     val viewSource = viewAnnoInterpreter.findTextSource()
                     val viewResult = mutableMapOf<String, Any>()
                     viewResult["lines"] = fetchTextLines(project.textRepo, viewSource)
-                    if (wanted.contains("anno")) {
+                    if (wanted.includesAnno()) {
                         viewResult["locations"] = findViewAnnotations(
                             project.textType,
                             annoRepo,
@@ -302,7 +302,7 @@ class ProjectsResource(
                 }
         }
 
-        if (wanted.contains("text") && requestedViews.contains("self")) {
+        if (wanted.includesText() && requestedViews.contains("self")) {
             val interpreter = AnnoSearchResultInterpreter(searchResult, project.textType)
             val textLines = timeExecution(
                 { fetchTextLines(textRepo, interpreter.findTextSource()) },
@@ -310,7 +310,7 @@ class ProjectsResource(
             )
             val textResult = mutableMapOf<String, Any>("lines" to textLines)
 
-            if (wanted.contains("anno")) {
+            if (wanted.includesAnno()) {
                 val offset = when (relativeTo) {
                     ORIGIN -> Offset(interpreter.findSelector().start(), interpreter.bodyId())
                     else -> {
@@ -357,7 +357,7 @@ class ProjectsResource(
 
         if (views.isNotEmpty()) result["views"] = views
 
-        if (wanted.contains("iiif")) {
+        if (wanted.includesIIIF()) {
             val bodyTypes = isIn(setOf(project.topTierBodyType))
             val manifest = timeExecution({
                 annoRepo.fetchOverlap(textSource, textSelector.start(), textSelector.end(), bodyTypes)
@@ -540,6 +540,10 @@ class ProjectsResource(
         const val ORIGIN = "Origin"
         private val logger = LoggerFactory.getLogger(ProjectsResource::class.java)
         private val queryMarker = MarkerFactory.getMarker("QRY")
+
+        private fun Set<String>.includesIIIF(): Boolean = contains("iiif")
+        private fun Set<String>.includesAnno(): Boolean = contains("anno")
+        private fun Set<String>.includesText(): Boolean = contains("text")
     }
 
 }
