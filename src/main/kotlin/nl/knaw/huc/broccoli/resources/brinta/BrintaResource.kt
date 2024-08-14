@@ -63,10 +63,9 @@ class BrintaResource(
                   "analyzer": {
                     "fulltext_analyzer": {
                       "type": "custom",
-                      "tokenizer": "whitespace",
+                      "tokenizer": "standard",
                       "filter": [
-                        "lowercase",
-                        "type_as_payload"
+                        "lowercase"
                       ]
                     }
                   }
