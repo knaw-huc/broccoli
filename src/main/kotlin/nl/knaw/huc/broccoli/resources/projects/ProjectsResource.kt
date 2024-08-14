@@ -295,6 +295,7 @@ class ProjectsResource(
                             annoRepo,
                             viewConf.scope.toAnnoRepoScope,
                             viewAnnoInterpreter,
+                            textInterpreter,
                             isIn(overlapTypes)
                         )
                     }
@@ -382,9 +383,11 @@ class ProjectsResource(
         annoRepo: AnnoRepo,
         annoScope: String,
         viewAnnoInterpreter: AnnoSearchResultInterpreter,
+        textAnnoInterpreter: AnnoSearchResultInterpreter,
         bodyTypes: Map<String, Set<String>>
     ): Map<String, Any> {
-        val viewSource = viewAnnoInterpreter.findSegmentsSource()
+        val textSource = textAnnoInterpreter.findSegmentsSource()
+        val textSelector = textAnnoInterpreter.findSelector()
         val viewSelector = viewAnnoInterpreter.findSelector()
         val viewBodyType = viewAnnoInterpreter.bodyType()
         val viewBodyId = viewAnnoInterpreter.bodyId()
@@ -392,7 +395,7 @@ class ProjectsResource(
         val relocatedAnnotations = mutableListOf<Map<String, Any>>()
         annoRepo.fetch(
             mapOf(
-                annoScope to region(viewSource, viewSelector.start(), viewSelector.end()),
+                annoScope to region(textSource, textSelector.start(), textSelector.end()),
                 AR_BODY_ID to isNotEqualTo(viewBodyId),
                 AR_BODY_TYPE to bodyTypes
             )
