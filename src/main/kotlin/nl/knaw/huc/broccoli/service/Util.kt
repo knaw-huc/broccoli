@@ -15,3 +15,22 @@ fun extractAggregations(context: ReadContext) = context.read<Map<String, Any>>("
         }
     }
     ?.groupByKey()
+
+inline fun <reified V> getValueAtPath(anno: Map<*, *>, path: String): V? {
+    val steps = path.split('.').iterator()
+
+    var cur: Any = anno
+    while (cur is Map<*, *>) {
+        cur = cur[steps.next()] ?: return null
+    }
+
+    if (steps.hasNext()) {
+        return null
+    }
+
+    if (cur is V) {
+        return cur
+    }
+
+    return null
+}
