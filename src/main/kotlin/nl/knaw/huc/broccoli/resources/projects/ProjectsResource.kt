@@ -30,7 +30,6 @@ import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
 import nl.knaw.huc.broccoli.service.anno.TextSelector
 import nl.knaw.huc.broccoli.service.extractAggregations
-import nl.knaw.huc.broccoli.service.getValueAtPath
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
 import org.slf4j.MarkerFactory
@@ -266,29 +265,26 @@ class ProjectsResource(
         val textSource = textInterpreter.findSegmentsSource()
         val textSelector = textInterpreter.findSelector()
 
-
-        val annos = if (wanted.contains("anno")) {
+        val annos: List<AnnoRepoSearchResult> = if (wanted.contains("anno")) {
             if (overlapTypes.isEmpty()) {
-                searchResult.items()
+                listOf(searchResult)
             } else {
                 timeExecution({
                     annoRepo.fetchOverlap(textSource, textSelector.start(), textSelector.end(), isIn(overlapTypes))
-                        .map { it.read<Map<String, Any>>("$") }
-                        .toList()
+                        .map { AnnoRepoSearchResult(it) }
                 }, { timeSpent -> annoTimings["fetchOverlap[text]"] = timeSpent })
             }
         } else emptyList()
 
         if (annos.isNotEmpty()) {
-            result["anno"] = annos
+            result["anno"] = annos.map { it.root() }
         }
 
         val views = mutableMapOf<String, Any>()
         interestedViews(project, requestedViews).forEach { (viewName, viewConf) ->
             val constraints = viewConf.anno.associate { it.path to it.value }
             val region = region(textSource, textSelector.start(), textSelector.end())
-            val textRegion = textSelector.start()..textSelector.end()
-            val newAnnos = extractViewAnnos(annos, constraints, textRegion)
+            val newAnnos = extractViewAnnos(annos, constraints)
             val annoConstraints = constraints.plus(AR_WITHIN_TEXT_ANCHOR_RANGE to region)
             logger.info("annoConstraints=$annoConstraints")
             annoRepo.fetch(annoConstraints)
@@ -388,54 +384,17 @@ class ProjectsResource(
         return Response.ok(result).build()
     }
 
-    private fun extractViewAnnos(
-        annos: List<Map<String, Any>>,
-        constraints: Map<String, String>,
-        textRegion: IntRange
-    ): List<Map<String, Any>> {
-//        logger.atInfo()
-////            .addKeyValue("annos", annos)
-//            .addKeyValue("constraints", constraints)
-//            .addKeyValue("region", textRegion)
-//            .log("extractViewAnnos")
-        return annos
-            .filter { anno ->
-                @Suppress("UNCHECKED_CAST") val targets = anno["target"] as List<Map<*, *>>
-                satisfies(anno, constraints) && liesWithin(targets, textRegion)
-            }
-            .also {
-                logger.atDebug().addKeyValue("size", it.size).log("accepted annotations")
-            }
-    }
-
-    private fun liesWithin(targets: List<Map<*, *>>, textRegion: IntRange) =
-        targets.any { target -> liesWithin(target, textRegion) }
-
-    private fun liesWithin(candidate: Map<*, *>, region: IntRange): Boolean =
-        getValueAtPath<Int>(candidate, "selector.start")?.let { start ->
-            getValueAtPath<Int>(candidate, "selector.end")?.let { end ->
-                liesWithin(start..end, region)
-            } ?: false
-        } ?: false
-
-    private fun liesWithin(candidate: IntRange, region: IntRange): Boolean {
-        val accept = candidate.first >= region.first && candidate.last <= region.last
-        if (!accept) {
-            logger.atDebug().addKeyValue("candidate", candidate).addKeyValue("region", region).log("REJECT")
+    private fun extractViewAnnos(allAnnos: List<AnnoRepoSearchResult>, constraints: Map<String, String>) =
+        mutableListOf<Map<String, Any>>().apply {
+            allAnnos.filter { it.satisfies(constraints) }
+                .forEach { viewAnno ->
+                    AnnoSearchResultInterpreter(viewAnno, "Text").findSelector().let { selector ->
+                        allAnnos.filter { it.liesWithin(selector.start()..selector.end()) }
+                            .map { it.root() }
+                            .let { addAll(it) }
+                    }
+                }
         }
-        return accept
-    }
-
-    private fun satisfies(anno: Map<String, Any>, constraints: Map<String, String>): Boolean {
-        val accept = constraints.all { (path, value) -> getValueAtPath<String>(anno, path) == value }
-        if (accept) {
-            logger.atDebug()
-                .addKeyValue("anno", anno)
-                .addKeyValue("constraints", constraints)
-                .log("ACCEPT")
-        }
-        return accept
-    }
 
     private fun findViewAnnotations(
         textType: String,
