@@ -246,13 +246,6 @@ projects:
               value: tei:Div
             - path: body.metadata.type
               value: text
-      - name: notes
-        conf:
-          anno:
-            - path: body.type
-              value: tei:Div
-            - path: body.metadata.type
-              value: notes
     brinta:
       uri: http://localhost:9200
       deleteKey: suriano-dev-mag-weg
