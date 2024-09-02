@@ -215,13 +215,43 @@ projects:
       uri: https://textrepo.republic-caf.diginfra.org
 
   - name: 'suriano'
-    topTierBodyType: tf:File
+    topTierBodyType: tf:Folder
+    textType: LogicalText
+    views:
+      - name: appendix
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: appendix
+      - name: original
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: original
+      - name: secretarial
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: secretarial
+      - name: text
+        conf:
+          anno:
+            - path: body.type
+              value: tei:Div
+            - path: body.metadata.type
+              value: text
     brinta:
       uri: http://localhost:9200
-      deleteKey: "local-dev-mag-weg"
+      deleteKey: suriano-dev-mag-weg
       indices:
-        - name: letters
-          bodyTypes: [ tf:File, tei:Div ]
+        - name: suriano-0.4.5e-021
+          bodyTypes: [ LetterBody ]
           fields:
             - name: bodyType
               path: "$.body.type"
@@ -233,19 +263,25 @@ projects:
               path: "$.body.metadata.recipient"
               type: keyword
             - name: recipientLoc
-              path: "$.body.metadata.recipientloc"
+              path: "$.body.metadata.recipientLoc"
               type: keyword
             - name: sender
               path: "$.body.metadata.sender"
               type: keyword
             - name: senderLoc
-              path: "$.body.metadata.senderloc"
+              path: "$.body.metadata.senderLoc"
+              type: keyword
+            - name: editorNotes
+              path: "$.body.metadata.editorNotes"
+              type: keyword
+            - name: shelfmark
+              path: "$.body.metadata.shelfmark"
               type: keyword
             - name: summary
               path: "$.body.metadata.summary"
               type: text
     annoRepo:
-      containerName: 'suriano-0.2.0'
+      containerName: 'suriano-0.4.5e-021'
       uri: https://suriano.annorepo.dev.clariah.nl/
     textRepo:
       uri: https://suriano.tt.di.huc.knaw.nl
