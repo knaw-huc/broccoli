@@ -12,19 +12,14 @@ import jakarta.ws.rs.core.GenericType
 import jakarta.ws.rs.core.HttpHeaders
 import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
-import nl.knaw.huc.broccoli.api.Constants.AR_BODY_ID
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
-import nl.knaw.huc.broccoli.api.Constants.AR_WITHIN_TEXT_ANCHOR_RANGE
 import nl.knaw.huc.broccoli.api.Constants.isIn
-import nl.knaw.huc.broccoli.api.Constants.isNotEqualTo
-import nl.knaw.huc.broccoli.api.Constants.region
 import nl.knaw.huc.broccoli.api.IndexQuery
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
 import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.ElasticQueryBuilder
 import nl.knaw.huc.broccoli.core.Project
-import nl.knaw.huc.broccoli.service.anno.AnnoRepo
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo.Offset
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
@@ -283,28 +278,50 @@ class ProjectsResource(
         val views = mutableMapOf<String, Any>()
         interestedViews(project, requestedViews).forEach { (viewName, viewConf) ->
             val constraints = viewConf.anno.associate { it.path to it.value }
-            val region = region(textSource, textSelector.start(), textSelector.end())
-            val newAnnos = extractViewAnnos(annos, constraints)
-            val annoConstraints = constraints.plus(AR_WITHIN_TEXT_ANCHOR_RANGE to region)
-            logger.info("annoConstraints=$annoConstraints")
-            annoRepo.fetch(annoConstraints)
-                .map(::AnnoRepoSearchResult)
-                .firstOrNull()
-                ?.let { viewAnnos ->
-                    val viewAnnoInterpreter = AnnoSearchResultInterpreter(viewAnnos, project.textType)
-                    val viewSource = viewAnnoInterpreter.findTextSource()
+            annos.find { it.satisfies(constraints) }
+                ?.let { viewAnno ->
                     val viewResult = mutableMapOf<String, Any>()
-                    viewResult["lines"] = fetchTextLines(project.textRepo, viewSource)
-                    if (wanted.contains("anno")) {
-                        viewResult["locations"] = findViewAnnotations(
-                            project.textType,
-                            annoRepo,
-                            viewConf.scope.toAnnoRepoScope,
-                            viewAnnoInterpreter,
-                            textInterpreter,
-                            isIn(overlapTypes)
+
+                    // fetch matching view anno's text based on project textType (meaning: do use LogicalText if needed)
+                    viewResult["lines"] = fetchTextLines(
+                        project.textRepo,
+                        AnnoSearchResultInterpreter(viewAnno, project.textType).findTextSource()
+                    )
+
+                    val relocatedAnnotations = mutableListOf<Map<String, Any>>()
+
+                    // now find included annos; must be based on 'Text' location (meaning: ignore LogicalText)
+                    with(AnnoSearchResultInterpreter(viewAnno, "Text").findSelector()) {
+                        // but: relocate anno's relative to the view's base anno (meaning: DO use LogicalText)
+                        val baseSelector = AnnoSearchResultInterpreter(viewAnno, project.textType).findSelector()
+                        annos.filter { it.bodyId() != viewAnno.bodyId() && it.liesWithin(start()..end()) }
+                            .forEach { anno ->
+                                val interpreter = AnnoSearchResultInterpreter(anno, project.textType)
+                                val selector = interpreter.findSelector()
+                                val annoStart = TextMarker(selector.start(), selector.beginCharOffset())
+                                val annoEnd = TextMarker(selector.end(), selector.endCharOffset())
+                                val annoMarkers = TextMarkers(annoStart, annoEnd).relativeTo(baseSelector.start())
+                                relocatedAnnotations.add(
+                                    mapOf(
+                                        "bodyId" to anno.bodyId(),
+                                        "start" to annoMarkers.start,
+                                        "end" to annoMarkers.end
+                                    )
+                                )
+                            }
+                    }
+
+                    if (relocatedAnnotations.isNotEmpty()) {
+                        viewResult["locations"] = mapOf(
+                            "relativeTo" to mapOf(
+                                "bodyId" to viewAnno.bodyId(),
+                                "bodyType" to viewAnno.bodyType()
+                            ),
+                            "annotations" to relocatedAnnotations
                         )
                     }
+
+                    // store the view result we just built
                     views[viewName] = viewResult
                 }
         }
@@ -382,66 +399,6 @@ class ProjectsResource(
         selfTimings["total"] = after - before
 
         return Response.ok(result).build()
-    }
-
-    private fun extractViewAnnos(allAnnos: List<AnnoRepoSearchResult>, constraints: Map<String, String>) =
-        mutableListOf<Map<String, Any>>().apply {
-            allAnnos.filter { it.satisfies(constraints) }
-                .forEach { viewAnno ->
-                    AnnoSearchResultInterpreter(viewAnno, "Text").findSelector().let { selector ->
-                        allAnnos.filter { it.liesWithin(selector.start()..selector.end()) }
-                            .map { it.root() }
-                            .let { addAll(it) }
-                    }
-                }
-        }
-
-    private fun findViewAnnotations(
-        textType: String,
-        annoRepo: AnnoRepo,
-        annoScope: String,
-        viewAnnoInterpreter: AnnoSearchResultInterpreter,
-        textAnnoInterpreter: AnnoSearchResultInterpreter,
-        bodyTypes: Map<String, Set<String>>
-    ): Map<String, Any> {
-        val textSource = textAnnoInterpreter.findSegmentsSource()
-        val textSelector = textAnnoInterpreter.findSelector()
-        val viewSelector = viewAnnoInterpreter.findSelector()
-        val viewBodyType = viewAnnoInterpreter.bodyType()
-        val viewBodyId = viewAnnoInterpreter.bodyId()
-
-        val relocatedAnnotations = mutableListOf<Map<String, Any>>()
-        annoRepo.fetch(
-            mapOf(
-                annoScope to region(textSource, textSelector.start(), textSelector.end()),
-                AR_BODY_ID to isNotEqualTo(viewBodyId),
-                AR_BODY_TYPE to bodyTypes
-            )
-        )
-            .map { it.read<Any>("$") }
-            .forEach { anno ->
-                if (anno is Map<*, *>) {
-                    val annoBodyId = extractBodyId(anno)
-                    val annoSelector = extractTextSelector(textType, anno)
-                    if (annoBodyId != null && annoSelector != null) {
-                        val annoStart = TextMarker(annoSelector.start(), annoSelector.beginCharOffset())
-                        val annoEnd = TextMarker(annoSelector.end(), annoSelector.endCharOffset())
-                        val annoMarkers = TextMarkers(annoStart, annoEnd).relativeTo(viewSelector.start())
-                        relocatedAnnotations.add(
-                            mapOf(
-                                "bodyId" to annoBodyId,
-                                "start" to annoMarkers.start,
-                                "end" to annoMarkers.end
-                            )
-                        )
-                    }
-                }
-            }
-
-        return mapOf(
-            "relativeTo" to mapOf("bodyType" to viewBodyType, "bodyId" to viewBodyId),
-            "annotations" to relocatedAnnotations
-        )
     }
 
     private fun interestedViews(project: Project, interestedIn: Set<String>) =
