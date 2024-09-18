@@ -46,8 +46,32 @@ data class RangeQuery(
     )
 }
 
+data class NestedQuery(
+    @JsonIgnore val fieldName: String,
+    @JsonIgnore val constraints: Map<String, List<String>>
+) : BaseQuery() {
+    @JsonAnyGetter
+    fun toJson() = mapOf(
+        "nested" to mapOf(
+            "path" to fieldName,
+            "query" to mapOf(
+                "bool" to mapOf(
+                    "filter" to mutableListOf<Map<String, Map<String, List<String>>>>(
+                    ).apply {
+                        constraints.forEach { (nestedFieldName, allowedValues) ->
+                            add(
+                                mapOf("terms" to mapOf("$fieldName.$nestedFieldName" to allowedValues))
+                            )
+                        }
+                    }
+                )
+            )
+        )
+    )
+}
+
 data class TermsQuery(
-    val terms: Map<String, List<String>>
+    val terms: Map<String, Any>
 ) : BaseQuery()
 
 data class FullTextQuery(

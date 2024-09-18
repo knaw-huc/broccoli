@@ -57,7 +57,22 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
             bool = BoolQuery(
                 must = mutableListOf<BaseQuery>().apply {
                     query.terms?.forEach {
-                        add(TermsQuery(mapOf(it.key to it.value)))
+                        logger.atInfo().addKeyValue("it", it).log("term")
+                        when (it.value) {
+                            is List<*> -> {
+                                logger.atInfo().log("is list")
+                                add(TermsQuery(mapOf(it.key to (it.value as List<*>))))
+                            }
+
+                            is Map<*, *> -> {
+                                logger.atInfo().log("is map")
+                                @Suppress("UNCHECKED_CAST") val v =
+                                    NestedQuery(it.key, it.value as Map<String, List<String>>)
+                                logger.atInfo().addKeyValue("query", v).log("nestedQuery")
+                                logger.atInfo().addKeyValue("json", v.toJson()).log("nestedQuery")
+                                add(v)
+                            }
+                        }
                     }
                     query.date?.let {
                         add(RangeQuery(it.name, it.from, it.to, relation = "within"))

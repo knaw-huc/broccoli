@@ -19,7 +19,7 @@ data class IndexQuery(
     }
 }
 
-typealias IndexTerms = Map<String, List<String>>
+typealias IndexTerms = Map<String, Any>
 
 data class IndexRange(val name: String, val from: String?, val to: String?) {
     override fun toString(): String = "$name:[$from,$to]"

@@ -145,7 +145,7 @@ projects:
       deleteKey: 'republic-dev-mag-weg'
       joinSeparator: " "
       indices:
-        - name: 'republic-2024.09.14'
+        - name: 'rep-2024.09.10'
           bodyTypes: [ Resolution ]
           fields:
             - name: bodyType
