@@ -50,7 +50,7 @@ class BrintaResource(
             ),
         )
         index.fields.forEach { field ->
-            field.type?.let { type -> properties[field.name] = mapOf("type" to type) }
+            field.type.let { type -> properties[field.name] = mapOf("type" to type) }
         }
 
         val mappings = mapOf("properties" to properties)
@@ -92,7 +92,11 @@ class BrintaResource(
     @Path("indices")
     fun getIndices(@PathParam("projectId") projectId: String): Response =
         getProject(projectId).brinta.indices
-            .associate { idx -> idx.name to idx.fields.associate { f -> f.name to (f.type ?: "undefined") } }
+            .associate { idx ->
+                idx.name to idx.fields.associate { field ->
+                    field.name to (field.nested?.let { nf -> nf.fields.associate { it.name to it.type } } ?: field.type)
+                }
+            }
             .let { Response.ok(it).build() }
 
     @DELETE
@@ -215,13 +219,15 @@ class BrintaResource(
 
                     // Then: optional extra payload: fields from config
                     index.fields.forEach { field ->
-                        try {
-                            anno.read(field.path)?.let { payload[field.name] = it }
-                            logger.atTrace().log("payload[{}] -> {}", field.name, payload[field.name])
-                        } catch (e: PathNotFoundException) {
-                            // Must catch PNF, even though DEFAULT_PATH_LEAF_TO_NULL is set, because intermediate
-                            //   nodes can also be null, i.e., they don't exist, which still yields a PNF Exception.
-                            // Ignore this, just means the annotation doesn't have a value for this field
+                        field.path?.let { path ->
+                            try {
+                                anno.read(path)?.let { payload[field.name] = it }
+                                logger.atTrace().log("payload[{}] -> {}", field.name, payload[field.name])
+                            } catch (e: PathNotFoundException) {
+                                // Must catch PNF, even though DEFAULT_PATH_LEAF_TO_NULL is set, because intermediate
+                                //   nodes can also be null, i.e., they don't exist, which still yields a PNF Exception.
+                                // Ignore this, just means the annotation doesn't have a value for this field
+                            }
                         }
                     }
 
