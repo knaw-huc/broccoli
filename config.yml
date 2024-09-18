@@ -145,9 +145,11 @@ projects:
       deleteKey: 'republic-dev-mag-weg'
       joinSeparator: " "
       indices:
-        - name: 'republic-2024.06.18'
+        - name: 'republic-2024.09.14'
           bodyTypes: [ Resolution ]
           fields:
+            - name: bodyType
+              path: "$.body.type"
             - name: propositionType
               path: "$.body.metadata.propositionType"
             - name: resolutionType
@@ -166,24 +168,36 @@ projects:
             - name: sessionYear
               path: "$.body.metadata.sessionYear"
               type: short
-            - name: delegateId
-              path: "$.body.metadata.delegateId"
-            - name: delegateName
-              path: "$.body.metadata.delegateName"
-            - name: entityCategory
-              path: "$.body.metadata.category"
-            - name: entityId
-              path: "$.body.metadata.entityId"
-            - name: entityLabels
-              path: "$.body.metadata.entityLabels"
-            - name: entityName
-              path: "$.body.metadata.name"
+            - name: attendants
+              nested:
+                from: [ Attendant ]
+                fields:
+                  - name: id
+                    path: "$.body.metadata.delegateId"
+                  - name: name
+                    path: "$.body.metadata.delegateName"
+                with:
+                  - equal: "$.body.metadata.sessionID"
+            - name: entities
+              nested:
+                from: [ Entity ]
+                fields:
+                  - name: category
+                    path: "$.body.metadata.category"
+                  - name: id
+                    path: "$.body.metadata.entityId"
+                  - name: labels
+                    path: "$.body.metadata.entityLabels"
+                  - name: name
+                    path: "$.body.metadata.name"
+                with:
+                  - overlap: LogicalText
             - name: bodyType
               path: "$.body.type"
             - name: sessionWeekday
               path: "$.body.metadata.sessionWeekday"
     annoRepo:
-      containerName: republic-2024.06.18
+      containerName: republic-2024.09.14
       uri: https://annorepo.republic-caf.diginfra.org
     textRepo:
       uri: https://textrepo.republic-caf.diginfra.org

@@ -185,9 +185,57 @@ class IndexFieldConfiguration {
 
     @Valid
     @JsonProperty
-    val path: String = "$.body.id"
+    var type: String = "keyword"
 
     @Valid
     @JsonProperty
-    val type: String = "keyword"
+    // mutually exclusive with 'nested'
+    val path: String? = null
+
+    @Valid
+    @JsonProperty
+    // mutually exclusive with 'path'
+    val nested: NestedIndexFieldConfiguration? = null
+
+    class NestedIndexFieldConfiguration {
+        @Valid
+        @NotNull
+        @JsonProperty
+        val from: List<String> = ArrayList()
+
+        @Valid
+        @NotNull
+        @JsonProperty
+        val fields: List<PathIndexFieldConfiguration> = ArrayList()
+
+        @Valid
+        @NotNull
+        @JsonProperty
+        val with: List<NestedIndexFieldConstraint> = ArrayList()
+
+        class NestedIndexFieldConstraint {
+            @Valid
+            @JsonProperty
+            val equal: String? = null
+
+            @Valid
+            @JsonProperty
+            val overlap: String? = null
+        }
+
+        class PathIndexFieldConfiguration {
+            @Valid
+            @NotNull
+            @JsonProperty
+            val name: String = ""
+
+            @Valid
+            @JsonProperty
+            val path: String? = null
+
+            @Valid
+            @JsonProperty
+            val type: String = "keyword"
+        }
+    }
 }
