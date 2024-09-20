@@ -19,17 +19,6 @@ data class IndexQuery(
     }
 }
 
-abstract class AggregationSpec
-
-data class SimpleAggregationSpec(
-    val order: String,
-    val size: Int
-) : AggregationSpec()
-
-data class NestedAggregationSpec(
-    val nestedFieldSpec: Map<String, SimpleAggregationSpec>
-) : AggregationSpec()
-
 typealias IndexTerms = Map<String, Any>
 
 data class IndexRange(val name: String, val from: String?, val to: String?) {
