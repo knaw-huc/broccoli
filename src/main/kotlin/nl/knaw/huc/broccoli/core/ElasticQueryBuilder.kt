@@ -79,7 +79,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                     }
 
                     "nested" -> {
-                        logger.atInfo().addKeyValue("name", name).log("nested");
+                        logger.atInfo().addKeyValue("name", name).log("nested")
                         @Suppress("UNCHECKED_CAST")
                         NestedAggregation(name, query.aggregations?.get(name) as Map<String, Map<String, Any>>)
                     }
