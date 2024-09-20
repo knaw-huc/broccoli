@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonAnyGetter
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.databind.ObjectMapper
 import nl.knaw.huc.broccoli.api.Constants.TEXT_TOKEN_COUNT
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -143,4 +144,45 @@ class TermAggregation(
             sortOrder?.let { put("order", it) }
         }
     )
+
+}
+
+class NestedAggregation(
+    name: String,
+    private val fields: Map<String, Map<String, Any>>
+) : Aggregation(name) {
+    override fun toJson(): Map<String, Map<String, Any>> {
+        val v =
+            mapOf(
+                "nested" to mapOf("path" to name),
+                "aggregations" to mutableMapOf<String, Any>().apply {
+                    fields.forEach { (nestedFieldName, aggSpec) ->
+                        put(
+                            nestedFieldName, mapOf(
+                                "terms" to mutableMapOf<String, Any>("field" to "$name.$nestedFieldName").apply {
+                                    System.err.println("add $aggSpec")
+                                    aggSpec["size"]?.let { put("size", it) }
+                                    aggSpec["order"]?.let { order ->
+                                        put(
+                                            "order", when (order) {
+                                                "keyAsc" -> mapOf("_key" to "asc")
+                                                "keyDesc" -> mapOf("_key" to "desc")
+                                                else -> mapOf("_count" to "desc")
+                                            }
+                                        )
+                                    }
+                                },
+                                "aggregations" to mapOf(
+                                    "documents" to mapOf(
+                                        "reverse_nested" to emptyMap<String, Any>()
+                                    )
+                                )
+                            )
+                        )
+                    }
+                }
+            )
+        System.err.println("nested aggs query: ${ObjectMapper().writeValueAsString(v)}")
+        return v
+    }
 }

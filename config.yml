@@ -35,7 +35,7 @@ logging:
             - QRY
 
   loggers:
-    nl.knaw.huc: DEBUG
+    nl.knaw.huc: TRACE
     org: WARN
     org.glassfish: ERROR
     com.jayway: ERROR
@@ -169,6 +169,7 @@ projects:
               path: "$.body.metadata.sessionYear"
               type: short
             - name: attendants
+              type: nested
               nested:
                 from: [ Attendant ]
                 fields:
@@ -179,6 +180,7 @@ projects:
                 with:
                   - equal: "$.body.metadata.sessionID"
             - name: entities
+              type: nested
               nested:
                 from: [ Entity ]
                 fields:

@@ -63,14 +63,25 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
 
         aggregations = (query.aggregations?.keys ?: index.fields.map { it.name })
             .mapNotNull { name ->
+                logger.atInfo()
+                    .addKeyValue("name", name)
+                    .addKeyValue("spec", query.aggregations?.get(name))
+                    .log("aggregations")
                 when (index.fields.find { it.name == name }?.type) {
                     "keyword", "short", "byte" -> {
-                        val aggSpec = query.aggregations?.get(name)
-                        TermAggregation(
-                            name = name,
-                            numResults = aggSpec?.size,
-                            sortOrder = orderParams[aggSpec?.order]
-                        )
+                        query.aggregations?.get(name)?.let { aggSpec ->
+                            TermAggregation(
+                                name = name,
+                                numResults = aggSpec.size,
+                                sortOrder = orderParams[aggSpec["order"]]
+                            )
+                        }
+                    }
+
+                    "nested" -> {
+                        logger.atInfo().addKeyValue("name", name).log("nested");
+                        @Suppress("UNCHECKED_CAST")
+                        NestedAggregation(name, query.aggregations?.get(name) as Map<String, Map<String, Any>>)
                     }
 
                     "date" -> DateAggregation(name)
@@ -90,7 +101,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                 aggregations = Aggregations(listOf(
                     // use aggregation sort order / count, if specified
                     query.aggregations?.get(curTerm.key)?.let { aggSpec ->
-                        TermAggregation(curTerm.key, aggSpec.size, orderParams[aggSpec.order])
+                        TermAggregation(curTerm.key, aggSpec.size, orderParams[aggSpec["order"]])
                     } ?: TermAggregation(curTerm.key))
                 )))
         }
