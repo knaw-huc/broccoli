@@ -140,13 +140,11 @@ class ProjectsResource(
             }
         }
 
-        // if aggregations are requested, order them according to query string
-        (queryString.aggregations ?: index.fields.map { it.name }).let { orderedAggregationNames ->
-            result["aggs"] = LinkedHashMap<String, Any?>().apply {
-                orderedAggregationNames.forEach { unparsedName ->
-                    val parsedName = unparsedName.substringBefore(":")
-                    aggs[parsedName]?.let { put(parsedName, it) }
-                }
+        // use LinkedHashMap to fix aggregation order
+        result["aggs"] = LinkedHashMap<String, Any?>().apply {
+            // prefer query string order; default to order from config
+            (queryString.aggregations?.keys ?: index.fields.map { it.name }).forEach { name ->
+                aggs[name]?.let { aggregationResult -> put(name, aggregationResult) }
             }
         }
 

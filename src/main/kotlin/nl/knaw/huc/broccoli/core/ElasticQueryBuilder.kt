@@ -61,19 +61,19 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
             )
         },
 
-        aggregations = (query.aggregations ?: index.fields.map { it.name })
-            .map { parseAggregationParameters(it) }
-            .also { logger.atDebug().addArgument(it).log("parsed aggregation params: {}") }
-            .mapNotNull { params ->
-                when (index.fields.find { it.name == params.fieldName }?.type) {
-                    "keyword", "short", "byte" ->
+        aggregations = (query.aggregations?.keys ?: index.fields.map { it.name })
+            .mapNotNull { name ->
+                when (index.fields.find { it.name == name }?.type) {
+                    "keyword", "short", "byte" -> {
+                        val aggSpec = query.aggregations?.get(name)
                         TermAggregation(
-                            name = params.fieldName,
-                            numResults = params.numResults,
-                            sortOrder = params.sortOrder
+                            name = name,
+                            numResults = aggSpec?.size,
+                            sortOrder = orderParams[aggSpec?.order]
                         )
+                    }
 
-                    "date" -> DateAggregation(params.fieldName)
+                    "date" -> DateAggregation(name)
                     else -> null
                 }
             }
@@ -89,10 +89,8 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                 query = buildMainQuery(),
                 aggregations = Aggregations(listOf(
                     // use aggregation sort order / count, if specified
-                    query.aggregations?.find { it.startsWith(curTerm.key + ':') }?.let {
-                        parseAggregationParameters(it).let { params ->
-                            TermAggregation(params.fieldName, params.numResults, params.sortOrder)
-                        }
+                    query.aggregations?.get(curTerm.key)?.let { aggSpec ->
+                        TermAggregation(curTerm.key, aggSpec.size, orderParams[aggSpec.order])
                     } ?: TermAggregation(curTerm.key))
                 )))
         }
@@ -131,26 +129,10 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
 
         private val ES_FIELD_PREFIX = """^[a-zA-Z]*:""".toRegex()
 
-        private data class ParsedAggParams(
-            val fieldName: String,
-            var numResults: Int? = null,
-            var sortOrder: Map<String, Any>? = null
-        )
-
         private val orderParams = mapOf(
             "keyAsc" to mapOf("_key" to "asc"),
             "keyDesc" to mapOf("_key" to "desc"),
             "countDesc" to mapOf("_count" to "desc")
         )
-
-        private fun parseAggregationParameters(aggName: String): ParsedAggParams =
-            ParsedAggParams(aggName.substringBeforeLast(delimiter = ':')).apply {
-                aggName.substringAfterLast(delimiter = ':', missingDelimiterValue = "")
-                    .split(',')
-                    .forEach { param ->
-                        param.toIntOrNull()?.let { numResults = it }
-                        orderParams[param]?.let { sortOrder = it }
-                    }
-            }
     }
 }

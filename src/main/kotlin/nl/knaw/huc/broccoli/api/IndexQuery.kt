@@ -9,7 +9,7 @@ data class IndexQuery(
     val range: IndexRange?,
 
     @JsonProperty("aggs")
-    val aggregations: List<String>? = null
+    val aggregations: Map<String, AggregationSpec>? = null
 ) {
     override fun toString(): String = buildString {
         text?.let { append(it).append('|') }
@@ -18,6 +18,11 @@ data class IndexQuery(
         terms?.let { append(it).append('|') }
     }
 }
+
+data class AggregationSpec(
+    val order: String,
+    val size: Int
+)
 
 typealias IndexTerms = Map<String, Any>
 
