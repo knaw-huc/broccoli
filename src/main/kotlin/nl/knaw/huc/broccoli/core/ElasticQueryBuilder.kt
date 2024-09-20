@@ -52,41 +52,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
         from = from,
         size = size,
         sort = Sort(sortBy, sortOrder),
-
-        query = ComplexQuery(
-            bool = BoolQuery(
-                must = mutableListOf<BaseQuery>().apply {
-                    query.terms?.forEach {
-                        logger.atInfo().addKeyValue("it", it).log("term")
-                        when (it.value) {
-                            is List<*> -> {
-                                logger.atInfo().log("is list")
-                                add(TermsQuery(mapOf(it.key to (it.value as List<*>))))
-                            }
-
-                            is Map<*, *> -> {
-                                logger.atInfo().log("is map")
-                                @Suppress("UNCHECKED_CAST") val v =
-                                    NestedQuery(it.key, it.value as Map<String, List<String>>)
-                                logger.atInfo().addKeyValue("query", v).log("nestedQuery")
-                                logger.atInfo().addKeyValue("json", v.toJson()).log("nestedQuery")
-                                add(v)
-                            }
-                        }
-                    }
-                    query.date?.let {
-                        add(RangeQuery(it.name, it.from, it.to, relation = "within"))
-                    }
-                    query.range?.let {
-                        add(RangeQuery(it.name, it.from, it.to))
-                    }
-                    query.text?.let {
-                        add(FullTextQuery(QueryString(it)))
-                    }
-                }
-            )
-        ),
-
+        query = buildMainQuery(),
         highlight = query.text?.let { queryText ->
             HighlightTerm(
                 text = queryText,
@@ -120,24 +86,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                 from = from,
                 size = size,
                 sort = Sort(sortBy, sortOrder),
-                query = ComplexQuery(
-                    bool = BoolQuery(
-                        must = mutableListOf<BaseQuery>().apply {
-                            query.terms?.forEach {
-                                if (it.key != curTerm.key) add(TermsQuery(mapOf(it.key to it.value)))
-                            }
-                            query.date?.let {
-                                add(RangeQuery(it.name, it.from, it.to, relation = "within"))
-                            }
-                            query.range?.let {
-                                add(RangeQuery(it.name, it.from, it.to))
-                            }
-                            query.text?.let {
-                                add(FullTextQuery(QueryString(it)))
-                            }
-                        }
-                    )
-                ),
+                query = buildMainQuery(),
                 aggregations = Aggregations(listOf(
                     // use aggregation sort order / count, if specified
                     query.aggregations?.find { it.startsWith(curTerm.key + ':') }?.let {
@@ -148,6 +97,34 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                 )))
         }
     }.toList()
+
+    private fun buildMainQuery() = ComplexQuery(
+        bool = BoolQuery(
+            must = mutableListOf<BaseQuery>().apply {
+                query.terms?.forEach {
+                    when (it.value) {
+                        is List<*> -> {
+                            add(TermsQuery(mapOf(it.key to (it.value as List<*>))))
+                        }
+
+                        is Map<*, *> -> {
+                            @Suppress("UNCHECKED_CAST")
+                            add(NestedQuery(it.key, it.value as Map<String, List<String>>))
+                        }
+                    }
+                }
+                query.date?.let {
+                    add(RangeQuery(it.name, it.from, it.to, relation = "within"))
+                }
+                query.range?.let {
+                    add(RangeQuery(it.name, it.from, it.to))
+                }
+                query.text?.let {
+                    add(FullTextQuery(QueryString(it)))
+                }
+            }
+        )
+    )
 
     companion object {
         private val logger = LoggerFactory.getLogger(ElasticQueryBuilder::class.java)
