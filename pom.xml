@@ -6,7 +6,7 @@
 
     <groupId>nl.knaw.huc</groupId>
     <artifactId>broccoli</artifactId>
-    <version>0.40-nested-facets-2</version>
+    <version>0.40-nested-facets-3</version>
 
     <packaging>jar</packaging>
 
