@@ -143,6 +143,13 @@ class TermAggregation(
             sortOrder?.let { put("order", it) }
         }
     )
+
+    override fun toString(): String = buildString {
+        append(name).append('|')
+        numResults?.let { append(it).append('|') }
+        sortOrder?.let { append(it).append('|') }
+        append("json:")
+    }
 }
 
 class NestedAggregation(
@@ -157,7 +164,7 @@ class NestedAggregation(
                     nestedFieldName, mapOf(
                         "terms" to mutableMapOf<String, Any>("field" to "$name.$nestedFieldName").apply {
                             aggSpec["size"]?.let { put("size", it) }
-                            aggSpec["order"]?.let<Any, Unit> { order ->
+                            aggSpec["order"]?.let { order ->
                                 put(
                                     "order", when (order) {
                                         "keyAsc" -> mapOf("_key" to "asc")
