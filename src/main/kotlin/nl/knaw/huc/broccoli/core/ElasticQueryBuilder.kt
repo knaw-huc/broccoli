@@ -72,7 +72,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                         query.aggregations?.get(name)?.let { aggSpec ->
                             TermAggregation(
                                 name = name,
-                                numResults = aggSpec.size,
+                                numResults = aggSpec["size"] as Int,
                                 sortOrder = orderParams[aggSpec["order"]]
                             )
                         }
@@ -101,7 +101,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                 aggregations = Aggregations(listOf(
                     // use aggregation sort order / count, if specified
                     query.aggregations?.get(curTerm.key)?.let { aggSpec ->
-                        TermAggregation(curTerm.key, aggSpec.size, orderParams[aggSpec["order"]])
+                        TermAggregation(curTerm.key, aggSpec["size"] as Int, orderParams[aggSpec["order"]])
                     } ?: TermAggregation(curTerm.key))
                 )))
         }
