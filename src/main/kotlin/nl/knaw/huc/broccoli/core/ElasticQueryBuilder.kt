@@ -25,6 +25,60 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
 
     fun query(query: IndexQuery) = apply { this.query = normalizeQuery(query) }
 
+    fun toElasticQuery() = ElasticQuery(
+        from = from,
+        size = size,
+        sort = Sort(sortBy, sortOrder),
+        query = buildMainQuery(),
+        highlight = query.text?.let { queryText ->
+            HighlightTerm(
+                text = queryText,
+                fragmentSize = fragmentSize,
+                extraFields = index.fields.filter { it.type == "text" }.map { it.name }
+            )
+        },
+
+        aggregations = (query.aggregations?.keys ?: configuredFieldNames())
+            .mapNotNull { name ->
+                query.aggregations?.get(name)?.let { aggSpec ->
+                    when (configuredFieldType(name)) {
+                        "byte", "keyword", "short" -> TermAggregation(
+                            name = name,
+                            numResults = aggSpec["size"] as Int,
+                            sortOrder = orderParams[aggSpec["order"]]
+                        )
+
+                        "date" -> DateAggregation(name)
+
+                        "nested" -> {
+                            @Suppress("UNCHECKED_CAST")
+                            val nestedAggSpec = aggSpec as Map<String, Map<String, Any>>
+                            NestedAggregation(name = name, fields = nestedAggSpec)
+                        }
+
+                        else -> null
+                    }
+                }
+            }
+            .let { Aggregations(it) }
+    )
+
+    fun toMultiFacetCountQueries() = mutableListOf<ElasticQuery>().apply {
+        query.terms?.forEach { curTerm ->
+            add(ElasticQuery(
+                from = from,
+                size = size,
+                sort = Sort(sortBy, sortOrder),
+                query = buildMainQuery(),
+                aggregations = Aggregations(listOf(
+                    // use aggregation sort order / count, if specified
+                    query.aggregations?.get(curTerm.key)?.let { aggSpec ->
+                        TermAggregation(curTerm.key, aggSpec["size"] as Int, orderParams[aggSpec["order"]])
+                    } ?: TermAggregation(curTerm.key))
+                )))
+        }
+    }.toList()
+
     private fun normalizeQuery(query: IndexQuery): IndexQuery {
         return IndexQuery(
             date = query.date,
@@ -47,65 +101,6 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                 },
         )
     }
-
-    fun toElasticQuery() = ElasticQuery(
-        from = from,
-        size = size,
-        sort = Sort(sortBy, sortOrder),
-        query = buildMainQuery(),
-        highlight = query.text?.let { queryText ->
-            HighlightTerm(
-                text = queryText,
-                fragmentSize = fragmentSize,
-                extraFields = index.fields.filter { it.type == "text" }.map { it.name }
-            )
-        },
-
-        aggregations = (query.aggregations?.keys ?: index.fields.map { it.name })
-            .mapNotNull { name ->
-                logger.atInfo()
-                    .addKeyValue("name", name)
-                    .addKeyValue("spec", query.aggregations?.get(name))
-                    .log("aggregations")
-                when (index.fields.find { it.name == name }?.type) {
-                    "keyword", "short", "byte" -> {
-                        query.aggregations?.get(name)?.let { aggSpec ->
-                            TermAggregation(
-                                name = name,
-                                numResults = aggSpec["size"] as Int,
-                                sortOrder = orderParams[aggSpec["order"]]
-                            )
-                        }
-                    }
-
-                    "nested" -> {
-                        logger.atInfo().addKeyValue("name", name).log("nested")
-                        @Suppress("UNCHECKED_CAST")
-                        NestedAggregation(name, query.aggregations?.get(name) as Map<String, Map<String, Any>>)
-                    }
-
-                    "date" -> DateAggregation(name)
-                    else -> null
-                }
-            }
-            .let { Aggregations(it) }
-    )
-
-    fun toMultiFacetCountQueries() = mutableListOf<ElasticQuery>().apply {
-        query.terms?.forEach { curTerm ->
-            add(ElasticQuery(
-                from = from,
-                size = size,
-                sort = Sort(sortBy, sortOrder),
-                query = buildMainQuery(),
-                aggregations = Aggregations(listOf(
-                    // use aggregation sort order / count, if specified
-                    query.aggregations?.get(curTerm.key)?.let { aggSpec ->
-                        TermAggregation(curTerm.key, aggSpec["size"] as Int, orderParams[aggSpec["order"]])
-                    } ?: TermAggregation(curTerm.key))
-                )))
-        }
-    }.toList()
 
     private fun buildMainQuery() = ComplexQuery(
         bool = BoolQuery(
@@ -134,6 +129,10 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
             }
         )
     )
+
+    private fun configuredFieldNames() = index.fields.map { it.name }
+
+    private fun configuredFieldType(name: String) = index.fields.find { it.name == name }?.type
 
     companion object {
         private val logger = LoggerFactory.getLogger(ElasticQueryBuilder::class.java)
