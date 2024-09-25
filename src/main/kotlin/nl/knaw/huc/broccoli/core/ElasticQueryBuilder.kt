@@ -69,7 +69,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                 from = from,
                 size = size,
                 sort = Sort(sortBy, sortOrder),
-                query = buildMainQuery(),
+                query = buildMainQuery(curTerm.key),
                 aggregations = Aggregations(listOf(
                     // use aggregation sort order / count, if specified
                     query.aggregations?.get(curTerm.key)?.let { aggSpec ->
@@ -102,21 +102,23 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
         )
     }
 
-    private fun buildMainQuery() = ComplexQuery(
+    private fun buildMainQuery(ignoreTerm: String? = null) = ComplexQuery(
         bool = BoolQuery(
             must = mutableListOf<BaseQuery>().apply {
-                query.terms?.forEach {
-                    when (it.value) {
-                        is List<*> -> {
-                            add(TermsQuery(mapOf(it.key to (it.value as List<*>))))
-                        }
+                query.terms
+                    ?.filter { ignoreTerm == null || it.key != ignoreTerm }
+                    ?.forEach {
+                        when (it.value) {
+                            is List<*> -> {
+                                add(TermsQuery(mapOf(it.key to (it.value as List<*>))))
+                            }
 
-                        is Map<*, *> -> {
-                            @Suppress("UNCHECKED_CAST")
-                            add(NestedQuery(it.key, it.value as Map<String, List<String>>))
+                            is Map<*, *> -> {
+                                @Suppress("UNCHECKED_CAST")
+                                add(NestedQuery(it.key, it.value as Map<String, List<String>>))
+                            }
                         }
                     }
-                }
                 query.date?.let {
                     add(RangeQuery(it.name, it.from, it.to, relation = "within"))
                 }
