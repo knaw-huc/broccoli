@@ -143,7 +143,6 @@ class TermAggregation(
             sortOrder?.let { put("order", it) }
         }
     )
-
 }
 
 class NestedAggregation(
