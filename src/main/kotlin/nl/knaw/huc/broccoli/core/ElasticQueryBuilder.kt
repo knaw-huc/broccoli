@@ -37,7 +37,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                 extraFields = index.fields.filter { it.type == "text" }.map { it.name }
             )
         },
-        aggregations = buildAggregations()
+        aggregations = buildAggregations(query.aggregations?.keys ?: configuredFieldNames())
     )
 
     fun toMultiFacetCountQueries() = mutableListOf<ElasticQuery>()
@@ -49,15 +49,15 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                         size = size,
                         sort = Sort(sortBy, sortOrder),
                         query = buildMainQuery { it.key != name },
-                        aggregations = buildAggregations()
+                        aggregations = buildAggregations(listOf(name))
                     )
                 )
             }
         }
 
-    private fun buildAggregations() = Aggregations(
-        (query.aggregations?.keys ?: configuredFieldNames())
-            .mapNotNull { aggName ->
+    private fun buildAggregations(names: Collection<String>) =
+        Aggregations(
+            names.mapNotNull { aggName ->
                 query.aggregations?.get(aggName)?.let { aggSpec ->
                     when (configuredFieldType(aggName)) {
                         "byte", "keyword", "short" ->
@@ -79,7 +79,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                     }
                 }
             }
-    )
+        )
 
     private fun normalizeQuery(query: IndexQuery): IndexQuery {
         return IndexQuery(
