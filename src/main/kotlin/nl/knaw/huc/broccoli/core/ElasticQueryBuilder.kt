@@ -104,10 +104,11 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
         )
     }
 
-    private fun buildMainQuery(predicate: ((Map.Entry<String, Any>) -> Boolean)? = null) = ComplexQuery(
+    private fun buildMainQuery(predicate: ((Map.Entry<String, Any>) -> Boolean) = { true }) = ComplexQuery(
         bool = BoolQuery(
             must = mutableListOf<BaseQuery>().apply {
-                predicate?.let { query.terms?.filter(predicate) } ?: query.terms
+                query.terms
+                    ?.filter(predicate)
                     ?.forEach {
                         when (it.value) {
                             is List<*> -> {
