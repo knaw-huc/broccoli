@@ -37,47 +37,49 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                 extraFields = index.fields.filter { it.type == "text" }.map { it.name }
             )
         },
+        aggregations = buildAggregations()
+    )
 
-        aggregations = (query.aggregations?.keys ?: configuredFieldNames())
-            .mapNotNull { name ->
-                query.aggregations?.get(name)?.let { aggSpec ->
-                    when (configuredFieldType(name)) {
-                        "byte", "keyword", "short" -> TermAggregation(
-                            name = name,
-                            numResults = aggSpec["size"] as Int,
-                            sortOrder = orderParams[aggSpec["order"]]
-                        )
+    fun toMultiFacetCountQueries() = mutableListOf<ElasticQuery>()
+        .apply {
+            query.terms?.keys?.forEach { name ->
+                add(
+                    ElasticQuery(
+                        from = from,
+                        size = size,
+                        sort = Sort(sortBy, sortOrder),
+                        query = buildMainQuery { it.key != name },
+                        aggregations = buildAggregations()
+                    )
+                )
+            }
+        }
 
-                        "date" -> DateAggregation(name)
+    private fun buildAggregations() = Aggregations(
+        (query.aggregations?.keys ?: configuredFieldNames())
+            .mapNotNull { aggName ->
+                query.aggregations?.get(aggName)?.let { aggSpec ->
+                    when (configuredFieldType(aggName)) {
+                        "byte", "keyword", "short" ->
+                            TermAggregation(
+                                name = aggName,
+                                numResults = aggSpec["size"] as Int,
+                                sortOrder = orderParams[aggSpec["order"]]
+                            )
+
+                        "date" -> DateAggregation(aggName)
 
                         "nested" -> {
                             @Suppress("UNCHECKED_CAST")
                             val nestedAggSpec = aggSpec as Map<String, Map<String, Any>>
-                            NestedAggregation(name = name, fields = nestedAggSpec)
+                            NestedAggregation(name = aggName, fields = nestedAggSpec)
                         }
 
                         else -> null
                     }
                 }
             }
-            .let { Aggregations(it) }
     )
-
-    fun toMultiFacetCountQueries() = mutableListOf<ElasticQuery>().apply {
-        query.terms?.forEach { curTerm ->
-            add(ElasticQuery(
-                from = from,
-                size = size,
-                sort = Sort(sortBy, sortOrder),
-                query = buildMainQuery(curTerm.key),
-                aggregations = Aggregations(listOf(
-                    // use aggregation sort order / count, if specified
-                    query.aggregations?.get(curTerm.key)?.let { aggSpec ->
-                        TermAggregation(curTerm.key, aggSpec["size"] as Int, orderParams[aggSpec["order"]])
-                    } ?: TermAggregation(curTerm.key))
-                )))
-        }
-    }.toList()
 
     private fun normalizeQuery(query: IndexQuery): IndexQuery {
         return IndexQuery(
@@ -102,11 +104,10 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
         )
     }
 
-    private fun buildMainQuery(ignoreTerm: String? = null) = ComplexQuery(
+    private fun buildMainQuery(predicate: ((Map.Entry<String, Any>) -> Boolean)? = null) = ComplexQuery(
         bool = BoolQuery(
             must = mutableListOf<BaseQuery>().apply {
-                query.terms
-                    ?.filter { ignoreTerm == null || it.key != ignoreTerm }
+                predicate?.let { query.terms?.filter(predicate) } ?: query.terms
                     ?.forEach {
                         when (it.value) {
                             is List<*> -> {
