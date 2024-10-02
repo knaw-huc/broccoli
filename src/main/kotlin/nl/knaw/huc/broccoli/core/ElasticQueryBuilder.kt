@@ -37,27 +37,8 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                 extraFields = index.fields.filter { it.type == "text" }.map { it.name }
             )
         },
-        aggregations = buildAggregations(query.aggregations?.keys ?: configuredFieldNames())
-    )
-
-    fun toMultiFacetCountQueries() = mutableListOf<ElasticQuery>()
-        .apply {
-            query.terms?.keys?.forEach { name ->
-                add(
-                    ElasticQuery(
-                        from = from,
-                        size = size,
-                        sort = Sort(sortBy, sortOrder),
-                        query = buildMainQuery { it.key != name },
-                        aggregations = buildAggregations(listOf(name))
-                    )
-                )
-            }
-        }
-
-    private fun buildAggregations(names: Collection<String>) =
-        Aggregations(
-            names.mapNotNull { aggName ->
+        aggregations = Aggregations(
+            (query.aggregations?.keys ?: configuredFieldNames()).mapNotNull { aggName ->
                 query.aggregations?.get(aggName)?.let { aggSpec ->
                     when (configuredFieldType(aggName)) {
                         "byte", "keyword", "short" ->
@@ -80,6 +61,43 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                 }
             }
         )
+    )
+
+    fun toMultiFacetCountQueries() = mutableListOf<ElasticQuery>()
+        .apply {
+            query.terms?.forEach { term ->
+                add(
+                    ElasticQuery(
+                        from = from,
+                        size = size,
+                        sort = Sort(sortBy, sortOrder),
+                        query = buildMainQuery { it.key != term.key },
+                        aggregations = Aggregations(
+                            query.aggregations
+                                ?.get(term.key)
+                                ?.let { termAgg ->
+                                    if (configuredFieldType(term.key) == "nested") {
+                                        @Suppress("UNCHECKED_CAST")
+                                        val spec = termAgg as MutableMap<String, Map<String, Any>>
+                                        NestedAggregation(
+                                            name = term.key,
+                                            fields = spec.filterKeys { (term.value as Map<*, *>).containsKey(it) }
+                                        )
+                                    } else {
+                                        TermAggregation(
+                                            name = term.key,
+                                            numResults = termAgg["size"] as Int,
+                                            sortOrder = orderParams[termAgg["order"]]
+                                        )
+                                    }
+                                }
+                                ?.let { listOf(it) }
+                                ?: emptyList()
+                        )
+                    )
+                )
+            }
+        }
 
     private fun normalizeQuery(query: IndexQuery): IndexQuery {
         return IndexQuery(
