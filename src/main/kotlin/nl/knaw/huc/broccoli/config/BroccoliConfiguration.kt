@@ -189,12 +189,45 @@ class IndexFieldConfiguration {
 
     @Valid
     @JsonProperty
-    // mutually exclusive with 'nested'
+    // mutually exclusive with 'logical', 'nested'
     val path: String? = null
 
     @Valid
     @JsonProperty
-    // mutually exclusive with 'path'
+    // mutually exclusive with 'path', 'nested'
+    val logical: LogicalIndexFieldConfiguration? = null
+
+    class LogicalIndexFieldConfiguration {
+        @Valid
+        @NotNull
+        @JsonProperty
+        val scope: String = ""
+
+        @Valid
+        @NotNull
+        @JsonProperty
+        val path: String = ""
+
+        @Valid
+        @JsonProperty
+        val fixed: FixedIndexFieldConfiguration? = null
+
+        class FixedIndexFieldConfiguration {
+            @Valid
+            @NotNull
+            @JsonProperty
+            val path: String = ""
+
+            @Valid
+            @NotNull
+            @JsonProperty
+            val value: String = ""
+        }
+    }
+
+    @Valid
+    @JsonProperty
+    // mutually exclusive with 'path', 'logical'
     val nested: NestedIndexFieldConfiguration? = null
 
     class NestedIndexFieldConfiguration {

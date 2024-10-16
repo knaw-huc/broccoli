@@ -148,6 +148,56 @@ projects:
         - name: 'rep-2024.09.10'
           bodyTypes: [ Resolution ]
           fields:
+            - name: attendantId
+              logical:
+                scope: attendants
+                path: ".id"
+            - name: attendantLabels
+              logical:
+                scope: attendants
+                path: ".labels"
+            - name: locationName
+              logical:
+                scope: entities
+                path: ".name"
+                fixed:
+                  path: ".category"
+                  value: LOC
+            - name: locationLabels
+              logical:
+                scope: entities
+                path: ".labels"
+                fixed:
+                  path: ".category"
+                  value: LOC
+            - name: personName
+              logical:
+                scope: entities
+                path: ".name"
+                fixed:
+                  path: ".category"
+                  value: PERS
+            - name: personLabels
+              logical:
+                scope: entities
+                path: ".labels"
+                fixed:
+                  path: ".category"
+                  value: PERS
+            - name: roleName
+              logical:
+                scope: entities
+                path: ".name"
+                fixed:
+                  path: ".category"
+                  value: HOE
+            - name: roleLabels
+              logical:
+                scope: entities
+                path: ".labels"
+                fixed:
+                  path: ".category"
+                  value: HOE
             - name: bodyType
               path: "$.body.type"
             - name: propositionType

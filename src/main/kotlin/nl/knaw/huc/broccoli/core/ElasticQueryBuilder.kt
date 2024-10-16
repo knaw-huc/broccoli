@@ -1,5 +1,6 @@
 package nl.knaw.huc.broccoli.core
 
+import jakarta.ws.rs.BadRequestException
 import nl.knaw.huc.broccoli.api.*
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import org.slf4j.LoggerFactory
@@ -125,17 +126,40 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
     private fun buildMainQuery(predicate: ((Map.Entry<String, Any>) -> Boolean) = { true }) = ComplexQuery(
         bool = BoolQuery(
             must = mutableListOf<BaseQuery>().apply {
+                /*
+                 * entities ->
+                 *    (".category", "HOE") ->
+                 *       (roleName -> ["koning"])
+                 *       (roleLabels -> ["Adel & Vorsten"]
+                 *    (".category", "PERS") ->
+                 *       (personName -> ["frankrijk"])
+                 *       (personLabels -> ["ongelabeld"])
+                 * attendants ->
+                 *   [...]
+                 */
+                val scopes = mutableMapOf<String,
+                        MutableMap<
+                                Pair<String, String>,
+                                MutableMap<String, MutableList<String>>>>()
+                val logicalQueryBuilder = LogicalQueryBuilder(index)
                 query.terms
                     ?.filter(predicate)
-                    ?.forEach {
-                        when (it.value) {
+                    ?.forEach { termsQuery ->
+                        logger.atDebug().addKeyValue("name", termsQuery.key).log("termsQuery")
+                        when (termsQuery.value) {
                             is List<*> -> {
-                                add(TermsQuery(mapOf(it.key to (it.value as List<*>))))
+                                val field = index.fields.find { it.name == termsQuery.key }
+                                if (field?.logical != null) {
+                                    @Suppress("UNCHECKED_CAST")
+                                    logicalQueryBuilder.add(field.name, termsQuery.value as MutableList<String>)
+                                } else {
+                                    add(TermsQuery(mapOf(termsQuery.key to (termsQuery.value as List<*>))))
+                                }
                             }
 
                             is Map<*, *> -> {
                                 @Suppress("UNCHECKED_CAST")
-                                add(NestedQuery(it.key, it.value as Map<String, List<String>>))
+                                add(NestedQuery(termsQuery.key, termsQuery.value as Map<String, List<String>>))
                             }
                         }
                     }
@@ -151,6 +175,42 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
             }
         )
     )
+
+
+    class LogicalQueryBuilder(private val index: IndexConfiguration) {
+        private val scopes = mutableMapOf<String, LogicalTypeScope>()
+
+        data class FixedTypeKey(val path: String, val value: String)
+
+        class LogicalTypeScope {
+
+            private val fixedValueTypes = mutableMapOf<FixedTypeKey, MutableMap<String, MutableList<String>>>()
+
+            fun update(key: FixedTypeKey, fieldName: String, values: MutableList<String>) {
+                fixedValueTypes.merge(key, mutableMapOf(fieldName to values)) { soFar, _ ->
+                    soFar[fieldName] = values; soFar
+                }
+                logger.atDebug().addKeyValue("fixedValueType", fixedValueTypes[key]).log("update")
+            }
+
+            override fun toString() = buildString {
+                append("LogicalTypeScope(fixedValueTypes=")
+                append(fixedValueTypes.toString())
+                append(')')
+            }
+        }
+
+        fun add(fieldName: String, values: MutableList<String>) {
+            val field = index.fields.find { it.name == fieldName }
+                ?: throw BadRequestException("Unknown field: $fieldName")
+            val logical = field.logical
+                ?: throw BadRequestException("Missing 'logical:' section in field: $fieldName")
+            scopes.putIfAbsent(logical.scope, LogicalTypeScope())
+            val key = FixedTypeKey(logical.fixed!!.path, logical.fixed.value)
+            scopes[logical.scope]!!.update(key, fieldName, values)
+            logger.atDebug().addKeyValue("scopes", scopes[logical.scope]).log("after add")
+        }
+    }
 
     private fun configuredFieldNames() = index.fields.map { it.name }
 
