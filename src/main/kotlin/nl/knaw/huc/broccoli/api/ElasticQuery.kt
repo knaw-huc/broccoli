@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import nl.knaw.huc.broccoli.api.Constants.TEXT_TOKEN_COUNT
+import nl.knaw.huc.broccoli.core.ElasticQueryBuilder.LogicalQueryBuilder.FixedTypeKey
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class ElasticQuery(
@@ -62,6 +63,30 @@ data class NestedQuery(
                             add(
                                 mapOf("terms" to mapOf("$fieldName.$nestedFieldName" to allowedValues))
                             )
+                        }
+                    }
+                )
+            )
+        )
+    )
+}
+
+data class LogicalQuery(
+    @JsonIgnore val scopeName: String,
+    @JsonIgnore val fixed: FixedTypeKey,
+    @JsonIgnore val values: Map<String, List<String>>
+) : BaseQuery() {
+    @JsonAnyGetter
+    fun toJson() = mapOf(
+        "nested" to mapOf(
+            "path" to scopeName,
+            "query" to mapOf(
+                "bool" to mapOf(
+                    "filter" to mutableListOf<Map<String, Map<String, List<String>>>>(
+                    ).apply {
+                        add(mapOf("terms" to mapOf(scopeName + fixed.path to listOf(fixed.value))))
+                        values.forEach { (path: String, vals: List<String>) ->
+                            add(mapOf("terms" to mapOf(scopeName + path to vals)))
                         }
                     }
                 )

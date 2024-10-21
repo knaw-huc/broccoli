@@ -145,7 +145,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                 query.terms
                     ?.filter(predicate)
                     ?.forEach { termsQuery ->
-                        logger.atDebug().addKeyValue("name", termsQuery.key).log("termsQuery")
+                        logger.atInfo().addKeyValue("name", termsQuery.key).log("termsQuery")
                         when (termsQuery.value) {
                             is List<*> -> {
                                 val field = index.fields.find { it.name == termsQuery.key }
@@ -163,6 +163,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                             }
                         }
                     }
+                addAll(logicalQueryBuilder.toQueries())
                 query.date?.let {
                     add(RangeQuery(it.name, it.from, it.to, relation = "within"))
                 }
@@ -183,14 +184,12 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
         data class FixedTypeKey(val path: String, val value: String)
 
         class LogicalTypeScope {
+            val fixedValueTypes = mutableMapOf<FixedTypeKey, MutableMap<String, MutableList<String>>>()
 
-            private val fixedValueTypes = mutableMapOf<FixedTypeKey, MutableMap<String, MutableList<String>>>()
-
-            fun update(key: FixedTypeKey, fieldName: String, values: MutableList<String>) {
-                fixedValueTypes.merge(key, mutableMapOf(fieldName to values)) { soFar, _ ->
-                    soFar[fieldName] = values; soFar
+            fun update(key: FixedTypeKey, logicalPath: String, values: MutableList<String>) {
+                fixedValueTypes.merge(key, mutableMapOf(logicalPath to values)) { soFar, _ ->
+                    soFar[logicalPath] = values; soFar
                 }
-                logger.atDebug().addKeyValue("fixedValueType", fixedValueTypes[key]).log("update")
             }
 
             override fun toString() = buildString {
@@ -205,11 +204,22 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                 ?: throw BadRequestException("Unknown field: $fieldName")
             val logical = field.logical
                 ?: throw BadRequestException("Missing 'logical:' section in field: $fieldName")
+            val fixed = logical.fixed
+                ?: throw BadRequestException("Missing 'fixed:' section in logical field: $fieldName")
+            val key = FixedTypeKey(fixed.path, fixed.value)
             scopes.putIfAbsent(logical.scope, LogicalTypeScope())
-            val key = FixedTypeKey(logical.fixed!!.path, logical.fixed.value)
-            scopes[logical.scope]!!.update(key, fieldName, values)
-            logger.atDebug().addKeyValue("scopes", scopes[logical.scope]).log("after add")
+            scopes[logical.scope]!!.update(key, logical.path, values)
+            System.err.println("AFTER ADD, SCOPES[" + logical.scope + "]=" + scopes[logical.scope])
         }
+
+        fun toQueries(): List<BaseQuery> =
+            mutableListOf<BaseQuery>().apply {
+                scopes.forEach { (scopeName: String, scope: LogicalTypeScope) ->
+                    scope.fixedValueTypes.forEach { (key: FixedTypeKey, values: Map<String, List<String>>) ->
+                        add(LogicalQuery(scopeName, key, values))
+                    }
+                }
+            }
     }
 
     private fun configuredFieldNames() = index.fields.map { it.name }
