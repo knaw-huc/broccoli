@@ -137,10 +137,6 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                  * attendants ->
                  *   [...]
                  */
-                val scopes = mutableMapOf<String,
-                        MutableMap<
-                                Pair<String, String>,
-                                MutableMap<String, MutableList<String>>>>()
                 val logicalQueryBuilder = LogicalQueryBuilder(index)
                 query.terms
                     ?.filter(predicate)
