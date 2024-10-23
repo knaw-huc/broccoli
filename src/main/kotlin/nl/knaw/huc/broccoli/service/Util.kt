@@ -42,7 +42,19 @@ fun extractAggregations(index: IndexConfiguration, context: ReadContext) =
                     }.groupByKey()
                 )
             } else if ("filter" in aggValuesMap) {
-                System.err.println("logical facet aggs: $aggValuesMap")
+                val scopeName = aggregation.key
+                System.err.println("logical facet ${scopeName}: $aggValuesMap")
+                val buckets = getValueAtPath<Any>(aggValuesMap, "filter.buckets")
+                    ?: return@mapNotNull null
+                System.err.println("  -> buckets: $buckets")
+                @Suppress("UNCHECKED_CAST")
+                (buckets as Map<String, Any>).forEach { (key, vals) ->
+                    System.err.println("    +- $key")
+                    System.err.println("    +- values:")
+                    (vals as Map<*, *>)
+                        .filterNot { it.key == "doc_count" }
+                        .forEach(System.err::println)
+                }
                 null
             } else null
         }
@@ -52,7 +64,7 @@ inline fun <reified V> getValueAtPath(anno: Map<*, *>, path: String): V? {
     val steps = path.split('.').iterator()
 
     var cur: Any = anno
-    while (cur is Map<*, *>) {
+    while (cur is Map<*, *> && steps.hasNext()) {
         cur = cur[steps.next()] ?: return null
     }
 
