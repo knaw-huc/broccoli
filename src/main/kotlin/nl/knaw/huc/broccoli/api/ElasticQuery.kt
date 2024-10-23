@@ -5,7 +5,10 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import nl.knaw.huc.broccoli.api.Constants.TEXT_TOKEN_COUNT
+import nl.knaw.huc.broccoli.core.ElasticQueryBuilder.LogicalAggregationBuilder.LogicalFilterScope
+import nl.knaw.huc.broccoli.core.ElasticQueryBuilder.LogicalAggregationBuilder.LogicalFilterSpec
 import nl.knaw.huc.broccoli.core.ElasticQueryBuilder.LogicalQueryBuilder.FixedTypeKey
+import nl.knaw.huc.broccoli.service.commonPrefix
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class ElasticQuery(
@@ -136,11 +139,13 @@ data class HighlightTerm(
     )
 }
 
-data class Aggregations(
-    @JsonIgnore val aggs: List<Aggregation>
-) {
+data class Aggregations(private val elements: List<Aggregation>) {
+    private val aggs = elements.toMutableList()
+
     @JsonAnyGetter
     fun toJson() = aggs.associate { it.name to it.toJson() }
+
+    fun addAll(elements: List<Aggregation>) = apply { aggs.addAll(elements) }
 }
 
 abstract class Aggregation(val name: String) {
@@ -175,6 +180,31 @@ class TermAggregation(
         sortOrder?.let { append(it).append('|') }
         append("json:")
     }
+}
+
+class LogicalAggregation(
+    scope: LogicalFilterScope,
+    private val filterSpec: LogicalFilterSpec
+) : Aggregation(scope.name) {
+    override fun toJson(): Map<String, Map<String, Any>> = mapOf(
+        "nested" to mapOf("path" to name),
+        "aggregations" to mapOf(
+            "filter_${name}" to mapOf(
+                "filters" to mapOf(
+                    "filters" to mutableMapOf<String, Any>().apply {
+                        filterSpec.values.forEach { (fixedValue, names) ->
+                            this[names.commonPrefix()] = mapOf(
+                                "term" to mapOf(
+                                    "${name}${filterSpec.path}" to fixedValue
+                                )
+                            )
+                        }
+                    }
+                )
+            ),
+            "aggs" to mapOf(),
+        )
+    )
 }
 
 class NestedAggregation(

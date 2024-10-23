@@ -142,7 +142,7 @@ class ProjectsResource(
                         @Suppress("UNCHECKED_CAST")
                         (aggs[entry.key] as MutableMap<String, Any>).putAll(entry.value as Map<String, Any>)
                     }
-                logger.atDebug().addKeyValue("aggs", aggs).log("after substitution")
+//                logger.atDebug().addKeyValue("aggs", aggs).log("after substitution")
             }
         }
 

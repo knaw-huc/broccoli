@@ -59,3 +59,26 @@ inline fun <reified V> getValueAtPath(anno: Map<*, *>, path: String): V? {
 
     return null
 }
+
+/*
+ * Find common prefix in a list of Strings
+ * e.g. ["roleLabel", "roleName"] -> "role"
+ *
+ * edge cases:
+ * size 1: ["str"] -> "str"
+ * size 0: [] -> ""
+ */
+fun List<String>.commonPrefix(): String {
+    if (isEmpty()) {
+        return ""
+    }
+
+    var result = get(0)
+
+    for (i in 1 until size) {
+        result = result.commonPrefixWith(get(i))
+    }
+
+    return result
+
+}

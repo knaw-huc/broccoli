@@ -26,43 +26,109 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
 
     fun query(query: IndexQuery) = apply { this.query = normalizeQuery(query) }
 
-    fun toElasticQuery() = ElasticQuery(
-        from = from,
-        size = size,
-        sort = Sort(sortBy, sortOrder),
-        query = buildMainQuery(),
-        highlight = query.text?.let { queryText ->
-            HighlightTerm(
-                text = queryText,
-                fragmentSize = fragmentSize,
-                extraFields = index.fields.filter { it.type == "text" }.map { it.name }
-            )
-        },
-        aggregations = Aggregations(
-            (query.aggregations?.keys ?: configuredFieldNames()).mapNotNull { aggName ->
-                query.aggregations?.get(aggName)?.let { aggSpec ->
-                    when (configuredFieldType(aggName)) {
-                        "byte", "keyword", "short" ->
-                            TermAggregation(
-                                name = aggName,
-                                numResults = aggSpec["size"] as Int,
-                                sortOrder = orderParams[aggSpec["order"]]
-                            )
+    fun toElasticQuery(): ElasticQuery {
+        val logicalAggregationBuilder = LogicalAggregationBuilder(index)
 
-                        "date" -> DateAggregation(aggName)
+        val query = ElasticQuery(
+            from = from,
+            size = size,
+            sort = Sort(sortBy, sortOrder),
+            query = buildMainQuery(),
+            highlight = query.text?.let { queryText ->
+                HighlightTerm(
+                    text = queryText,
+                    fragmentSize = fragmentSize,
+                    extraFields = index.fields.filter { it.type == "text" }.map { it.name }
+                )
+            },
+            aggregations = Aggregations(
+                (query.aggregations?.keys ?: configuredFieldNames()).mapNotNull { aggName ->
+                    query.aggregations
+                        ?.get(aggName)
+                        ?.let { aggSpec ->
+                            when (configuredFieldType(aggName)) {
+                                "byte", "keyword", "short" ->
+                                    TermAggregation(
+                                        name = aggName,
+                                        numResults = aggSpec["size"] as Int,
+                                        sortOrder = orderParams[aggSpec["order"]]
+                                    )
 
-                        "nested" -> {
-                            @Suppress("UNCHECKED_CAST")
-                            val nestedAggSpec = aggSpec as Map<String, Map<String, Any>>
-                            NestedAggregation(name = aggName, fields = nestedAggSpec)
+                                "date" -> DateAggregation(aggName)
+
+                                "logical" -> {
+                                    logicalAggregationBuilder.add(aggName, aggSpec)
+                                    null // defer adding to Aggregations we are currently building
+                                }
+
+                                "nested" -> {
+                                    @Suppress("UNCHECKED_CAST")
+                                    val nestedAggSpec = aggSpec as Map<String, Map<String, Any>>
+                                    NestedAggregation(name = aggName, fields = nestedAggSpec)
+                                }
+
+                                else -> null
+                            }
                         }
+                }
+            ).addAll(logicalAggregationBuilder.toAggregations())
+        )
 
-                        else -> null
+        return query
+    }
+
+    class LogicalAggregationBuilder(private val index: IndexConfiguration) {
+        val aggSpecs = mutableMapOf<String, Any>()
+
+        fun add(aggName: String, aggSpec: Map<String, Any>) {
+            logger.atInfo().addKeyValue("aggName", aggName).addKeyValue("aggSpec", aggSpec)
+                .log("LAB::add")
+            aggSpecs[aggName] = aggSpec
+        }
+
+        fun toAggregations(): List<Aggregation> {
+            val scopes = mutableMapOf<String, MutableMap<String, Any>>()
+            aggSpecs.forEach { (aggName, aggSpec) ->
+                val field = index.fields.find { it.name == aggName }
+                    ?: throw BadRequestException("Unknown field '$aggName'")
+                val logical = field.logical
+                    ?: throw BadRequestException("field $aggName lacks 'logical' configuration")
+                scopes.merge(logical.scope, mutableMapOf(logical.path to aggSpec)) { scope, _ ->
+                    scope[logical.path] = aggSpec; scope
+                }
+//                val fixed = logical.fixed
+            }
+            return scopes.map { (scope, spec) ->
+                System.err.println("scope: $scope, spec: $spec")
+                var fixedField = ""
+                val values = LinkedHashMap<String, MutableList<String>>() // preserve order from config
+                index.fields.filter { it.logical != null && it.logical.scope == scope }.forEach { field ->
+                    field.logical!!.fixed?.let { fixed ->
+                        fixedField = fixed.path
+                        values.putIfAbsent(fixed.value, mutableListOf())
+                        values[fixed.value]!!.add(field.name)
+                        System.err.println("adding $fixedField, value ${fixed.value}, name=${field.name}")
                     }
                 }
+                System.err.println("- ${LogicalFilterSpec(fixedField, values)}")
+                LogicalAggregation(LogicalFilterScope(scope, spec), LogicalFilterSpec(fixedField, values))
             }
+        }
+
+        data class LogicalFilterScope(
+            val name: String,                       // "entities"
+            val spec: Map<String, Any>              // {.name={order=countDesc, size=10}, .labels={order=countDesc, size=10}}
         )
-    )
+
+        data class LogicalFilterSpec(
+            val path: String,                       // ".category"
+            val values: Map<String, List<String>>   // {LOC=[locationName, locationLabels], PERS=[personName, personLabels], HOE=[roleName, roleLabels]}
+        )
+
+        data class LogicalAggregationScope(
+            val path: String,
+        )
+    }
 
     fun toMultiFacetCountQueries() = mutableListOf<ElasticQuery>()
         .apply {
@@ -173,7 +239,6 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
         )
     )
 
-
     class LogicalQueryBuilder(private val index: IndexConfiguration) {
         private val scopes = mutableMapOf<String, LogicalTypeScope>()
 
@@ -205,7 +270,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
             val key = FixedTypeKey(fixed.path, fixed.value)
             scopes.putIfAbsent(logical.scope, LogicalTypeScope())
             scopes[logical.scope]!!.update(key, logical.path, values)
-            System.err.println("AFTER ADD, SCOPES[" + logical.scope + "]=" + scopes[logical.scope])
+//            System.err.println("AFTER ADD, SCOPES[" + logical.scope + "]=" + scopes[logical.scope])
         }
 
         fun toQueries(): List<BaseQuery> =
@@ -220,7 +285,14 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
 
     private fun configuredFieldNames() = index.fields.map { it.name }
 
-    private fun configuredFieldType(name: String) = index.fields.find { it.name == name }?.type
+    private fun configuredFieldType(name: String) =
+        index.fields.find { it.name == name }
+            ?.let {
+                if (it.logical != null) "logical"
+                else if (it.nested != null) "nested"
+                else it.type
+            }
+            ?: "unknown"
 
     companion object {
         private val logger = LoggerFactory.getLogger(ElasticQueryBuilder::class.java)
