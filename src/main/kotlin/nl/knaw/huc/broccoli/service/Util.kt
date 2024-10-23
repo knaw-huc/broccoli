@@ -44,15 +44,14 @@ fun extractAggregations(index: IndexConfiguration, context: ReadContext) =
             } else if ("filter" in aggValuesMap) {
                 val scopeName = aggregation.key
                 System.err.println("logical facet ${scopeName}: $aggValuesMap")
-                val buckets = getValueAtPath<Any>(aggValuesMap, "filter.buckets")
+                val buckets = getValueAtPath<Map<String, Any>>(aggValuesMap, "filter.buckets")
                     ?: return@mapNotNull null
                 System.err.println("  -> buckets: $buckets")
-                @Suppress("UNCHECKED_CAST")
-                (buckets as Map<String, Any>).forEach { (key, vals) ->
+                buckets.forEach { (key, vals) ->
                     System.err.println("    +- $key")
                     System.err.println("    +- values:")
-                    (vals as Map<*, *>)
-                        .filterNot { it.key == "doc_count" }
+                    @Suppress("UNCHECKED_CAST")
+                    (vals as Map<String, Any>).filter { it.key != "doc_count" }
                         .forEach(System.err::println)
                 }
                 null
