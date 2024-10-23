@@ -78,11 +78,9 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
     }
 
     class LogicalAggregationBuilder(private val index: IndexConfiguration) {
-        val aggSpecs = mutableMapOf<String, Map<String, Any>>()
+        private val aggSpecs = mutableMapOf<String, Map<String, Any>>()
 
         fun add(aggName: String, aggSpec: Map<String, Any>) {
-            logger.atInfo().addKeyValue("aggName", aggName).addKeyValue("aggSpec", aggSpec)
-                .log("LAB::add")
             aggSpecs[aggName] = aggSpec
         }
 
@@ -96,10 +94,8 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                 scopes.merge(logical.scope, mutableMapOf(logical.path to aggSpec)) { scope, _ ->
                     scope[logical.path] = aggSpec; scope
                 }
-//                val fixed = logical.fixed
             }
             return scopes.map { (scope, spec) ->
-                System.err.println("scope: $scope, spec: $spec")
                 var fixedField = ""
                 val values = LinkedHashMap<String, MutableList<String>>() // preserve order from config
                 index.fields.filter { it.logical != null && it.logical.scope == scope }.forEach { field ->
@@ -107,10 +103,8 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                         fixedField = fixed.path
                         values.putIfAbsent(fixed.value, mutableListOf())
                         values[fixed.value]!!.add(field.name)
-                        System.err.println("adding $fixedField, value ${fixed.value}, name=${field.name}")
                     }
                 }
-                System.err.println("- ${LogicalFilterSpec(fixedField, values)}")
                 LogicalAggregation(LogicalFilterScope(scope, spec), LogicalFilterSpec(fixedField, values))
             }
         }
@@ -203,7 +197,6 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                 query.terms
                     ?.filter(predicate)
                     ?.forEach { termsQuery ->
-                        logger.atInfo().addKeyValue("name", termsQuery.key).log("termsQuery")
                         when (termsQuery.value) {
                             is List<*> -> {
                                 val field = index.fields.find { it.name == termsQuery.key }

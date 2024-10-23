@@ -189,7 +189,7 @@ class LogicalAggregation(
     override fun toJson(): Map<String, Map<String, Any>> = mapOf(
         "nested" to mapOf("path" to name),
         "aggregations" to mapOf(
-            "filter_${name}" to mapOf(
+            "filter" to mapOf( // freely configurable here: could also be, e.g., 'name' or "filter_${name}"
                 "filters" to mapOf(
                     "filters" to mutableMapOf<String, Any>().apply {
                         filterSpec.values.forEach { (fixedValue, names) ->

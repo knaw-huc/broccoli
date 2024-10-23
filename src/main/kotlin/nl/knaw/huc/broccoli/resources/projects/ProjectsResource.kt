@@ -120,7 +120,7 @@ class ProjectsResource(
             context.read<Map<String, Any>>("$.hits.total")
                 ?.let { result["total"] = it }
 
-            extractAggregations(context)?.let { aggs.putAll(it) }
+            extractAggregations(index, context)?.let { aggs.putAll(it) }
             logger.atDebug().addKeyValue("aggs", aggs).log("base")
 
             context.read<List<Map<String, Any>>>("$.hits.hits[*]")
@@ -137,12 +137,11 @@ class ProjectsResource(
             val auxJson = auxResult.readEntityAsJsonString()
                 .also { logger.trace("aux json[{}]: {}", auxIndex, it) }
             jsonParser.parse(auxJson).let { context ->
-                extractAggregations(context)
+                extractAggregations(index, context)
                     ?.forEach { entry ->
                         @Suppress("UNCHECKED_CAST")
                         (aggs[entry.key] as MutableMap<String, Any>).putAll(entry.value as Map<String, Any>)
                     }
-//                logger.atDebug().addKeyValue("aggs", aggs).log("after substitution")
             }
         }
 
