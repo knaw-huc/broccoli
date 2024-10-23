@@ -202,10 +202,10 @@ class LogicalAggregation(
                     }
                 ),
                 "aggs" to mutableMapOf<String, Any>().apply {
-                    scope.spec.forEach { (name, aggSpec) ->
+                    scope.spec.forEach { (name, sortSpec) ->
                         this[name] = mapOf(
                             "terms" to mutableMapOf<String, Any>("field" to "${scope.name}${name}")
-                                .withSizeAndOrder(aggSpec),
+                                .withSortSpec(sortSpec),
                             "aggregations" to mapOf<String, Map<String, Map<String, Any>>>(
                                 "documents" to mapOf(
                                     "reverse_nested" to emptyMap()
@@ -226,11 +226,11 @@ class NestedAggregation(
     override fun toJson(): Map<String, Map<String, Any>> = mapOf(
         "nested" to mapOf("path" to name),
         "aggregations" to mutableMapOf<String, Any>().apply {
-            fields.forEach { (nestedFieldName, aggSpec) ->
+            fields.forEach { (nestedFieldName, sortSpec) ->
                 put(
                     nestedFieldName, mapOf(
                         "terms" to mutableMapOf<String, Any>("field" to "$name.$nestedFieldName")
-                            .withSizeAndOrder(aggSpec),
+                            .withSortSpec(sortSpec),
                         "aggregations" to mapOf<String, Map<String, Map<String, Any>>>(
                             "documents" to mapOf(
                                 "reverse_nested" to emptyMap()
@@ -243,9 +243,9 @@ class NestedAggregation(
     )
 }
 
-fun MutableMap<String, Any>.withSizeAndOrder(aggSpec: Map<String, Any>): Map<String, Any> {
-    aggSpec["size"]?.let { this["size"] = it }
-    aggSpec["order"]?.let { order ->
+fun MutableMap<String, Any>.withSortSpec(sortSpec: Map<String, Any>): Map<String, Any> {
+    sortSpec["size"]?.let { this["size"] = it }
+    sortSpec["order"]?.let { order ->
         this["order"] = when (order) {
             "keyAsc" -> mapOf("_key" to "asc")
             "keyDesc" -> mapOf("_key" to "desc")
