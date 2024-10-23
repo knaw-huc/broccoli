@@ -183,7 +183,7 @@ class TermAggregation(
 }
 
 class LogicalAggregation(
-    scope: LogicalFilterScope,
+    private val scope: LogicalFilterScope,
     private val filterSpec: LogicalFilterSpec
 ) : Aggregation(scope.name) {
     override fun toJson(): Map<String, Map<String, Any>> = mapOf(
@@ -200,9 +200,22 @@ class LogicalAggregation(
                             )
                         }
                     }
-                )
-            ),
-            "aggs" to mapOf(),
+                ),
+                "aggs" to mutableMapOf<String, Any>().apply {
+                    scope.spec.forEach { (name, vals) ->
+                        this[name] = mapOf(
+                            "terms" to mapOf(
+                                "field" to "${scope.name}${name}"
+                            ),
+                            "aggregations" to mapOf<String, Map<String, Map<String, Any>>>(
+                                "documents" to mapOf(
+                                    "reverse_nested" to emptyMap()
+                                )
+                            )
+                        )
+                    }
+                }
+            )
         )
     )
 }
