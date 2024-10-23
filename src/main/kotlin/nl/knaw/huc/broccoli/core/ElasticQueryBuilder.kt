@@ -124,10 +124,6 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
             val path: String,                       // ".category"
             val values: Map<String, List<String>>   // {LOC=[locationName, locationLabels], PERS=[personName, personLabels], HOE=[roleName, roleLabels]}
         )
-
-        data class LogicalAggregationScope(
-            val path: String,
-        )
     }
 
     fun toMultiFacetCountQueries() = mutableListOf<ElasticQuery>()

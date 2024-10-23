@@ -204,18 +204,8 @@ class LogicalAggregation(
                 "aggs" to mutableMapOf<String, Any>().apply {
                     scope.spec.forEach { (name, aggSpec) ->
                         this[name] = mapOf(
-                            "terms" to mutableMapOf<String, Any>("field" to "${scope.name}${name}").apply {
-                                aggSpec["size"]?.let { put("size", it) }
-                                aggSpec["order"]?.let { order ->
-                                    put(
-                                        "order", when (order) {
-                                            "keyAsc" -> mapOf("_key" to "asc")
-                                            "keyDesc" -> mapOf("_key" to "desc")
-                                            else -> mapOf("_count" to "desc")
-                                        }
-                                    )
-                                }
-                            },
+                            "terms" to mutableMapOf<String, Any>("field" to "${scope.name}${name}")
+                                .withSizeAndOrder(aggSpec),
                             "aggregations" to mapOf<String, Map<String, Map<String, Any>>>(
                                 "documents" to mapOf(
                                     "reverse_nested" to emptyMap()
@@ -239,18 +229,8 @@ class NestedAggregation(
             fields.forEach { (nestedFieldName, aggSpec) ->
                 put(
                     nestedFieldName, mapOf(
-                        "terms" to mutableMapOf<String, Any>("field" to "$name.$nestedFieldName").apply {
-                            aggSpec["size"]?.let { put("size", it) }
-                            aggSpec["order"]?.let { order ->
-                                put(
-                                    "order", when (order) {
-                                        "keyAsc" -> mapOf("_key" to "asc")
-                                        "keyDesc" -> mapOf("_key" to "desc")
-                                        else -> mapOf("_count" to "desc")
-                                    }
-                                )
-                            }
-                        },
+                        "terms" to mutableMapOf<String, Any>("field" to "$name.$nestedFieldName")
+                            .withSizeAndOrder(aggSpec),
                         "aggregations" to mapOf<String, Map<String, Map<String, Any>>>(
                             "documents" to mapOf(
                                 "reverse_nested" to emptyMap()
@@ -261,4 +241,16 @@ class NestedAggregation(
             }
         }
     )
+}
+
+fun MutableMap<String, Any>.withSizeAndOrder(aggSpec: Map<String, Any>): Map<String, Any> {
+    aggSpec["size"]?.let { this["size"] = it }
+    aggSpec["order"]?.let { order ->
+        this["order"] = when (order) {
+            "keyAsc" -> mapOf("_key" to "asc")
+            "keyDesc" -> mapOf("_key" to "desc")
+            else -> mapOf("_count" to "desc")
+        }
+    }
+    return this
 }
