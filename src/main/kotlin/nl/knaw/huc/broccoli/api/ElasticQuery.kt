@@ -202,11 +202,20 @@ class LogicalAggregation(
                     }
                 ),
                 "aggs" to mutableMapOf<String, Any>().apply {
-                    scope.spec.forEach { (name, vals) ->
+                    scope.spec.forEach { (name, aggSpec) ->
                         this[name] = mapOf(
-                            "terms" to mapOf(
-                                "field" to "${scope.name}${name}"
-                            ),
+                            "terms" to mutableMapOf<String, Any>("field" to "${scope.name}${name}").apply {
+                                aggSpec["size"]?.let { put("size", it) }
+                                aggSpec["order"]?.let { order ->
+                                    put(
+                                        "order", when (order) {
+                                            "keyAsc" -> mapOf("_key" to "asc")
+                                            "keyDesc" -> mapOf("_key" to "desc")
+                                            else -> mapOf("_count" to "desc")
+                                        }
+                                    )
+                                }
+                            },
                             "aggregations" to mapOf<String, Map<String, Map<String, Any>>>(
                                 "documents" to mapOf(
                                     "reverse_nested" to emptyMap()

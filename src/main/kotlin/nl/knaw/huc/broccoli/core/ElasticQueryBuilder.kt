@@ -78,7 +78,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
     }
 
     class LogicalAggregationBuilder(private val index: IndexConfiguration) {
-        val aggSpecs = mutableMapOf<String, Any>()
+        val aggSpecs = mutableMapOf<String, Map<String, Any>>()
 
         fun add(aggName: String, aggSpec: Map<String, Any>) {
             logger.atInfo().addKeyValue("aggName", aggName).addKeyValue("aggSpec", aggSpec)
@@ -87,7 +87,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
         }
 
         fun toAggregations(): List<Aggregation> {
-            val scopes = mutableMapOf<String, MutableMap<String, Any>>()
+            val scopes = mutableMapOf<String, MutableMap<String, Map<String, Any>>>()
             aggSpecs.forEach { (aggName, aggSpec) ->
                 val field = index.fields.find { it.name == aggName }
                     ?: throw BadRequestException("Unknown field '$aggName'")
@@ -117,7 +117,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
 
         data class LogicalFilterScope(
             val name: String,                       // "entities"
-            val spec: Map<String, Any>              // {.name={order=countDesc, size=10}, .labels={order=countDesc, size=10}}
+            val spec: Map<String, Map<String, Any>>// {.name={order=countDesc, size=10}, .labels={order=countDesc, size=10}}
         )
 
         data class LogicalFilterSpec(
