@@ -1,7 +1,6 @@
 package nl.knaw.huc.broccoli.service
 
 import com.jayway.jsonpath.ReadContext
-import jakarta.ws.rs.BadRequestException
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 
 // migrate to ES specific 'util'
@@ -43,30 +42,25 @@ fun extractAggregations(index: IndexConfiguration, context: ReadContext) =
                     }.groupByKey()
                 )
             } else if ("filter" in aggValuesMap) {
-                val scopeName = aggregation.key
-                System.err.println("logical facet ${scopeName}: $aggValuesMap")
-                val buckets = getValueAtPath<Map<String, Any>>(aggValuesMap, "filter.buckets")
-                    ?: return@mapNotNull null
-                System.err.println("  -> buckets: $buckets")
+                val filterBuckets = getValueAtPath<Map<String, Any>>(aggValuesMap, "filter.buckets")
+                    ?: return@mapNotNull null // no yield here after all, perhaps throw Exception?
                 mutableListOf<Map<String, Any>>().apply {
-                    buckets.forEach { (key, vals) ->
-                        System.err.println("    +- key: $key")
-                        System.err.println("    +- values:")
+                    filterBuckets.forEach { (key, vals) ->
                         @Suppress("UNCHECKED_CAST")
                         (vals as Map<String, Map<String, Any>>)
                             .filter { it.key != "doc_count" }
                             .forEach { (name, logicalAggValuesMap) ->
-                                val logicalFacetName = findLogicalFacetName(index, key, name)
-                                val logicalBuckets = logicalAggValuesMap["buckets"] as List<Map<String, Any>>
-                                if (logicalBuckets.isNotEmpty()) {
-                                    add(
-                                        mapOf(logicalFacetName to logicalBuckets.associate {
-                                            (it["key_as_string"] ?: it["key"]) to
-                                                    (it["documents"] as Map<*, *>)["doc_count"]
-                                        })
-                                    )
+                                findLogicalFacetName(index, key, name)?.let { logicalFacetName ->
+                                    val buckets = logicalAggValuesMap["buckets"] as List<Map<String, Any>>
+                                    if (buckets.isNotEmpty()) {
+                                        add(
+                                            mapOf(logicalFacetName to buckets.associate {
+                                                (it["key_as_string"]
+                                                    ?: it["key"]) to (it["documents"] as Map<*, *>)["doc_count"]
+                                            })
+                                        )
+                                    }
                                 }
-                                System.err.println("logicalFacetName: $logicalFacetName, buckets: $buckets")
                             }
                     }
                 }.groupByKey()
@@ -75,9 +69,7 @@ fun extractAggregations(index: IndexConfiguration, context: ReadContext) =
         ?.groupByKey()
 
 fun findLogicalFacetName(index: IndexConfiguration, prefix: String, path: String) =
-    index.fields.find { it.name.startsWith(prefix) && it.logical?.path == path }
-        ?.name
-        ?: throw BadRequestException("ES returned logical facet not found in config: prefix=$prefix, path=$path")
+    index.fields.find { it.name.startsWith(prefix) && it.logical?.path == path }?.name
 
 inline fun <reified V> getValueAtPath(anno: Map<*, *>, path: String): V? {
     val steps = path.split('.').iterator()
