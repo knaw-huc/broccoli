@@ -1,6 +1,8 @@
 package nl.knaw.huc.broccoli.service
 
 import com.jayway.jsonpath.ReadContext
+import nl.knaw.huc.broccoli.api.Constants.DOC_COUNT
+import nl.knaw.huc.broccoli.api.Constants.NO_FILTERS
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 
 // migrate to ES specific 'util'
@@ -16,14 +18,14 @@ fun extractAggregations(index: IndexConfiguration, context: ReadContext) =
                     null
                 else {
                     mapOf(aggregation.key to buckets.associate {
-                        (it["key_as_string"] ?: it["key"]) to it["doc_count"]
+                        (it["key_as_string"] ?: it["key"]) to it[DOC_COUNT]
                     })
                 }
             } else if ("nested" in aggValuesMap) {
                 mapOf(
                     aggregation.key to mutableListOf<Map<String, Any>>().apply {
                         aggValuesMap
-                            .filter { it.key != "doc_count" }
+                            .filter { it.key != DOC_COUNT }
                             .forEach { (nestedFacetName: String, nestedFacetValues: Any) ->
                                 val nestedAggValuesMap = nestedFacetValues as Map<*, *>
                                 if ("buckets" in nestedAggValuesMap) {
@@ -33,7 +35,7 @@ fun extractAggregations(index: IndexConfiguration, context: ReadContext) =
                                         add(
                                             mapOf(nestedFacetName to nestedBuckets.associate {
                                                 (it["key_as_string"] ?: it["key"]) to
-                                                        (it["documents"] as Map<*, *>)["doc_count"]
+                                                        (it["documents"] as Map<*, *>)[DOC_COUNT]
                                             })
                                         )
                                     }
@@ -48,15 +50,16 @@ fun extractAggregations(index: IndexConfiguration, context: ReadContext) =
                     filterBuckets.forEach { (key, vals) ->
                         @Suppress("UNCHECKED_CAST")
                         (vals as Map<String, Map<String, Any>>)
-                            .filter { it.key != "doc_count" }
+                            .filter { it.key != DOC_COUNT }
                             .forEach { (name, logicalAggValuesMap) ->
-                                findLogicalFacetName(index, key, name)?.let { logicalFacetName ->
+                                val prefix = if (key == NO_FILTERS) null else key
+                                findLogicalFacetName(index, name, prefix)?.let { logicalFacetName ->
                                     val buckets = logicalAggValuesMap["buckets"] as List<Map<String, Any>>
                                     if (buckets.isNotEmpty()) {
                                         add(
                                             mapOf(logicalFacetName to buckets.associate {
                                                 (it["key_as_string"]
-                                                    ?: it["key"]) to (it["documents"] as Map<*, *>)["doc_count"]
+                                                    ?: it["key"]) to (it["documents"] as Map<*, *>)[DOC_COUNT]
                                             })
                                         )
                                     }
@@ -68,8 +71,11 @@ fun extractAggregations(index: IndexConfiguration, context: ReadContext) =
         }
         ?.groupByKey()
 
-fun findLogicalFacetName(index: IndexConfiguration, prefix: String, path: String) =
-    index.fields.find { it.name.startsWith(prefix) && it.logical?.path == path }?.name
+fun findLogicalFacetName(index: IndexConfiguration, path: String, prefix: String?) =
+    index.fields.find { field ->
+        field.logical?.path == path
+                && prefix?.let { field.name.startsWith(it) } ?: true
+    }?.name
 
 inline fun <reified V> getValueAtPath(anno: Map<*, *>, path: String): V? {
     val steps = path.split('.').iterator()

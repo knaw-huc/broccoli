@@ -152,10 +152,10 @@ projects:
               logical:
                 scope: attendants
                 path: ".id"
-            - name: attendantLabels
+            - name: attendantName
               logical:
                 scope: attendants
-                path: ".labels"
+                path: ".name"
             - name: locationName
               logical:
                 scope: entities

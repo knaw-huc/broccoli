@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonAnyGetter
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
+import nl.knaw.huc.broccoli.api.Constants.NO_FILTERS
 import nl.knaw.huc.broccoli.api.Constants.TEXT_TOKEN_COUNT
 import nl.knaw.huc.broccoli.core.ElasticQueryBuilder.LogicalAggregationBuilder.LogicalFilterScope
 import nl.knaw.huc.broccoli.core.ElasticQueryBuilder.LogicalAggregationBuilder.LogicalFilterSpec
@@ -191,13 +192,17 @@ class LogicalAggregation(
         "aggregations" to mapOf(
             "filter" to mapOf( // freely configurable here: could also be, e.g., 'name' or "filter_${name}"
                 "filters" to mapOf(
-                    "filters" to mutableMapOf<String, Any>().apply {
-                        filterSpec.values.forEach { (fixedValue, names) ->
-                            this[names.commonPrefix()] = mapOf(
-                                "term" to mapOf(
-                                    "${name}${filterSpec.path}" to fixedValue
+                    "filters" to mutableMapOf<String, Map<String, Map<String, String>>>().apply {
+                        if (filterSpec.values.isEmpty()) {
+                            this[NO_FILTERS] = mapOf("match_all" to emptyMap())
+                        } else {
+                            filterSpec.values.forEach { (fixedValue, names) ->
+                                this[names.commonPrefix()] = mapOf(
+                                    "term" to mapOf(
+                                        "${name}${filterSpec.path}" to fixedValue
+                                    )
                                 )
-                            )
+                            }
                         }
                     }
                 ),
