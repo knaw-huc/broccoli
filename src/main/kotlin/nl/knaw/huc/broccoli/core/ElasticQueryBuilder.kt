@@ -234,9 +234,9 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
         data class FixedTypeKey(val path: String, val value: String)
 
         class LogicalTypeScope {
-            val fixedValueTypes = mutableMapOf<FixedTypeKey, MutableMap<String, MutableList<String>>>()
+            val fixedValueTypes = mutableMapOf<FixedTypeKey?, MutableMap<String, MutableList<String>>>()
 
-            fun update(key: FixedTypeKey, logicalPath: String, values: MutableList<String>) {
+            fun update(key: FixedTypeKey?, logicalPath: String, values: MutableList<String>) = apply {
                 fixedValueTypes.merge(key, mutableMapOf(logicalPath to values)) { soFar, _ ->
                     soFar[logicalPath] = values; soFar
                 }
@@ -254,18 +254,17 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                 ?: throw BadRequestException("Unknown field: $fieldName")
             val logical = field.logical
                 ?: throw BadRequestException("Missing 'logical:' section in field: $fieldName")
-            val fixed = logical.fixed
-                ?: throw BadRequestException("Missing 'fixed:' section in logical field: $fieldName")
-            val key = FixedTypeKey(fixed.path, fixed.value)
-            scopes.putIfAbsent(logical.scope, LogicalTypeScope())
-            scopes[logical.scope]!!.update(key, logical.path, values)
+            val key = logical.fixed?.let { FixedTypeKey(it.path, it.value) }
+            scopes.compute(logical.scope) { _, oldValue ->
+                (oldValue ?: LogicalTypeScope()).update(key, logical.path, values)
+            }
 //            System.err.println("AFTER ADD, SCOPES[" + logical.scope + "]=" + scopes[logical.scope])
         }
 
         fun toQueries(): List<BaseQuery> =
             mutableListOf<BaseQuery>().apply {
                 scopes.forEach { (scopeName: String, scope: LogicalTypeScope) ->
-                    scope.fixedValueTypes.forEach { (key: FixedTypeKey, values: Map<String, List<String>>) ->
+                    scope.fixedValueTypes.forEach { (key: FixedTypeKey?, values: Map<String, List<String>>) ->
                         add(LogicalQuery(scopeName, key, values))
                     }
                 }

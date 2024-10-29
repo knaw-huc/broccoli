@@ -77,7 +77,7 @@ data class NestedQuery(
 
 data class LogicalQuery(
     @JsonIgnore val scopeName: String,
-    @JsonIgnore val fixed: FixedTypeKey,
+    @JsonIgnore val fixed: FixedTypeKey?,
     @JsonIgnore val values: Map<String, List<String>>
 ) : BaseQuery() {
     @JsonAnyGetter
@@ -88,7 +88,9 @@ data class LogicalQuery(
                 "bool" to mapOf(
                     "filter" to mutableListOf<Map<String, Map<String, List<String>>>>(
                     ).apply {
-                        add(mapOf("terms" to mapOf(scopeName + fixed.path to listOf(fixed.value))))
+                        fixed?.let {
+                            add(mapOf("terms" to mapOf(scopeName + fixed.path to listOf(fixed.value))))
+                        }
                         values.forEach { (path: String, vals: List<String>) ->
                             add(mapOf("terms" to mapOf(scopeName + path to vals)))
                         }
