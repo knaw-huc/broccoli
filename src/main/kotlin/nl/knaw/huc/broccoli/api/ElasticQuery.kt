@@ -212,10 +212,17 @@ class LogicalAggregation(
                     scope.spec.forEach { (name, sortSpec) ->
                         this[name] = mapOf(
                             "terms" to mutableMapOf<String, Any>("field" to "${scope.name}${name}")
-                                .withSortSpec(sortSpec),
+                                .withSortSpec(sortSpec, "documents>count"),
                             "aggregations" to mapOf<String, Map<String, Map<String, Any>>>(
                                 "documents" to mapOf(
-                                    "reverse_nested" to emptyMap()
+                                    "reverse_nested" to emptyMap(),
+                                    "aggs" to mapOf(
+                                        "count" to mapOf(
+                                            "value_count" to mapOf(
+                                                "field" to "bodyType"
+                                            )
+                                        )
+                                    )
                                 )
                             )
                         )
@@ -250,13 +257,13 @@ class NestedAggregation(
     )
 }
 
-fun MutableMap<String, Any>.withSortSpec(sortSpec: Map<String, Any>): Map<String, Any> {
+fun MutableMap<String, Any>.withSortSpec(sortSpec: Map<String, Any>, countSpec: String = "_count"): Map<String, Any> {
     sortSpec["size"]?.let { this["size"] = it }
-    sortSpec["order"]?.let { order ->
-        this["order"] = when (order) {
+    sortSpec["order"]?.let {
+        this["order"] = when (it) {
             "keyAsc" -> mapOf("_key" to "asc")
             "keyDesc" -> mapOf("_key" to "desc")
-            else -> mapOf("_count" to "desc")
+            else -> mapOf(countSpec to "desc")
         }
     }
     return this
