@@ -82,25 +82,33 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
 
         fun add(aggName: String, aggSpec: Map<String, Any>) {
             aggSpecs[aggName] = aggSpec
-            System.err.println("adding aggSpec[$aggName]: $aggSpec")
         }
 
         fun toAggregations(): List<Aggregation> {
-            val scopes = mutableMapOf<String, MutableMap<String, Map<String, Any>>>()
+            val scopes: MutableMap<String, MutableMap<String, Map<String, Any>>> = mutableMapOf()
+
             aggSpecs.forEach { (aggName, aggSpec) ->
                 val field = index.fields.find { it.name == aggName }
                     ?: throw BadRequestException("Unknown field '$aggName'")
+
                 val logical = field.logical
                     ?: throw BadRequestException("field $aggName lacks 'logical' configuration")
+
                 scopes.merge(logical.scope, mutableMapOf(logical.path to aggSpec)) { scope, _ ->
-                    scope[logical.path] = if (scope[logical.path] == null) aggSpec else
-                        (scope[logical.path] as MutableMap<String, Any>).apply {
-                            if (aggSpec["size"]!! as Int > get("size") as Int)
-                                put("size", aggSpec["size"]!!)
-                        }
+                    scope[logical.path] =
+                        if (scope[logical.path] == null)
+                            aggSpec
+                        else
+                            (scope[logical.path] as MutableMap<String, Any>).apply {
+                                aggSpec["size"]?.let { newSize ->
+                                    if (newSize as Int > get("size") as Int)
+                                        put("size", newSize)
+                                }
+                            }
                     scope
                 }
             }
+
             return scopes.map { (scope, spec) ->
                 var fixedField = ""
                 val values = LinkedHashMap<String, MutableList<String>>() // preserve order from config
