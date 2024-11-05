@@ -170,6 +170,20 @@ projects:
                 fixed:
                   path: ".category"
                   value: LOC
+            - name: organisationName
+              logical:
+                scope: entities
+                path: ".name"
+                fixed:
+                  path: ".category"
+                  value: ORG
+            - name: organisationLabels
+              logical:
+                scope: entities
+                path: ".labels"
+                fixed:
+                  path: ".category"
+                  value: ORG
             - name: personName
               logical:
                 scope: entities

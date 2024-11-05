@@ -82,6 +82,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
 
         fun add(aggName: String, aggSpec: Map<String, Any>) {
             aggSpecs[aggName] = aggSpec
+            System.err.println("adding aggSpec[$aggName]: $aggSpec")
         }
 
         fun toAggregations(): List<Aggregation> {
@@ -92,19 +93,26 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                 val logical = field.logical
                     ?: throw BadRequestException("field $aggName lacks 'logical' configuration")
                 scopes.merge(logical.scope, mutableMapOf(logical.path to aggSpec)) { scope, _ ->
-                    scope[logical.path] = aggSpec; scope
+                    scope[logical.path] = if (scope[logical.path] == null) aggSpec else
+                        (scope[logical.path] as MutableMap<String, Any>).apply {
+                            if (aggSpec["size"]!! as Int > get("size") as Int)
+                                put("size", aggSpec["size"]!!)
+                        }
+                    scope
                 }
             }
             return scopes.map { (scope, spec) ->
                 var fixedField = ""
                 val values = LinkedHashMap<String, MutableList<String>>() // preserve order from config
-                index.fields.filter { it.logical != null && it.logical.scope == scope }.forEach { field ->
-                    field.logical!!.fixed?.let { fixed ->
-                        fixedField = fixed.path
-                        values.putIfAbsent(fixed.value, mutableListOf())
-                        values[fixed.value]!!.add(field.name)
+                index.fields.filter { it.logical?.scope == scope }
+                    .forEach { field ->
+                        field.logical!!.fixed?.let { fixed ->
+                            fixedField = fixed.path
+                            values.putIfAbsent(fixed.value, mutableListOf())
+                            values[fixed.value]!!.add(field.name)
+                            System.err.println("${fixed.value}: added ${field.name} -> ${values[fixed.value]}")
+                        }
                     }
-                }
                 LogicalAggregation(LogicalFilterScope(scope, spec), LogicalFilterSpec(fixedField, values))
             }
         }
