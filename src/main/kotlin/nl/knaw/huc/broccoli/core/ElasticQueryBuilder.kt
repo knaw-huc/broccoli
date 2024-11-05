@@ -118,7 +118,6 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                             fixedField = fixed.path
                             values.putIfAbsent(fixed.value, mutableListOf())
                             values[fixed.value]!!.add(field.name)
-                            System.err.println("${fixed.value}: added ${field.name} -> ${values[fixed.value]}")
                         }
                     }
                 LogicalAggregation(LogicalFilterScope(scope, spec), LogicalFilterSpec(fixedField, values))
