@@ -114,8 +114,8 @@ class ProjectsResource(
         val baseJson = baseResult.readEntityAsJsonString()
             .also { logger.trace("base json: {}", it) }
 
-        val result = mutableMapOf<String, Any>()
-        val aggs = mutableMapOf<String, Any>()
+        val result: MutableMap<String, Any> = mutableMapOf()
+        val aggs: MutableMap<String, Any> = mutableMapOf()
         jsonParser.parse(baseJson).let { context ->
             context.read<Map<String, Any>>("$.hits.total")
                 ?.let { result["total"] = it }
@@ -147,6 +147,18 @@ class ProjectsResource(
 
         // use LinkedHashMap to fix aggregation order
         result["aggs"] = LinkedHashMap<String, Any?>().apply {
+            queryString.aggregations?.keys?.forEach { name ->
+                (aggs[name] as MutableMap<*, *>?)?.apply {
+                    val desiredAmount: Int = (queryString.aggregations[name]?.get("size") as Int?) ?: size
+                    if (desiredAmount < entries.size) {
+                        val keep = LinkedHashMap<Any, Any>()
+                        entries.take(desiredAmount).forEach {
+                            keep[it.key as Any] = it.value as Any
+                        }
+                        aggs[name] = keep
+                    }
+                }
+            }
             // prefer query string order; default to order from config
             (queryString.aggregations?.keys ?: index.fields.map { it.name }).forEach { name ->
                 aggs[name]?.let { aggregationResult -> put(name, aggregationResult) }
