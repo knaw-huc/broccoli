@@ -105,6 +105,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                             mutableListOf(aggSpec)
                         } else {
                             var found = false
+                            @Suppress("UNCHECKED_CAST")
                             (scope[logical.path] as MutableList<MutableMap<String, Any>>).onEach { curSpec: MutableMap<String, Any> ->
                                 System.err.println("Looking for ${aggSpec["order"]}")
                                 if (curSpec["order"] == aggSpec["order"]) {
