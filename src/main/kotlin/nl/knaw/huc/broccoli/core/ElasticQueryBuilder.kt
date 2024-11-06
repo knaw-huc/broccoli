@@ -81,7 +81,6 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
         private val aggSpecs = mutableMapOf<String, Map<String, Any>>()
 
         fun add(aggName: String, aggSpec: Map<String, Any>) {
-            System.err.println("$aggName: adding $aggSpec")
             aggSpecs[aggName] = aggSpec
         }
 
@@ -95,36 +94,28 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                 val logical = field.logical
                     ?: throw BadRequestException("field $aggName lacks 'logical' configuration")
 
-                System.err.println("aggName=$aggName, aggSpec=$aggSpec")
+                // create a copy as we may have to update its size, yet we don't want to fubar the original queryString
+                val copy = aggSpec.toMutableMap()
 
                 // logical.scope, e.g., "entities"
-                scopes.merge(logical.scope, mutableMapOf(logical.path to mutableListOf(aggSpec))) { scope, _ ->
+                scopes.merge(logical.scope, mutableMapOf(logical.path to mutableListOf(copy))) { scope, _ ->
                     scope[logical.path] =
-                        if (scope[logical.path] == null) {
-                            System.err.println("first in list for ${logical.path}: $aggSpec")
-                            mutableListOf(aggSpec)
-                        } else {
+                        if (scope[logical.path] == null)
+                            mutableListOf(copy)
+                        else {
                             var found = false
                             @Suppress("UNCHECKED_CAST")
                             (scope[logical.path] as MutableList<MutableMap<String, Any>>).onEach { curSpec: MutableMap<String, Any> ->
-                                System.err.println("Looking for ${aggSpec["order"]}")
-                                if (curSpec["order"] == aggSpec["order"]) {
-                                    System.err.println(" -> found (size=${curSpec["size"]})")
-                                    aggSpec["size"]?.let { newSize ->
+                                if (curSpec["order"] == copy["order"]) {
+                                    copy["size"]?.let { newSize ->
                                         if (newSize as Int > curSpec["size"] as Int) {
-                                            System.err.println("Upgrading size ${curSpec["size"]} to $newSize")
-                                            curSpec["size"] = newSize
+                                            curSpec["size"] = newSize   // in place update of 'size', requires copy
                                         }
                                     }
                                     found = true
                                 }
                             }.apply {
-                                if (!found) {
-                                    System.err.println("${logical.path} not yet found -> adding $aggSpec")
-                                    add(aggSpec as MutableMap<String, Any>)
-                                }
-                            }.also {
-                                System.err.println("after iteration: $it")
+                                if (!found) add(copy)
                             }
                         }
                     scope

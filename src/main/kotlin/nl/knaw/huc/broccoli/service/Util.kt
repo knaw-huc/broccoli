@@ -44,20 +44,24 @@ fun extractAggregations(index: IndexConfiguration, context: ReadContext) =
                     }.groupByKey()
                 )
             } else if ("filter" in aggValuesMap) {
-                val filterBuckets = getValueAtPath<Map<String, Any>>(aggValuesMap, "filter.buckets")
+                val filterBuckets: Map<String, Any> = getValueAtPath(aggValuesMap, "filter.buckets")
                     ?: return@mapNotNull null // no yield here after all, perhaps throw Exception?
                 mutableListOf<Map<String, Any>>().apply {
                     filterBuckets.forEach { (key, vals) ->
                         @Suppress("UNCHECKED_CAST")
                         (vals as Map<String, Map<String, Any>>)
-                            .filter { it.key != DOC_COUNT }
-                            .forEach { (name, logicalAggValuesMap) ->
+                            .filterNot { it.key == DOC_COUNT }
+                            .forEach { (nameAndSort, logicalAggValuesMap) ->
+                                val name = nameAndSort.substringBefore('|')
+                                val order = nameAndSort.substringAfter('|')
+                                System.err.println("name=$name, order=$order")
                                 val prefix = if (key == NO_FILTERS) null else key
                                 findLogicalFacetName(index, name, prefix)?.let { logicalFacetName ->
+                                    System.err.println(" --> logicalFacetName=$logicalFacetName")
                                     val buckets = logicalAggValuesMap["buckets"] as List<Map<String, Any>>
                                     if (buckets.isNotEmpty()) {
                                         add(
-                                            mapOf(logicalFacetName to buckets.associate {
+                                            mapOf("${logicalFacetName}@$order" to buckets.associate {
                                                 (it["key_as_string"]
                                                     ?: it["key"]) to (it["documents"] as Map<*, *>)[DOC_COUNT]
                                             })
@@ -71,11 +75,13 @@ fun extractAggregations(index: IndexConfiguration, context: ReadContext) =
         }
         ?.groupByKey()
 
-fun findLogicalFacetName(index: IndexConfiguration, path: String, prefix: String?) =
-    index.fields.find { field ->
+fun findLogicalFacetName(index: IndexConfiguration, path: String, prefix: String?): String? {
+    System.err.println("findLogicalFacetName: path=$path, prefix=$prefix")
+    return index.fields.find { field ->
         field.logical?.path == path
                 && prefix?.let { field.name.startsWith(it) } ?: true
     }?.name
+}
 
 inline fun <reified V> getValueAtPath(anno: Map<*, *>, path: String): V? {
     val steps = path.split('.').iterator()

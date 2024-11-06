@@ -148,14 +148,25 @@ class ProjectsResource(
         // use LinkedHashMap to fix aggregation order
         result["aggs"] = LinkedHashMap<String, Any?>().apply {
             queryString.aggregations?.keys?.forEach { name ->
+                val nameAndOrder = "$name@${queryString.aggregations[name]?.get("order")}"
+                System.err.println("Gathering final aggs, name=$name, nameAndOrder=$nameAndOrder")
+                if (!aggs.containsKey(name) && aggs.containsKey(nameAndOrder)) {
+                    System.err.println("  -> substituting $nameAndOrder values for $name: ${aggs[nameAndOrder]}")
+                    aggs[name] = aggs[nameAndOrder] as Any
+                }
+                System.err.println("  -> aggs=${aggs[name]}")
                 (aggs[name] as MutableMap<*, *>?)?.apply {
                     val desiredAmount: Int = (queryString.aggregations[name]?.get("size") as Int?) ?: size
+                    System.err.println("${queryString.aggregations[name]}: $desiredAmount")
+                    System.err.println("$name: desiredAmount: $desiredAmount, curSize=${entries.size}")
                     if (desiredAmount < entries.size) {
+                        System.err.println("  -> reducing size")
                         val keep = LinkedHashMap<Any, Any>()
                         entries.take(desiredAmount).forEach {
                             keep[it.key as Any] = it.value as Any
                         }
                         aggs[name] = keep
+                        System.err.println("after size checks for $name: ${aggs[name]}")
                     }
                 }
             }
