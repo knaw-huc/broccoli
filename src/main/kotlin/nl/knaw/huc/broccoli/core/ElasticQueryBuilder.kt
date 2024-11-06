@@ -81,11 +81,12 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
         private val aggSpecs = mutableMapOf<String, Map<String, Any>>()
 
         fun add(aggName: String, aggSpec: Map<String, Any>) {
+            System.err.println("$aggName: adding $aggSpec")
             aggSpecs[aggName] = aggSpec
         }
 
         fun toAggregations(): List<Aggregation> {
-            val scopes: MutableMap<String, MutableMap<String, Map<String, Any>>> = mutableMapOf()
+            val scopes: MutableMap<String, MutableMap<String, List<Map<String, Any>>>> = mutableMapOf()
 
             aggSpecs.forEach { (aggName, aggSpec) ->
                 val field = index.fields.find { it.name == aggName }
@@ -94,17 +95,37 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                 val logical = field.logical
                     ?: throw BadRequestException("field $aggName lacks 'logical' configuration")
 
-                scopes.merge(logical.scope, mutableMapOf(logical.path to aggSpec)) { scope, _ ->
+                System.err.println("aggName=$aggName, aggSpec=$aggSpec")
+
+                // logical.scope, e.g., "entities"
+                scopes.merge(logical.scope, mutableMapOf(logical.path to mutableListOf(aggSpec))) { scope, _ ->
                     scope[logical.path] =
-                        if (scope[logical.path] == null)
-                            aggSpec
-                        else
-                            (scope[logical.path] as MutableMap<String, Any>).apply {
-                                aggSpec["size"]?.let { newSize ->
-                                    if (newSize as Int > get("size") as Int)
-                                        put("size", newSize)
+                        if (scope[logical.path] == null) {
+                            System.err.println("first in list for ${logical.path}: $aggSpec")
+                            mutableListOf(aggSpec)
+                        } else {
+                            var found = false
+                            (scope[logical.path] as MutableList<MutableMap<String, Any>>).onEach { curSpec: MutableMap<String, Any> ->
+                                System.err.println("Looking for ${aggSpec["order"]}")
+                                if (curSpec["order"] == aggSpec["order"]) {
+                                    System.err.println(" -> found (size=${curSpec["size"]})")
+                                    aggSpec["size"]?.let { newSize ->
+                                        if (newSize as Int > curSpec["size"] as Int) {
+                                            System.err.println("Upgrading size ${curSpec["size"]} to $newSize")
+                                            curSpec["size"] = newSize
+                                        }
+                                    }
+                                    found = true
                                 }
+                            }.apply {
+                                if (!found) {
+                                    System.err.println("${logical.path} not yet found -> adding $aggSpec")
+                                    add(aggSpec as MutableMap<String, Any>)
+                                }
+                            }.also {
+                                System.err.println("after iteration: $it")
                             }
+                        }
                     scope
                 }
             }
@@ -126,7 +147,8 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
 
         data class LogicalFilterScope(
             val name: String,                       // "entities"
-            val spec: Map<String, Map<String, Any>>// {.name={order=countDesc, size=10}, .labels={order=countDesc, size=10}}
+            val spec: Map<String,                   // {.name=[{order=countDesc, size=10}, {order=keyAsc, size=20}], .labels=[{order=countDesc, size=10}]}
+                    List<Map<String, Any>>>
         )
 
         data class LogicalFilterSpec(

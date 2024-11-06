@@ -209,23 +209,31 @@ class LogicalAggregation(
                     }
                 ),
                 "aggs" to mutableMapOf<String, Any>().apply {
-                    scope.spec.forEach { (name, sortSpec) ->
-                        this[name] = mapOf(
-                            "terms" to mutableMapOf<String, Any>("field" to "${scope.name}${name}")
-                                .withSortSpec(sortSpec, "documents>count"),
-                            "aggregations" to mapOf<String, Map<String, Map<String, Any>>>(
-                                "documents" to mapOf(
-                                    "reverse_nested" to emptyMap(),
-                                    "aggs" to mapOf(
-                                        "count" to mapOf(
-                                            "value_count" to mapOf(
-                                                "field" to "bodyType"
+                    scope.spec.forEach { (name, sortSpecs) ->
+                        sortSpecs.forEach { sortSpec ->
+                            val order = sortSpec["order"] as String
+                            this["$name|$order"] = mapOf(
+                                "terms" to mutableMapOf<String, Any>("field" to "${scope.name}${name}")
+                                    .withSortSpec(sortSpec, "documents>count"),
+                                "aggregations" to mapOf<String, Map<String, Map<String, Any>>>(
+                                    "documents" to mutableMapOf<String, Map<String, Any>>(
+                                        "reverse_nested" to emptyMap()
+                                    ).apply {
+                                        if (order == "countDesc") {
+                                            put(
+                                                "aggs", mapOf(
+                                                    "count" to mapOf(
+                                                        "value_count" to mapOf(
+                                                            "field" to "bodyType"
+                                                        )
+                                                    )
+                                                )
                                             )
-                                        )
-                                    )
+                                        }
+                                    }
                                 )
                             )
-                        )
+                        }
                     }
                 }
             )
