@@ -287,7 +287,6 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
             scopes.compute(logical.scope) { _, oldValue ->
                 (oldValue ?: LogicalTypeScope()).update(key, logical.path, values)
             }
-//            System.err.println("AFTER ADD, SCOPES[" + logical.scope + "]=" + scopes[logical.scope])
         }
 
         fun toQueries(): List<BaseQuery> =

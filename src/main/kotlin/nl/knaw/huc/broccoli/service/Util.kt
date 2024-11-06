@@ -54,10 +54,8 @@ fun extractAggregations(index: IndexConfiguration, context: ReadContext) =
                             .forEach { (nameAndSort, logicalAggValuesMap) ->
                                 val name = nameAndSort.substringBefore('|')
                                 val order = nameAndSort.substringAfter('|')
-                                System.err.println("name=$name, order=$order")
                                 val prefix = if (key == NO_FILTERS) null else key
                                 findLogicalFacetName(index, name, prefix)?.let { logicalFacetName ->
-                                    System.err.println(" --> logicalFacetName=$logicalFacetName")
                                     val buckets = logicalAggValuesMap["buckets"] as List<Map<String, Any>>
                                     if (buckets.isNotEmpty()) {
                                         add(
@@ -76,7 +74,6 @@ fun extractAggregations(index: IndexConfiguration, context: ReadContext) =
         ?.groupByKey()
 
 fun findLogicalFacetName(index: IndexConfiguration, path: String, prefix: String?): String? {
-    System.err.println("findLogicalFacetName: path=$path, prefix=$prefix")
     return index.fields.find { field ->
         field.logical?.path == path
                 && prefix?.let { field.name.startsWith(it) } ?: true
