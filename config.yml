@@ -145,7 +145,7 @@ projects:
       deleteKey: 'republic-dev-mag-weg'
       joinSeparator: " "
       indices:
-        - name: 'rep-2024.09.10'
+        - name: 'rep-2024.11.18'
           bodyTypes: [ Resolution ]
           fields:
             - name: attendantId
@@ -263,7 +263,7 @@ projects:
             - name: sessionWeekday
               path: "$.body.metadata.sessionWeekday"
     annoRepo:
-      containerName: republic-2024.09.14
+      containerName: republic-2024.11.18
       uri: https://annorepo.republic-caf.diginfra.org
     textRepo:
       uri: https://textrepo.republic-caf.diginfra.org
