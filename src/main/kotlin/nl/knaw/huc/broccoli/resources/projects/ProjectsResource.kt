@@ -114,13 +114,14 @@ class ProjectsResource(
         val baseJson = baseResult.readEntityAsJsonString()
             .also { logger.trace("base json: {}", it) }
 
-        val result = mutableMapOf<String, Any>()
-        val aggs = mutableMapOf<String, Any>()
+        val result: MutableMap<String, Any> = mutableMapOf()
+        val aggs: MutableMap<String, Any> = mutableMapOf()
         jsonParser.parse(baseJson).let { context ->
             context.read<Map<String, Any>>("$.hits.total")
                 ?.let { result["total"] = it }
 
-            extractAggregations(context)?.let { aggs.putAll(it) }
+            extractAggregations(index, context)?.let { aggs.putAll(it) }
+            logger.atDebug().addKeyValue("aggs", aggs).log("base")
 
             context.read<List<Map<String, Any>>>("$.hits.hits[*]")
                 ?.map { buildHitResult(index, it) }
@@ -136,17 +137,35 @@ class ProjectsResource(
             val auxJson = auxResult.readEntityAsJsonString()
                 .also { logger.trace("aux json[{}]: {}", auxIndex, it) }
             jsonParser.parse(auxJson).let { context ->
-                extractAggregations(context)?.let { aggs.putAll(it) }
+                extractAggregations(index, context)
+                    ?.forEach { entry ->
+                        @Suppress("UNCHECKED_CAST")
+                        (aggs[entry.key] as MutableMap<String, Any>).putAll(entry.value as Map<String, Any>)
+                    }
             }
         }
 
-        // if aggregations are requested, order them according to query string
-        (queryString.aggregations ?: index.fields.map { it.name }).let { orderedAggregationNames ->
-            result["aggs"] = LinkedHashMap<String, Any?>().apply {
-                orderedAggregationNames.forEach { unparsedName ->
-                    val parsedName = unparsedName.substringBefore(":")
-                    aggs[parsedName]?.let { put(parsedName, it) }
+        // use LinkedHashMap to fix aggregation order
+        result["aggs"] = LinkedHashMap<String, Any?>().apply {
+            queryString.aggregations?.keys?.forEach { name ->
+                val nameAndOrder = "$name@${queryString.aggregations[name]?.get("order")}"
+                if (!aggs.containsKey(name) && aggs.containsKey(nameAndOrder)) {
+                    aggs[name] = aggs[nameAndOrder] as Any
                 }
+                (aggs[name] as MutableMap<*, *>?)?.apply {
+                    val desiredAmount: Int = (queryString.aggregations[name]?.get("size") as Int?) ?: size
+                    if (desiredAmount < entries.size) {
+                        val keep = LinkedHashMap<Any, Any>()
+                        entries.take(desiredAmount).forEach {
+                            keep[it.key as Any] = it.value as Any
+                        }
+                        aggs[name] = keep
+                    }
+                }
+            }
+            // prefer query string order; default to order from config
+            (queryString.aggregations?.keys ?: index.fields.map { it.name }).forEach { name ->
+                aggs[name]?.let { aggregationResult -> put(name, aggregationResult) }
             }
         }
 

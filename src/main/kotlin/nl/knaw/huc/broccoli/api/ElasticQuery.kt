@@ -4,7 +4,12 @@ import com.fasterxml.jackson.annotation.JsonAnyGetter
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
+import nl.knaw.huc.broccoli.api.Constants.NO_FILTERS
 import nl.knaw.huc.broccoli.api.Constants.TEXT_TOKEN_COUNT
+import nl.knaw.huc.broccoli.core.ElasticQueryBuilder.LogicalAggregationBuilder.LogicalFilterScope
+import nl.knaw.huc.broccoli.core.ElasticQueryBuilder.LogicalAggregationBuilder.LogicalFilterSpec
+import nl.knaw.huc.broccoli.core.ElasticQueryBuilder.LogicalQueryBuilder.FixedTypeKey
+import nl.knaw.huc.broccoli.service.commonPrefix
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class ElasticQuery(
@@ -46,8 +51,58 @@ data class RangeQuery(
     )
 }
 
+data class NestedQuery(
+    @JsonIgnore val fieldName: String,
+    @JsonIgnore val constraints: Map<String, List<String>>
+) : BaseQuery() {
+    @JsonAnyGetter
+    fun toJson() = mapOf(
+        "nested" to mapOf(
+            "path" to fieldName,
+            "query" to mapOf(
+                "bool" to mapOf(
+                    "filter" to mutableListOf<Map<String, Map<String, List<String>>>>(
+                    ).apply {
+                        constraints.forEach { (nestedFieldName, allowedValues) ->
+                            add(
+                                mapOf("terms" to mapOf("$fieldName.$nestedFieldName" to allowedValues))
+                            )
+                        }
+                    }
+                )
+            )
+        )
+    )
+}
+
+data class LogicalQuery(
+    @JsonIgnore val scopeName: String,
+    @JsonIgnore val fixed: FixedTypeKey?,
+    @JsonIgnore val values: Map<String, List<String>>
+) : BaseQuery() {
+    @JsonAnyGetter
+    fun toJson() = mapOf(
+        "nested" to mapOf(
+            "path" to scopeName,
+            "query" to mapOf(
+                "bool" to mapOf(
+                    "filter" to mutableListOf<Map<String, Map<String, List<String>>>>(
+                    ).apply {
+                        fixed?.let {
+                            add(mapOf("terms" to mapOf(scopeName + fixed.path to listOf(fixed.value))))
+                        }
+                        values.forEach { (path: String, vals: List<String>) ->
+                            add(mapOf("terms" to mapOf(scopeName + path to vals)))
+                        }
+                    }
+                )
+            )
+        )
+    )
+}
+
 data class TermsQuery(
-    val terms: Map<String, List<String>>
+    val terms: Map<String, Any>
 ) : BaseQuery()
 
 data class FullTextQuery(
@@ -87,11 +142,13 @@ data class HighlightTerm(
     )
 }
 
-data class Aggregations(
-    @JsonIgnore val aggs: List<Aggregation>
-) {
+data class Aggregations(private val elements: List<Aggregation>) {
+    private val aggs = elements.toMutableList()
+
     @JsonAnyGetter
     fun toJson() = aggs.associate { it.name to it.toJson() }
+
+    fun addAll(elements: List<Aggregation>) = apply { aggs.addAll(elements) }
 }
 
 abstract class Aggregation(val name: String) {
@@ -119,4 +176,103 @@ class TermAggregation(
             sortOrder?.let { put("order", it) }
         }
     )
+
+    override fun toString(): String = buildString {
+        append(name).append('|')
+        numResults?.let { append(it).append('|') }
+        sortOrder?.let { append(it).append('|') }
+        append("json:")
+    }
+}
+
+class LogicalAggregation(
+    private val scope: LogicalFilterScope,
+    private val filterSpec: LogicalFilterSpec
+) : Aggregation(scope.name) {
+    override fun toJson(): Map<String, Map<String, Any>> = mapOf(
+        "nested" to mapOf("path" to name),
+        "aggregations" to mapOf(
+            "filter" to mapOf( // freely configurable here: could also be, e.g., 'name' or "filter_${name}"
+                "filters" to mapOf(
+                    "filters" to mutableMapOf<String, Map<String, Map<String, String>>>().apply {
+                        if (filterSpec.values.isEmpty()) {
+                            this[NO_FILTERS] = mapOf("match_all" to emptyMap())
+                        } else {
+                            filterSpec.values.forEach { (fixedValue, names) ->
+                                this[names.commonPrefix()] = mapOf(
+                                    "term" to mapOf(
+                                        "${name}${filterSpec.path}" to fixedValue
+                                    )
+                                )
+                            }
+                        }
+                    }
+                ),
+                "aggs" to mutableMapOf<String, Any>().apply {
+                    scope.spec.forEach { (name, sortSpecs) ->
+                        sortSpecs.forEach { sortSpec ->
+                            val order = sortSpec["order"] as String
+                            this["$name|$order"] = mapOf(
+                                "terms" to mutableMapOf<String, Any>("field" to "${scope.name}${name}")
+                                    .withSortSpec(sortSpec, "documents>count"),
+                                "aggregations" to mapOf<String, Map<String, Map<String, Any>>>(
+                                    "documents" to mutableMapOf<String, Map<String, Any>>(
+                                        "reverse_nested" to emptyMap()
+                                    ).apply {
+                                        if (order == "countDesc") {
+                                            put(
+                                                "aggs", mapOf(
+                                                    "count" to mapOf(
+                                                        "value_count" to mapOf(
+                                                            "field" to "bodyType"
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                        }
+                                    }
+                                )
+                            )
+                        }
+                    }
+                }
+            )
+        )
+    )
+}
+
+class NestedAggregation(
+    name: String,
+    private val fields: Map<String, Map<String, Any>>
+) : Aggregation(name) {
+    override fun toJson(): Map<String, Map<String, Any>> = mapOf(
+        "nested" to mapOf("path" to name),
+        "aggregations" to mutableMapOf<String, Any>().apply {
+            fields.forEach { (nestedFieldName, sortSpec) ->
+                put(
+                    nestedFieldName, mapOf(
+                        "terms" to mutableMapOf<String, Any>("field" to "$name.$nestedFieldName")
+                            .withSortSpec(sortSpec),
+                        "aggregations" to mapOf<String, Map<String, Map<String, Any>>>(
+                            "documents" to mapOf(
+                                "reverse_nested" to emptyMap()
+                            )
+                        )
+                    )
+                )
+            }
+        }
+    )
+}
+
+fun MutableMap<String, Any>.withSortSpec(sortSpec: Map<String, Any>, countSpec: String = "_count"): Map<String, Any> {
+    sortSpec["size"]?.let { this["size"] = it }
+    sortSpec["order"]?.let {
+        this["order"] = when (it) {
+            "keyAsc" -> mapOf("_key" to "asc")
+            "keyDesc" -> mapOf("_key" to "desc")
+            else -> mapOf(countSpec to "desc")
+        }
+    }
+    return this
 }

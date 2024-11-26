@@ -29,4 +29,8 @@ object Constants {
     }
 
     const val TEXT_TOKEN_COUNT = "text.tokenCount"
+
+    const val NO_FILTERS = "no_filters"
+
+    const val DOC_COUNT = "doc_count"
 }

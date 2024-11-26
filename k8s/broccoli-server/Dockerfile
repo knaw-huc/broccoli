@@ -1,11 +1,11 @@
-FROM maven:3.8.5 as builder
+FROM maven:3.8.5 AS builder
 
 WORKDIR /build/
 COPY ./src /build/src
 COPY ./pom.xml /build/
 RUN mvn --no-transfer-progress --batch-mode --update-snapshots --also-make package
 
-FROM openjdk:20-slim
+FROM openjdk:24-jdk-slim
 RUN apt-get update && apt-get install -y curl jq
 
 WORKDIR /apps/broccoli

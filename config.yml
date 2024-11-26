@@ -58,13 +58,10 @@ projects:
           fields:
             - name: bodyType
               path: "$.body.type"
-              type: keyword
             - name: invNr
               path: "$.body.metadata.inventoryNumber"
-              type: keyword
             - name: document
               path: "$.body.metadata.document"
-              type: keyword
     textRepo:
       uri: https://globalise.tt.di.huc.knaw.nl
 
@@ -112,40 +109,28 @@ projects:
           fields:
             - name: bodyType
               path: "$.body.type"
-              type: keyword
             - name: lang
               path: "$.body.metadata.lang"
-              type: keyword
             - name: type
               path: "$.body.metadata.type"
-              type: keyword
             - name: anno
               path: "$.body.metadata.anno"
-              type: keyword
             - name: country
               path: "$.body.metadata.country"
-              type: keyword
             - name: institution
               path: "$.body.metadata.institution"
-              type: keyword
             - name: msid
               path: "$.body.metadata.msid"
-              type: keyword
             - name: period
               path: "$.body.metadata.period"
-              type: keyword
             - name: periodLong
               path: "$.body.metadata.periodlong"
-              type: keyword
             - name: letterId
               path: "$.body.metadata.letterid"
-              type: keyword
             - name: correspondent
               path: "$.body.metadata.correspondent"
-              type: keyword
             - name: location
               path: "$.body.metadata.location"
-              type: keyword
     annoRepo:
       containerName: 'mondriaan-0.9.0'
       uri: https://mondriaan.annorepo.dev.clariah.nl
@@ -160,18 +145,81 @@ projects:
       deleteKey: 'republic-dev-mag-weg'
       joinSeparator: " "
       indices:
-        - name: 'republic-2024.06.18'
+        - name: 'rep-2024.11.18'
           bodyTypes: [ Resolution ]
           fields:
+            - name: attendantId
+              logical:
+                scope: attendants
+                path: ".id"
+            - name: attendantName
+              logical:
+                scope: attendants
+                path: ".name"
+            - name: locationName
+              logical:
+                scope: entities
+                path: ".name"
+                fixed:
+                  path: ".category"
+                  value: LOC
+            - name: locationLabels
+              logical:
+                scope: entities
+                path: ".labels"
+                fixed:
+                  path: ".category"
+                  value: LOC
+            - name: organisationName
+              logical:
+                scope: entities
+                path: ".name"
+                fixed:
+                  path: ".category"
+                  value: ORG
+            - name: organisationLabels
+              logical:
+                scope: entities
+                path: ".labels"
+                fixed:
+                  path: ".category"
+                  value: ORG
+            - name: personName
+              logical:
+                scope: entities
+                path: ".name"
+                fixed:
+                  path: ".category"
+                  value: PERS
+            - name: personLabels
+              logical:
+                scope: entities
+                path: ".labels"
+                fixed:
+                  path: ".category"
+                  value: PERS
+            - name: roleName
+              logical:
+                scope: entities
+                path: ".name"
+                fixed:
+                  path: ".category"
+                  value: HOE
+            - name: roleLabels
+              logical:
+                scope: entities
+                path: ".labels"
+                fixed:
+                  path: ".category"
+                  value: HOE
+            - name: bodyType
+              path: "$.body.type"
             - name: propositionType
               path: "$.body.metadata.propositionType"
-              type: keyword
             - name: resolutionType
               path: "$.body.metadata.resolutionType"
-              type: keyword
             - name: textType
               path: "$.body.metadata.textType"
-              type: keyword
             - name: sessionDate
               path: "$.body.metadata.sessionDate"
               type: date
@@ -184,32 +232,38 @@ projects:
             - name: sessionYear
               path: "$.body.metadata.sessionYear"
               type: short
-            - name: delegateId
-              path: "$.body.metadata.delegateId"
-              type: keyword
-            - name: delegateName
-              path: "$.body.metadata.delegateName"
-              type: keyword
-            - name: entityCategory
-              path: "$.body.metadata.category"
-              type: keyword
-            - name: entityId
-              path: "$.body.metadata.entityId"
-              type: keyword
-            - name: entityLabels
-              path: "$.body.metadata.entityLabels"
-              type: keyword
-            - name: entityName
-              path: "$.body.metadata.name"
-              type: keyword
+            - name: attendants
+              type: nested
+              nested:
+                from: [ Attendant ]
+                fields:
+                  - name: id
+                    path: "$.body.metadata.delegateId"
+                  - name: name
+                    path: "$.body.metadata.delegateName"
+                with:
+                  - equal: "$.body.metadata.sessionID"
+            - name: entities
+              type: nested
+              nested:
+                from: [ Entity ]
+                fields:
+                  - name: category
+                    path: "$.body.metadata.category"
+                  - name: id
+                    path: "$.body.metadata.entityId"
+                  - name: labels
+                    path: "$.body.metadata.entityLabels"
+                  - name: name
+                    path: "$.body.metadata.name"
+                with:
+                  - overlap: LogicalText
             - name: bodyType
               path: "$.body.type"
-              type: keyword
             - name: sessionWeekday
               path: "$.body.metadata.sessionWeekday"
-              type: keyword
     annoRepo:
-      containerName: republic-2024.06.18
+      containerName: republic-2024.11.18
       uri: https://annorepo.republic-caf.diginfra.org
     textRepo:
       uri: https://textrepo.republic-caf.diginfra.org
@@ -255,28 +309,21 @@ projects:
           fields:
             - name: bodyType
               path: "$.body.type"
-              type: keyword
             - name: date
               path: "$.body.metadata.date"
               type: date
             - name: recipient
               path: "$.body.metadata.recipient"
-              type: keyword
             - name: recipientLoc
               path: "$.body.metadata.recipientLoc"
-              type: keyword
             - name: sender
               path: "$.body.metadata.sender"
-              type: keyword
             - name: senderLoc
               path: "$.body.metadata.senderLoc"
-              type: keyword
             - name: editorNotes
               path: "$.body.metadata.editorNotes"
-              type: keyword
             - name: shelfmark
               path: "$.body.metadata.shelfmark"
-              type: keyword
             - name: summary
               path: "$.body.metadata.summary"
               type: text
@@ -299,7 +346,6 @@ projects:
           fields:
             - name: bodyType
               path: "$.body.type"
-              type: keyword
     textRepo:
       uri: https://brieven-van-hooft.tt.di.huc.knaw.nl
 
@@ -328,22 +374,16 @@ projects:
           fields:
             - name: correspondent
               path: "$.body.metadata.correspondent"
-              type: keyword
             - name: institution
               path: "$.body.metadata.institution"
-              type: keyword
             - name: location
               path: "$.body.metadata.location"
-              type: keyword
             - name: msid
               path: "$.body.metadata.msid"
-              type: keyword
             - name: period
               path: "$.body.metadata.period"
-              type: keyword
             - name: periodLong
               path: "$.body.metadata.periodLong"
-              type: keyword
     annoRepo:
       containerName: 'vangogh-0.2.0'
       uri: https://vangogh.annorepo.dev.clariah.nl
