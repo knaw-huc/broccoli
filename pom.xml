@@ -45,6 +45,7 @@
         <maven-shade-plugin.version>3.6.0</maven-shade-plugin.version>
         <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
         <maven-surefire-plugin.version>3.5.2</maven-surefire-plugin.version>
+        <maven-versions-plugin.version>2.18.0</maven-versions-plugin.version>
     </properties>
 
     <dependencyManagement>
@@ -101,7 +102,7 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>versions-maven-plugin</artifactId>
-                <version>2.18.0</version>
+                <version>${maven-versions-plugin.version}</version>
                 <configuration>
                     <ignoredVersions>.*-M.*,.*-alpha.*,.*-[bB]eta.*,.*-RC.*</ignoredVersions>
                 </configuration>
