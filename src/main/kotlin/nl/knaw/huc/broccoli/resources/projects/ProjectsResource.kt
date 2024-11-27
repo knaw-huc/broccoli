@@ -184,12 +184,12 @@ class ProjectsResource(
     }
 
     private fun logQuery(query: IndexQuery, from: Int, size: Int) {
-        if (query.text != null) {
-            logger.atDebug()
-                .addMarker(queryMarker)
-                .setMessage("${query}from=$from|size=$size")
-                .log()
+        if (query.text.isNullOrBlank() && query.terms.isNullOrEmpty()) {
+            // nothing useful to log
+            return
         }
+
+        logger.atDebug().addMarker(queryMarker).setMessage("${query}from=$from|size=$size").log()
     }
 
     private fun buildHitResult(index: IndexConfiguration, hit: Map<String, Any>) =
