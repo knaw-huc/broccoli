@@ -36,6 +36,10 @@ version-update:
 .PHONY: push
 push: .make/.push
 
+.PHONY: display-dependency-updates
+display-dependency-updates:
+	mvn org.codehaus.mojo:versions-maven-plugin:display-dependency-updates
+
 .PHONY: help
 help:
 	@echo "make-tools for $(TAG)"
@@ -45,3 +49,5 @@ help:
 	@echo "  push            to to push the linux/amd64 docker image to registry.diginfra.net"
 	@echo "  clean           to remove generated files"
 	@echo "  version-update  to update the project version"
+	@echo ""
+	@echo "  display-dependency-updates to show which deps in pom.xml can be upgraded"
