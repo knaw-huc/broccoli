@@ -6,7 +6,7 @@
 
     <groupId>nl.knaw.huc</groupId>
     <artifactId>broccoli</artifactId>
-    <version>0.40.2</version>
+    <version>0.40.1</version>
 
     <packaging>jar</packaging>
 
@@ -27,7 +27,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <annorepo-client.version>0.7.0</annorepo-client.version>
+        <annorepo-client.version>0.6.3</annorepo-client.version>
 
         <assertj-core.version>3.26.3</assertj-core.version>
         <dropwizard-swagger-ui.version>4.6.2</dropwizard-swagger-ui.version>
@@ -38,7 +38,7 @@
         <mockito-kotlin.version>5.1.0</mockito-kotlin.version>
         <mockito.version>5.5.0</mockito.version>
 
-        <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+        <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
         <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
         <maven-javadoc-plugin.version>3.5.0</maven-javadoc-plugin.version>
         <maven-project-info-reports-plugin.version>3.4.3</maven-project-info-reports-plugin.version>
@@ -279,6 +279,17 @@
             <groupId>io.github.knaw-huc</groupId>
             <artifactId>annorepo-client</artifactId>
             <version>${annorepo-client.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.protobuf</groupId>
+                    <artifactId>protobuf-java</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.25.5</version>
         </dependency>
 
         <dependency>

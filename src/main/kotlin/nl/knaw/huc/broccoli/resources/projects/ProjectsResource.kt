@@ -105,14 +105,14 @@ class ProjectsResource(
             .fragmentSize(fragmentSize)
 
         val baseQuery = queryBuilder.toElasticQuery()
-        logger.debug("base ES query: {}", jsonWriter.writeValueAsString(baseQuery))
+        logger.atTrace().addKeyValue("ES query", jsonWriter.writeValueAsString(baseQuery)).log("base")
 
         val baseResult = client
             .target(project.brinta.uri).path(index.name).path("_search")
             .request().post(Entity.json(baseQuery))
         validateElasticResult(baseResult, queryString)
         val baseJson = baseResult.readEntityAsJsonString()
-            .also { logger.trace("base json: {}", it) }
+        logger.atTrace().addKeyValue("json", baseJson).log("base")
 
         val result: MutableMap<String, Any> = mutableMapOf()
         val aggs: MutableMap<String, Any> = mutableMapOf()
@@ -121,7 +121,7 @@ class ProjectsResource(
                 ?.let { result["total"] = it }
 
             extractAggregations(index, context)?.let { aggs.putAll(it) }
-            logger.atDebug().addKeyValue("aggs", aggs).log("base")
+            logger.atTrace().addKeyValue("aggs", aggs).log("base")
 
             context.read<List<Map<String, Any>>>("$.hits.hits[*]")
                 ?.map { buildHitResult(index, it) }
@@ -130,12 +130,14 @@ class ProjectsResource(
 
         val auxQueries = queryBuilder.toMultiFacetCountQueries()
         auxQueries.forEachIndexed { auxIndex, auxQuery ->
-            logger.atDebug().log("aux ES query[$auxIndex]: ${jsonWriter.writeValueAsString(auxQuery)}")
+            logger.atTrace().addKeyValue("query[$auxIndex]", jsonWriter.writeValueAsString(auxQuery)).log("aux")
+
             val auxResult = client.target(project.brinta.uri).path(index.name).path("_search")
                 .request().post(Entity.json(auxQuery))
             validateElasticResult(auxResult, queryString)
             val auxJson = auxResult.readEntityAsJsonString()
-                .also { logger.trace("aux json[{}]: {}", auxIndex, it) }
+            logger.atTrace().addKeyValue("json", auxJson).log("aux")
+
             jsonParser.parse(auxJson).let { context ->
                 extractAggregations(index, context)
                     ?.forEach { entry ->
@@ -184,12 +186,14 @@ class ProjectsResource(
     }
 
     private fun logQuery(query: IndexQuery, from: Int, size: Int) {
-        if (query.text != null) {
-            logger.atDebug()
-                .addMarker(queryMarker)
-                .setMessage("${query}from=$from|size=$size")
-                .log()
+        if (query.text.isNullOrBlank() && query.terms.isNullOrEmpty()) {
+            // nothing useful to log
+            return
         }
+
+        logger.atInfo()
+            .addMarker(queryMarker)
+            .log("${query}from=$from|size=$size")
     }
 
     private fun buildHitResult(index: IndexConfiguration, hit: Map<String, Any>) =
