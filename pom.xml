@@ -279,6 +279,17 @@
             <groupId>io.github.knaw-huc</groupId>
             <artifactId>annorepo-client</artifactId>
             <version>${annorepo-client.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.protobuf</groupId>
+                    <artifactId>protobuf-java</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.25.5</version>
         </dependency>
 
         <dependency>
