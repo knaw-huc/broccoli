@@ -12,10 +12,14 @@ data class IndexQuery(
     val aggregations: Map<String, Map<String, Any>>? = null
 ) {
     override fun toString(): String = buildString {
-        text?.let { append(it).append('|') }
-        date?.let { append(it).append('|') }
-        range?.let { append(it).append('|') }
-        terms?.let { append(it).append('|') }
+        text?.let { append(it) }
+        append('|')
+        terms?.let { append(it) }
+        append('|')
+        date?.let { append(it) }
+        append('|')
+        range?.let { append(it) }
+        append('|')
     }
 }
 
