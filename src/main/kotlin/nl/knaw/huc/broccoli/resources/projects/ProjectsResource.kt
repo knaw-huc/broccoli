@@ -132,8 +132,12 @@ class ProjectsResource(
         auxQueries.forEachIndexed { auxIndex, auxQuery ->
             logger.atTrace().addKeyValue("query[$auxIndex]", jsonWriter.writeValueAsString(auxQuery)).log("aux")
 
-            val auxResult = client.target(project.brinta.uri).path(index.name).path("_search")
-                .request().post(Entity.json(auxQuery))
+            val auxResult = client
+                .target(project.brinta.uri)
+                .path(index.name)
+                .path("_search")
+                .request()
+                .post(Entity.json(auxQuery))
             validateElasticResult(auxResult, queryString)
             val auxJson = auxResult.readEntityAsJsonString()
             logger.atTrace().addKeyValue("json", auxJson).log("aux")

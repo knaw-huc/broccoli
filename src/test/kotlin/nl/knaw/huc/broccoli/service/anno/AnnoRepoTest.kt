@@ -1,7 +1,6 @@
 package nl.knaw.huc.broccoli.service.anno
 
 import nl.knaw.huc.annorepo.client.AnnoRepoClient
-import nl.knaw.huc.broccoli.config.RepublicConfiguration
 import org.junit.jupiter.api.Test
 import java.net.URI
 import kotlin.test.assertEquals
@@ -9,7 +8,6 @@ import kotlin.test.assertEquals
 class AnnoRepoTest {
 //    private val log = LoggerFactory.getLogger(javaClass)
 
-    private var republicConfig = RepublicConfiguration()
     private var annoRepoClient: AnnoRepoClient
 
     private var sut: AnnoRepo
@@ -28,7 +26,7 @@ class AnnoRepoTest {
 
     @Test
     fun `Anno fetcher should call out to remote annotation repository`() {
-        val archNr = republicConfig.archiefNr
+        val archNr = ""
         val invNr = "3783"
         val scanNr = "%04d".format(285)
         val bodyId = "urn:republic:NL-HaNA_${archNr}_${invNr}_${scanNr}"
