@@ -41,7 +41,7 @@ class AboutResourceTest {
     }
 
     @Test
-    fun `AboutResource should provide basic info`() {
+    fun `AboutResource should provide app name`() {
         val response: Response =
             resource.client()
                 .target("/$ABOUT")
