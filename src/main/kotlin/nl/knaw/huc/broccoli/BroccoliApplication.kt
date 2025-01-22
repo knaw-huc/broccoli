@@ -5,6 +5,7 @@ import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.jayway.jsonpath.Configuration
 import com.jayway.jsonpath.JsonPath
 import com.jayway.jsonpath.Option
+import com.jayway.jsonpath.ParseContext
 import io.dropwizard.assets.AssetsBundle
 import io.dropwizard.client.JerseyClientBuilder
 import io.dropwizard.client.JerseyClientConfiguration
@@ -73,10 +74,9 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
 
         val client = createClient(configuration.jerseyClient, environment)
 
-        val jsonParser =
-            JsonPath.using(Configuration.defaultConfiguration().addOptions(Option.DEFAULT_PATH_LEAF_TO_NULL))
+        val jsonParser = createJsonParser()
 
-        val objectMapper = ObjectMapper().registerKotlinModule()
+        val objectMapper = createJsonMapper()
 
         with(environment.jersey()) {
             register(AboutResource(configuration, name, appVersion))
@@ -93,6 +93,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
                     "    externally accessible at ${configuration.externalBaseUrl}\n"
         )
     }
+
 
     private fun createClient(jerseyClient: JerseyClientConfiguration, environment: Environment): Client {
         return JerseyClientBuilder(environment)
@@ -120,7 +121,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             TextRepo(uri, apiKey)
         }
 
-    private fun createAnnoRepo(annoRepoConfig: AnnoRepoConfiguration, textType: String) =
+    fun createAnnoRepo(annoRepoConfig: AnnoRepoConfiguration, textType: String) =
         with(annoRepoConfig) {
             val serverURI = URI.create(uri)
             val userAgent = "$name (${this@BroccoliApplication.javaClass.name}/$appVersion)"
@@ -148,5 +149,14 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         fun main(args: Array<String>) {
             BroccoliApplication().run(*args)
         }
+
+        fun createJsonParser(): ParseContext =
+            JsonPath.using(
+                Configuration.defaultConfiguration()
+                    .addOptions(Option.DEFAULT_PATH_LEAF_TO_NULL)
+            )
+
+        fun createJsonMapper() = ObjectMapper().registerKotlinModule()
+
     }
 }
