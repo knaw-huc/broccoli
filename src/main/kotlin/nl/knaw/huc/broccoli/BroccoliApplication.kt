@@ -2,6 +2,7 @@ package nl.knaw.huc.broccoli
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule
 import com.jayway.jsonpath.Configuration
 import com.jayway.jsonpath.JsonPath
 import com.jayway.jsonpath.Option
@@ -156,7 +157,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
                     .addOptions(Option.DEFAULT_PATH_LEAF_TO_NULL)
             )
 
-        fun createJsonMapper() = ObjectMapper().registerKotlinModule()
-
+        fun createJsonMapper() = ObjectMapper()
+            .registerKotlinModule()
     }
 }

@@ -62,9 +62,10 @@ class ProjectsResource(
 
     @POST
     @Path("{projectId}/search")
+    @Consumes(MediaType.APPLICATION_JSON)
     fun searchIndex(
-        @PathParam("projectId") projectId: String,
         queryString: IndexQuery,
+        @PathParam("projectId") projectId: String,
         @QueryParam("indexName") indexParam: String?,
         @QueryParam("from") @Min(0) @DefaultValue("0") from: Int,
         @QueryParam("size") @Min(0) @DefaultValue("10") size: Int,

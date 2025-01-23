@@ -346,6 +346,12 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- https://github.com/FasterXML/jackson/discussions/170 -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-parameter-names</artifactId>
+        </dependency>
+
         <!-- testing: mock server -->
         <dependency>
             <groupId>org.mock-server</groupId>

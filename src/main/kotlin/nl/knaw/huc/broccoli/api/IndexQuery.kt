@@ -1,8 +1,11 @@
 package nl.knaw.huc.broccoli.api
 
+import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonProperty
 
-data class IndexQuery(
+data class IndexQuery
+@JsonCreator
+constructor(
     val date: IndexRange?,
     val terms: IndexTerms?,
     val text: String?,
