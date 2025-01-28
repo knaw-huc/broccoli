@@ -2,17 +2,20 @@ package nl.knaw.huc.broccoli.resources.projects;
 
 import TestUtils
 import com.google.gson.Gson
+import io.dropwizard.testing.junit5.DropwizardAppExtension
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport
 import io.dropwizard.testing.junit5.ResourceExtension
 import jakarta.ws.rs.client.Entity
 import jakarta.ws.rs.core.MediaType.APPLICATION_JSON_TYPE
 import jakarta.ws.rs.core.Response
 import nl.knaw.huc.annorepo.client.AnnoRepoClient
+import nl.knaw.huc.broccoli.BroccoliApplication
 import nl.knaw.huc.broccoli.BroccoliApplication.Companion.createJsonMapper
 import nl.knaw.huc.broccoli.BroccoliApplication.Companion.createJsonParser
 import nl.knaw.huc.broccoli.api.IndexQuery
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
 import nl.knaw.huc.broccoli.config.BrintaConfiguration
+import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
 import nl.knaw.huc.broccoli.service.readEntityAsJsonString
@@ -20,16 +23,13 @@ import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.assertj.core.api.Assertions.assertThat
 import org.glassfish.jersey.client.JerseyClientBuilder.createClient
 import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mockito.mock
-import org.mockserver.configuration.Configuration
 import org.mockserver.integration.ClientAndServer
 import org.mockserver.model.HttpRequest.request
 import org.mockserver.model.HttpResponse
-import org.slf4j.event.Level
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(DropwizardExtensionsSupport::class)
@@ -38,20 +38,19 @@ class ProjectsResourceTest {
     lateinit var resource: ResourceExtension
     lateinit var mockIndexServer: ClientAndServer
     var projectId = "dummy"
+    var application: DropwizardAppExtension<BroccoliConfiguration>? = null
 
 
     @BeforeAll
     fun setup() {
-        println("MOCKINDEXSERVER")
-        val configuration = Configuration()
-        configuration.logLevel(Level.DEBUG)
         mockIndexServer =
-            ClientAndServer.startClientAndServer(configuration, 9200)
+            ClientAndServer.startClientAndServer(9200)
 
         val mockAnnoRepoClient = mock(AnnoRepoClient::class.java)
         val brintaConfigJson = TestUtils
             .getResourceAsString("./projects/brintaConfig.json")
-        val brintaConfiguration = Gson().fromJson(brintaConfigJson, BrintaConfiguration::class.java)
+        val brintaConfiguration =
+            Gson().fromJson(brintaConfigJson, BrintaConfiguration::class.java)
         val project = Project(
             projectId,
             "textType",
@@ -70,6 +69,10 @@ class ProjectsResourceTest {
         val jsonParser = createJsonParser()
         val jsonWriter = createJsonMapper()
 
+        application = DropwizardAppExtension(
+            BroccoliApplication::class.java,
+        )
+
         resource = ResourceExtension
             .builder()
             .setMapper(createJsonMapper())
@@ -81,7 +84,8 @@ class ProjectsResourceTest {
                     jsonWriter,
                 )
             )
-            .build()    }
+            .build()
+    }
 
     @Test
     fun `ProjectsResource should list projects`() {
@@ -103,7 +107,7 @@ class ProjectsResourceTest {
 //            TestUtils.getResourceAsString("./projects/search/esRequest.json")
         val esResponse =
             TestUtils.getResourceAsString("./projects/search/esResponse.json")
-        mockIndexServer.`when`(
+        val exp = mockIndexServer.`when`(
             request()
 //                .withBody(esRequest)
                 .withPath("/dummy-index/_search")
@@ -122,6 +126,7 @@ class ProjectsResourceTest {
                 .post(Entity.entity(query, APPLICATION_JSON_TYPE))
         assertThat(response.status)
             .isEqualTo(Response.Status.OK.statusCode)
+        mockIndexServer.verify(exp.get(0).id)
     }
 
 }
