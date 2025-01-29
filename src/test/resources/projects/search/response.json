@@ -1,1 +1,18 @@
-{"total":{"value":1,"relation":"eq"},"results":[{"_id":"9507f14b243b10b5294b4b745d332149","_hits":{"text":["Maer de Sax dunkt mij een vorst,  11\n die met loode voeten gaet, ende van 't volk die de <em>koe</em> gebonden¹¹"]},"bodyType":"Letter"}],"aggs":{}}
+{
+  "total": {
+    "value": 1,
+    "relation": "eq"
+  },
+  "results": [
+    {
+      "_id": "9507f14b243b10b5294b4b745d332149",
+      "_hits": {
+        "text": [
+          "Maer de Sax dunkt mij een vorst,  11\n die met loode voeten gaet, ende van 't volk die de <em>koe</em> gebonden¹¹"
+        ]
+      },
+      "bodyType": "Letter"
+    }
+  ],
+  "aggs": {}
+}
