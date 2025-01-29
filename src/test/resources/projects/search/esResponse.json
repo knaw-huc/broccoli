@@ -1,0 +1,38 @@
+{
+  "took": 32,
+  "timed_out": false,
+  "_shards": {
+    "total": 1,
+    "successful": 1,
+    "skipped": 0,
+    "failed": 0
+  },
+  "hits": {
+    "total": {
+      "value": 1,
+      "relation": "eq"
+    },
+    "max_score": 4.000044,
+    "hits": [
+      {
+        "_index": "letters-2024-03-28",
+        "_id": "9507f14b243b10b5294b4b745d332149",
+        "_score": 4.000044,
+        "_source": {
+          "text": "465 A Monsr Monsieur Joost Baak, bij 't oudemannenhujs in No 3. tot Amsterdam.\nOrigineel. KA CLXXIab 70.\n\nHs. watervlek.\n\n(Baak: Muyden 1 Julj 1631 beantw 7 ditto)\nLoont.\n \n 1\n Monsr mon frere, \n 2\n UE welgegronde gissingen, ende 't getuighenis der loopmaeren...",
+          "bodyType": "Letter"
+        },
+        "fields": {
+          "text.tokenCount": [
+            968
+          ]
+        },
+        "highlight": {
+          "text": [
+            "Maer de Sax dunkt mij een vorst,  11\n die met loode voeten gaet, ende van 't volk die de <em>koe</em> gebonden¹¹"
+          ]
+        }
+      }
+    ]
+  }
+}

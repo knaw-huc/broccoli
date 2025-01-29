@@ -1,0 +1,167 @@
+{
+  "total": {
+    "value": 2,
+    "relation": "eq"
+  },
+  "results": [
+    {
+      "_id": "urn:republic:inv-3822-date-1767-03-17-session-74-resolution-3",
+      "_hits": {
+        "text": [
+          "voorgedraagen, dat eenen Jan Jansse Wobbe, en Albert Egberts, beide Ingezeetenen van Staphorst, yder op een <em>Paard</em>",
+          "Hardenberg, by sig hebbende eenen Carel Reeuwers, sullende moeten dienen onder het Regiment Guardes te <em>paard</em>"
+        ]
+      },
+      "textType": "printed",
+      "resolutionType": "ordinaris",
+      "propositionType": "voordracht",
+      "sessionWeekday": "dinsdag",
+      "bodyType": "Resolution",
+      "sessionDate": "1767-03-17",
+      "sessionDay": 17,
+      "sessionMonth": 3,
+      "sessionYear": 1767
+    },
+    {
+      "_id": "urn:republic:inv-3821-date-1766-09-17-session-256-resolution-2",
+      "_hits": {
+        "text": [
+          "indirectelyk, onder wat pretext het soude moogen weesen, om in Krygsdienst te Water of te Lande, te <em>paard</em>",
+          "gebruikt te worden: Ordonneerende wyders, dat het Volk van oorloge, soo te Water als te Lande, te <em>paard</em>"
+        ]
+      },
+      "textType": "printed",
+      "resolutionType": "ordinaris",
+      "propositionType": "voordracht",
+      "sessionWeekday": "woensdag",
+      "bodyType": "Resolution",
+      "sessionDate": "1766-09-17",
+      "sessionDay": 17,
+      "sessionMonth": 9,
+      "sessionYear": 1766
+    }
+  ],
+  "aggs": {
+    "textType": {
+      "printed": 2
+    },
+    "resolutionType": {
+      "ordinaris": 2
+    },
+    "propositionType": {
+      "voordracht": 2,
+      "missive": 24,
+      "onbekend": 23,
+      "rekest": 21,
+      "rapport": 6,
+      "memorie": 1
+    },
+    "delegateName": {
+      "Ablaing, Johan Daniël d'": 1,
+      "Becker, Everhard": 2,
+      "Bergsma, Petrus Adrianus": 1,
+      "Bockhoven, François van": 1,
+      "Borre van Amerongen, Justus": 1,
+      "Bronkhorst, Matthijs van": 1,
+      "Buren, Diderik van": 1,
+      "Clooster tot Everlo, Roelof van den": 1,
+      "Crabeth, Pieter Woutersz.": 1,
+      "Dijcke, Willem van": 2,
+      "Haeghe, Dirck van der": 1,
+      "Heim, Anthonie van der": 1,
+      "Hertoghe, Daniël de": 1,
+      "Lynden, Reinhard van": 1,
+      "Meier, Gerard": 1,
+      "Meulen, Paulus Andreas van der": 1,
+      "Nagell, Anne Willem Carel van": 1,
+      "Omelingh, Frans Jan": 1,
+      "Pallandt tot Glinthuis, Gijsbert Jan van": 1,
+      "Patijn, Gijsbert Adriaan": 2,
+      "Rengers van Hellum, Johan": 1,
+      "Sirtema van Grovestins, Willem Anne": 1,
+      "Slingelandt, Barthout van": 2,
+      "Torck, Assueer": 1,
+      "Vael in Lioren, Pieter Jansz.": 1
+    },
+    "personName": {
+      "Nassau, de": 1
+    },
+    "roleName": {
+      "hoogheid": 1,
+      "ingesetene": 1,
+      "prins": 1
+    },
+    "roleCategories": {
+      "Adel & Vorsten": 1,
+      "Rest": 1
+    },
+    "locationName": {
+      "Staphorst": 1
+    },
+    "locationCategories": {
+      "ongelabeld": 1
+    },
+    "organisationName": {
+      "Staten-Generaal van de Republiek": 1
+    },
+    "organisationCategories": {
+      "Bestuur": 1,
+      "Generaliteit": 1,
+      "Landelijk": 1,
+      "Republiek": 1
+    },
+    "sessionWeekday": {
+      "dinsdag": 1,
+      "woensdag": 1
+    },
+    "delegateId": {
+      "G000130": 2,
+      "G000766": 2,
+      "G000942": 2,
+      "G001054": 2,
+      "G000010": 1,
+      "G000028": 1,
+      "G000171": 1,
+      "G000293": 1,
+      "G000447": 1,
+      "G000521": 1
+    },
+    "personId": {
+      "P0004415": 1
+    },
+    "roleId": {
+      "H0000660": 1,
+      "H0000960": 1,
+      "H0000980": 1
+    },
+    "locationId": {
+      "L0006752": 1
+    },
+    "organisationId": {
+      "O0012259": 1
+    },
+    "bodyType": {
+      "Resolution": 2
+    },
+    "sessionDate": {
+      "1766-09-01": 1,
+      "1766-10-01": 0,
+      "1766-11-01": 0,
+      "1766-12-01": 0,
+      "1767-01-01": 0,
+      "1767-02-01": 0,
+      "1767-03-01": 1
+    },
+    "sessionDay": {
+      "17": 2
+    },
+    "sessionMonth": {
+      "3": 1,
+      "9": 1
+    },
+    "sessionYear": {
+      "1766": 1,
+      "1767": 1
+    }
+  }
+}
