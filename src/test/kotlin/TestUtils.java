@@ -7,7 +7,7 @@ import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class TestUtils {
-  public static String getResourceAsString(String resourcePath) throws IOException {
+  public static String resourceAsString(String resourcePath) throws IOException {
     var stream = getInputStream(resourcePath);
     return IOUtils.toString(stream, UTF_8);
   }
