@@ -30,6 +30,7 @@ import org.mockito.Mockito.mock
 import org.mockserver.integration.ClientAndServer
 import org.mockserver.model.HttpRequest.request
 import org.mockserver.model.HttpResponse
+import org.mockserver.model.JsonBody.json
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(DropwizardExtensionsSupport::class)
@@ -103,13 +104,13 @@ class ProjectsResourceTest {
     fun `ProjectsResource should search`() {
         val request = TestUtils.getResourceAsString("./projects/search/request.json")
 
-//        val esRequest =
-//            TestUtils.getResourceAsString("./projects/search/esRequest.json")
+        val esRequest =
+            TestUtils.getResourceAsString("./projects/search/esRequest.json")
         val esResponse =
             TestUtils.getResourceAsString("./projects/search/esResponse.json")
         val exp = mockIndexServer.`when`(
             request()
-//                .withBody(esRequest)
+                .withBody(json(esRequest))
                 .withPath("/dummy-index/_search")
         ).respond(
             HttpResponse.response()
@@ -126,7 +127,7 @@ class ProjectsResourceTest {
                 .post(Entity.entity(query, APPLICATION_JSON_TYPE))
         assertThat(response.status)
             .isEqualTo(Response.Status.OK.statusCode)
-        mockIndexServer.verify(exp.get(0).id)
+        mockIndexServer.verify(exp[0].id)
     }
 
 }
