@@ -94,6 +94,7 @@ class ProjectsResourceTest {
         assertThat(response.status)
             .isEqualTo(Response.Status.OK.statusCode)
         mockServer.verify(exp[0].id)
+        assertThat(response.readEntityAsJsonString()).isEqualTo(resourceAsString("./projects/search/response.json"))
     }
 
     /**
