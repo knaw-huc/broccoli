@@ -16,6 +16,8 @@ import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.isIn
 import nl.knaw.huc.broccoli.api.IndexQuery
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
+import nl.knaw.huc.broccoli.api.ResourcePaths.V1
+import nl.knaw.huc.broccoli.api.ResourcePaths.V2
 import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.ElasticQueryBuilder
@@ -29,7 +31,7 @@ import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
 import org.slf4j.MarkerFactory
 
-@Path(PROJECTS)
+@Path("{version:$V1|$V2}/$PROJECTS")
 @Produces(MediaType.APPLICATION_JSON)
 class ProjectsResource(
     private val projects: Map<String, Project>,

@@ -12,6 +12,8 @@ import jakarta.ws.rs.core.Response
 import nl.knaw.huc.broccoli.BroccoliApplication
 import nl.knaw.huc.broccoli.api.IndexQuery
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
+import nl.knaw.huc.broccoli.api.ResourcePaths.V1
+import nl.knaw.huc.broccoli.api.ResourcePaths.V2
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.service.readEntityAsJsonString
 import org.assertj.core.api.Assertions.assertThat
@@ -52,14 +54,45 @@ class ProjectsResourceTest {
     }
 
     @Test
-    fun `ProjectsResource should list projects`() {
+    fun `ProjectsResource should list projects at v1`() {
         val response: Response =
-            application.client().target(toUrl("/$PROJECTS"))
+            application.client().target(toUrl("/$V1/$PROJECTS"))
                 .request()
                 .get()
         assertThat(response.status)
             .isEqualTo(Response.Status.OK.statusCode)
         assertThat(response.readEntityAsJsonString()).isEqualTo("[\"${projectId}\"]")
+    }
+
+    @Test
+    fun `ProjectsResource should list projects at v2`() {
+        val response: Response =
+            application.client().target(toUrl("/$V2/$PROJECTS"))
+                .request()
+                .get()
+        assertThat(response.status)
+            .isEqualTo(Response.Status.OK.statusCode)
+        assertThat(response.readEntityAsJsonString()).isEqualTo("[\"${projectId}\"]")
+    }
+
+    @Test
+    fun `ProjectsResource does not list projects at v3`() {
+        val response: Response =
+            application.client().target(toUrl("/v3/$PROJECTS"))
+                .request()
+                .get()
+        assertThat(response.status)
+            .isEqualTo(Response.Status.NOT_FOUND.statusCode)
+    }
+
+    @Test
+    fun `ProjectsResource does not list projects at root`() {
+        val response: Response =
+            application.client().target(toUrl("/$PROJECTS"))
+                .request()
+                .get()
+        assertThat(response.status)
+            .isEqualTo(Response.Status.NOT_FOUND.statusCode)
     }
 
     @Test
@@ -83,7 +116,7 @@ class ProjectsResourceTest {
         )
 
         val query: IndexQuery = Gson().fromJson(request, IndexQuery::class.java)
-        val target = toUrl("/$PROJECTS/${projectId}/search")
+        val target = toUrl("/v1/$PROJECTS/${projectId}/search")
         val response: Response =
             application.client()
                 .target(target)
