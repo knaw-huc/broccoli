@@ -85,7 +85,6 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             val v2 = V2ProjectsResource(projects)
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())
-            register(V2ProjectsResource(projects))
             register(ProjectsResource(projects, client, jsonParser, objectMapper, v1, v2))
             register(BrintaResource(projects, client))
         }
