@@ -34,7 +34,6 @@ class ProjectsResourceTest {
     var projectId = "dummy"
     lateinit var application: DropwizardAppExtension<BroccoliConfiguration>
 
-
     @BeforeAll
     fun setup() {
         mockServer =
@@ -116,7 +115,7 @@ class ProjectsResourceTest {
         )
 
         val query: IndexQuery = Gson().fromJson(request, IndexQuery::class.java)
-        val target = toUrl("/v1/$PROJECTS/${projectId}/search")
+        val target = toUrl("/v2/$PROJECTS/${projectId}/search")
         val response: Response =
             application.client()
                 .target(target)

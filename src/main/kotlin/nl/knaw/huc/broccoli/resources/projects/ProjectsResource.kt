@@ -8,10 +8,7 @@ import jakarta.validation.constraints.Min
 import jakarta.ws.rs.*
 import jakarta.ws.rs.client.Client
 import jakarta.ws.rs.client.Entity
-import jakarta.ws.rs.core.GenericType
-import jakarta.ws.rs.core.HttpHeaders
-import jakarta.ws.rs.core.MediaType
-import jakarta.ws.rs.core.Response
+import jakarta.ws.rs.core.*
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.isIn
 import nl.knaw.huc.broccoli.api.IndexQuery
@@ -37,7 +34,9 @@ class ProjectsResource(
     private val projects: Map<String, Project>,
     private val client: Client,
     private val jsonParser: ParseContext,
-    private val jsonWriter: ObjectMapper
+    private val jsonWriter: ObjectMapper,
+    private val v1: V1ProjectsResource,
+    private val v2: V2ProjectsResource
 ) {
     init {
         logger.info("init: projects=$projects, client=$client")
@@ -46,7 +45,15 @@ class ProjectsResource(
     @GET
     @Path("")
     @Operation(summary = "Get configured projects")
-    fun listProjects(): Set<String> = projects.keys
+    fun listProjects(
+        @PathParam("version") version: String
+    ): Set<String> {
+        return if(version == V1) {
+            this.v1.listProjects()
+        } else {
+            this.v2.listProjects()
+        }
+    }
 
     @GET
     @Path("{projectId}")
