@@ -1,6 +1,6 @@
 package nl.knaw.huc.broccoli.resources.projects;
 
-import TestUtils.resourceAsString
+import TestUtils.*
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import io.dropwizard.testing.ResourceHelpers.resourceFilePath
@@ -17,9 +17,7 @@ import nl.knaw.huc.broccoli.api.ResourcePaths.V2
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.service.readEntityAsJsonString
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockserver.integration.ClientAndServer
 import org.mockserver.model.HttpRequest.request
@@ -33,29 +31,37 @@ class ProjectsResourceTest {
     lateinit var mockServer: ClientAndServer
     var projectId = "dummy"
     lateinit var application: DropwizardAppExtension<BroccoliConfiguration>
+    var port = -1
 
     @BeforeAll
     fun setup() {
         mockServer =
             ClientAndServer.startClientAndServer(9200)
 
-        mockServer
-            .`when`(request().withPath("/anno-repo.*"))
-            .respond(response().withStatusCode(200).withBody(json(
-                resourceAsString("./arAboutResponse.json")
-            )))
+        mockAnnoRepo(mockServer)
+
 
         application = DropwizardAppExtension(
             BroccoliApplication::class.java,
             resourceFilePath("./broccoliConfig.json")
         )
+    }
 
+    @BeforeEach
+    fun findPort() {
+        // Port not yet available during setup:
+        port = application.localPort
+    }
+
+    @AfterAll
+    fun teardown() {
+        mockServer.stop()
     }
 
     @Test
     fun `ProjectsResource should list projects at root`() {
         val response: Response =
-            application.client().target(toUrl("/$PROJECTS"))
+            application.client().target(toUrl(port, "/$PROJECTS"))
                 .request()
                 .get()
         assertThat(response.status)
@@ -66,7 +72,7 @@ class ProjectsResourceTest {
     @Test
     fun `ProjectsResource should list projects at v1`() {
         val response: Response =
-            application.client().target(toUrl("/$V1/$PROJECTS"))
+            application.client().target(toUrl(port, "/$V1/$PROJECTS"))
                 .request()
                 .get()
         assertThat(response.status)
@@ -77,7 +83,7 @@ class ProjectsResourceTest {
     @Test
     fun `ProjectsResource should list projects at v2`() {
         val response: Response =
-            application.client().target(toUrl("/$V2/$PROJECTS"))
+            application.client().target(toUrl(port, "/$V2/$PROJECTS"))
                 .request()
                 .get()
         assertThat(response.status)
@@ -88,17 +94,7 @@ class ProjectsResourceTest {
     @Test
     fun `ProjectsResource does not list projects at v3`() {
         val response: Response =
-            application.client().target(toUrl("/v3/$PROJECTS"))
-                .request()
-                .get()
-        assertThat(response.status)
-            .isEqualTo(Response.Status.NOT_FOUND.statusCode)
-    }
-
-    @Test
-    fun `ProjectsResource does not list projects at root`() {
-        val response: Response =
-            application.client().target(toUrl("/$PROJECTS"))
+            application.client().target(toUrl(port ,"/v3/$PROJECTS"))
                 .request()
                 .get()
         assertThat(response.status)
@@ -126,7 +122,7 @@ class ProjectsResourceTest {
         )
 
         val query: IndexQuery = Gson().fromJson(request, IndexQuery::class.java)
-        val target = toUrl("/v2/$PROJECTS/${projectId}/search")
+        val target = toUrl(port, "/$V2/$PROJECTS/${projectId}/search")
         val response: Response =
             application.client()
                 .target(target)
@@ -143,10 +139,4 @@ class ProjectsResourceTest {
             .isEqualTo(expectedJson)
     }
 
-    /**
-     * Application context needs host
-     */
-    fun toUrl(path: String): String {
-        return String.format("http://localhost:%d$path", application.localPort)
-    }
 }
