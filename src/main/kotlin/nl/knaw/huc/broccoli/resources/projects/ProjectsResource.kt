@@ -28,32 +28,20 @@ import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
 import org.slf4j.MarkerFactory
 
-@Path("{version:$V1|$V2}/$PROJECTS")
 @Produces(MediaType.APPLICATION_JSON)
-class ProjectsResource(
+open class ProjectsResource(
     private val projects: Map<String, Project>,
     private val client: Client,
     private val jsonParser: ParseContext,
-    private val jsonWriter: ObjectMapper,
-    private val v1: V1ProjectsResource,
-    private val v2: V2ProjectsResource
+    private val jsonWriter: ObjectMapper
 ) {
     init {
         logger.info("init: projects=$projects, client=$client")
     }
 
     @GET
-    @Path("")
     @Operation(summary = "Get configured projects")
-    fun listProjects(
-        @PathParam("version") version: String
-    ): Set<String> {
-        return if(version == V1) {
-            this.v1.listProjects()
-        } else {
-            this.v2.listProjects()
-        }
-    }
+    open fun listProjects(): Set<String> = projects.keys
 
     @GET
     @Path("{projectId}")

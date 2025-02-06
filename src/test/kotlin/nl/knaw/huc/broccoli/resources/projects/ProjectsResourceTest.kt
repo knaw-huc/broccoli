@@ -53,6 +53,17 @@ class ProjectsResourceTest {
     }
 
     @Test
+    fun `ProjectsResource should list projects at root`() {
+        val response: Response =
+            application.client().target(toUrl("/$PROJECTS"))
+                .request()
+                .get()
+        assertThat(response.status)
+            .isEqualTo(Response.Status.OK.statusCode)
+        assertThat(response.readEntityAsJsonString()).isEqualTo("[\"${projectId}\"]")
+    }
+
+    @Test
     fun `ProjectsResource should list projects at v1`() {
         val response: Response =
             application.client().target(toUrl("/$V1/$PROJECTS"))

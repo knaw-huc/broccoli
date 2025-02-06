@@ -1,5 +1,8 @@
 package nl.knaw.huc.broccoli
 
+import V0Resource
+import V1Resource
+import V2Resource
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.jayway.jsonpath.Configuration
@@ -27,9 +30,6 @@ import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
 import nl.knaw.huc.broccoli.resources.brinta.BrintaResource
-import nl.knaw.huc.broccoli.resources.projects.V1ProjectsResource
-import nl.knaw.huc.broccoli.resources.projects.ProjectsResource
-import nl.knaw.huc.broccoli.resources.projects.V2ProjectsResource
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.eclipse.jetty.servlets.CrossOriginFilter
@@ -81,11 +81,11 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         val objectMapper = createJsonMapper()
 
         with(environment.jersey()) {
-            val v1 = V1ProjectsResource(projects)
-            val v2 = V2ProjectsResource(projects)
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())
-            register(ProjectsResource(projects, client, jsonParser, objectMapper, v1, v2))
+            register(V0Resource(projects, client, jsonParser, objectMapper))
+            register(V1Resource(projects, client, jsonParser, objectMapper))
+            register(V2Resource(projects, client, jsonParser, objectMapper))
             register(BrintaResource(projects, client))
         }
 
