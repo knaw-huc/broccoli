@@ -72,30 +72,22 @@ class AboutResourceTest {
     }
 
     @Test
-    fun `AboutResource should provide app name at v1`() {
+    fun `AboutResource should provide not run at v1`() {
         val response: Response =
             application.client().target(toUrl(port, "/$V1/$ABOUT"))
                 .request()
                 .get()
 
-        assertThat(response.status).isEqualTo(200)
-        val body = response.readEntity(String::class.java)
-        val json = parse(body)
-        assertThat(json.read<String>("$.appName"))
-            .isEqualTo(APP_NAME)
+        assertThat(response.status).isEqualTo(404)
     }
 
     @Test
-    fun `AboutResource should provide app name at v2`() {
+    fun `AboutResource should not run at v2`() {
         val response: Response =
             application.client().target(toUrl(port, "/$V2/$ABOUT"))
                 .request()
                 .get()
 
-        assertThat(response.status).isEqualTo(200)
-        val body = response.readEntity(String::class.java)
-        val json = parse(body)
-        assertThat(json.read<String>("$.appName"))
-            .isEqualTo(APP_NAME)
+        assertThat(response.status).isEqualTo(404)
     }
 }

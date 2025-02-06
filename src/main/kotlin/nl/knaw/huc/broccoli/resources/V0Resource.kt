@@ -20,21 +20,7 @@ class V0Resource(
     private val client: Client,
     private val jsonParser: ParseContext,
     private val jsonWriter: ObjectMapper,
-    private val configuration: BroccoliConfiguration,
-    private val appName: String,
-    private val version: String
 ) {
-
-    @Path(ABOUT)
-    fun getAboutResource(): AboutResource {
-        return AboutResource(configuration, appName, version)
-    }
-
-    @Path("/")
-    fun getHomePageResource(): HomePageResource {
-        return HomePageResource()
-    }
-
     @Path(PROJECTS)
     fun getProjectsResource(): ProjectsResource {
         return ProjectsResource(projects, client, jsonParser, jsonWriter)

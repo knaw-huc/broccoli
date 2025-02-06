@@ -7,9 +7,11 @@ import jakarta.ws.rs.Produces
 import jakarta.ws.rs.core.HttpHeaders
 import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
+import nl.knaw.huc.broccoli.api.ResourcePaths.ABOUT
 import nl.knaw.huc.broccoli.service.ResourceLoader
 import java.io.InputStream
 
+@Path("/")
 class HomePageResource {
     /**
      * Shows the homepage for the backend

@@ -81,9 +81,11 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         val objectMapper = createJsonMapper()
 
         with(environment.jersey()) {
-            register(V0Resource(projects, client, jsonParser, objectMapper, configuration, name, appVersion))
-            register(V1Resource(projects, client, jsonParser, objectMapper, configuration, name, appVersion))
-            register(V2Resource(projects, client, jsonParser, objectMapper, configuration, name, appVersion))
+            register(HomePageResource())
+            register(AboutResource(configuration, name, appVersion))
+            register(V0Resource(projects, client, jsonParser, objectMapper))
+            register(V1Resource(projects, client, jsonParser, objectMapper))
+            register(V2Resource(projects, client, jsonParser, objectMapper))
             register(BrintaResource(projects, client))
         }
 
