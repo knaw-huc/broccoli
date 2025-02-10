@@ -26,6 +26,7 @@ class V1Resource(
     fun getProjectsResource(): ProjectsResource {
         return V1ProjectsResource(projects, client, jsonParser, jsonWriter)
     }
+
     @Path(BRINTA)
     fun getBrintaResource(): BrintaResource {
         return BrintaResource(projects, client)

@@ -23,6 +23,7 @@ class V0Resource(
     private val jsonParser: ParseContext,
     private val jsonWriter: ObjectMapper,
 ) {
+
     @Path(PROJECTS)
     fun getProjectsResource(): ProjectsResource {
         return ProjectsResource(projects, client, jsonParser, jsonWriter)
