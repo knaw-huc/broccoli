@@ -86,7 +86,6 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             register(V0Resource(projects, client, jsonParser, objectMapper))
             register(V1Resource(projects, client, jsonParser, objectMapper))
             register(V2Resource(projects, client, jsonParser, objectMapper))
-            register(BrintaResource(projects, client))
         }
 
         setupCORSHeaders(environment.servlets())
