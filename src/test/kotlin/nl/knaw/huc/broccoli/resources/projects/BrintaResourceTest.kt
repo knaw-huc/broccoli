@@ -11,6 +11,7 @@ import jakarta.ws.rs.core.MediaType.APPLICATION_JSON_TYPE
 import jakarta.ws.rs.core.Response
 import nl.knaw.huc.broccoli.BroccoliApplication
 import nl.knaw.huc.broccoli.api.IndexQuery
+import nl.knaw.huc.broccoli.api.ResourcePaths.BRINTA
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
 import nl.knaw.huc.broccoli.api.ResourcePaths.V1
 import nl.knaw.huc.broccoli.api.ResourcePaths.V2
@@ -26,7 +27,7 @@ import org.mockserver.model.JsonBody.json
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(DropwizardExtensionsSupport::class)
-class ProjectsResourceTest {
+class BrintaResourceTest {
 
     lateinit var mockServer: ClientAndServer
     var projectId = "dummy"
@@ -59,84 +60,47 @@ class ProjectsResourceTest {
     }
 
     @Test
-    fun `ProjectsResource should list projects at root`() {
+    fun `BrintaResource should show index at root`() {
         val response: Response =
-            application.client().target(toUrl(port, "/$PROJECTS"))
+            application.client().target(toUrl(port, "/$BRINTA/${projectId}/indices"))
                 .request()
                 .get()
         assertThat(response.status)
             .isEqualTo(Response.Status.OK.statusCode)
-        assertThat(response.readEntityAsJsonString()).isEqualTo("[\"${projectId}\"]")
+        assertThat(response.readEntityAsJsonString()).isEqualTo("{\"dummy-index\":{\"bodyType\":\"keyword\"}}")
     }
 
     @Test
-    fun `ProjectsResource should list projects at v1`() {
+    fun `BrintaResource should show index at v1`() {
         val response: Response =
-            application.client().target(toUrl(port, "/$V1/$PROJECTS"))
+            application.client().target(toUrl(port, "/$V1/$BRINTA/${projectId}/indices"))
                 .request()
                 .get()
         assertThat(response.status)
             .isEqualTo(Response.Status.OK.statusCode)
-        assertThat(response.readEntityAsJsonString()).isEqualTo("[\"${projectId}\"]")
+        assertThat(response.readEntityAsJsonString()).isEqualTo("{\"dummy-index\":{\"bodyType\":\"keyword\"}}")
     }
 
     @Test
-    fun `ProjectsResource should list projects at v2`() {
+    fun `BrintaResource should show index at v2`() {
         val response: Response =
-            application.client().target(toUrl(port, "/$V2/$PROJECTS"))
+            application.client().target(toUrl(port, "/$V2/$BRINTA/${projectId}/indices"))
                 .request()
                 .get()
         assertThat(response.status)
             .isEqualTo(Response.Status.OK.statusCode)
-        assertThat(response.readEntityAsJsonString()).isEqualTo("[\"${projectId}\"]")
+        assertThat(response.readEntityAsJsonString()).isEqualTo("{\"dummy-index\":{\"bodyType\":\"keyword\"}}")
     }
 
     @Test
-    fun `ProjectsResource does not list projects at v3`() {
+    fun `BrintaResource does not show index at v3`() {
         val response: Response =
-            application.client().target(toUrl(port ,"/v3/$PROJECTS"))
+            application.client().target(toUrl(port, "/v3/$BRINTA/indices"))
                 .request()
                 .get()
         assertThat(response.status)
             .isEqualTo(Response.Status.NOT_FOUND.statusCode)
     }
 
-    @Test
-    fun `ProjectsResource should search`() {
-        val request =
-            resourceAsString("./projects/search/request.json")
-
-        val esRequest =
-            resourceAsString("./projects/search/esRequest.json")
-        val esResponse =
-            resourceAsString("./projects/search/esResponse.json")
-        val exp = mockServer.`when`(
-            request()
-                .withBody(json(esRequest))
-                .withPath("/dummy-index/_search")
-        ).respond(
-            response()
-                .withStatusCode(200)
-                .withBody(esResponse)
-                .withHeader("Content-Type", "application/json")
-        )
-
-        val query: IndexQuery = Gson().fromJson(request, IndexQuery::class.java)
-        val target = toUrl(port, "/$V2/$PROJECTS/${projectId}/search")
-        val response: Response =
-            application.client()
-                .target(target)
-                .request()
-                .post(Entity.entity(query, APPLICATION_JSON_TYPE))
-        assertThat(response.status)
-            .isEqualTo(Response.Status.OK.statusCode)
-        mockServer.verify(exp[0].id)
-        val expectedJson =
-            JsonParser.parseString(resourceAsString("./projects/search/response.json"))
-        val receivedJson =
-            JsonParser.parseString(response.readEntityAsJsonString())
-        assertThat(receivedJson)
-            .isEqualTo(expectedJson)
-    }
 
 }

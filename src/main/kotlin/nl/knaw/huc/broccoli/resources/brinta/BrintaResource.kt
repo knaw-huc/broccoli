@@ -19,15 +19,14 @@ import nl.knaw.huc.broccoli.service.readEntityAsJsonString
 import nl.knaw.huc.broccoli.service.toJsonString
 import org.slf4j.LoggerFactory
 
-@Path("$BRINTA/{projectId}")
 @Produces(MediaType.APPLICATION_JSON)
-class BrintaResource(
+class BrintaResource (
     private val projects: Map<String, Project>,
     private val client: Client
 ) {
 
     @POST
-    @Path("{indexName}")
+    @Path("{projectId}/{indexName}")
     fun createIndex(
         @PathParam("projectId") projectId: String,
         @PathParam("indexName") indexName: String
@@ -89,7 +88,7 @@ class BrintaResource(
     }
 
     @GET
-    @Path("indices")
+    @Path("{projectId}/indices")
     fun getIndices(@PathParam("projectId") projectId: String): Response =
         getProject(projectId).brinta.indices
             .associate { idx ->
@@ -100,7 +99,7 @@ class BrintaResource(
             .let { Response.ok(it).build() }
 
     @DELETE
-    @Path("{indexName}")
+    @Path("{projectId}/{indexName}")
     fun deleteIndex(
         @PathParam("projectId") projectId: String,
         @PathParam("indexName") indexName: String,
@@ -128,7 +127,7 @@ class BrintaResource(
     }
 
     @POST
-    @Path("{indexName}/fill")
+    @Path("{projectId}/{indexName}/fill")
     fun fillIndex(
         @PathParam("projectId") projectId: String,      // e.g., "republic"
         @PathParam("indexName") indexName: String,      // e.g., "resolutions"
