@@ -35,7 +35,7 @@ logging:
             - QRY
 
   loggers:
-    nl.knaw.huc: DEBUG
+    nl.knaw.huc: TRACE
     org: WARN
     org.glassfish: ERROR
     com.jayway: ERROR
@@ -43,7 +43,7 @@ logging:
 externalBaseUrl: ${BR_EXTERNAL_BASE_URL:-http://localhost:8080}
 
 projects:
-  - name: 'globalise'
+  - name: "globalise"
     textType: LogicalText
     annoRepo:
       containerName: globalise-2024-03-18
@@ -54,7 +54,7 @@ projects:
       joinSeparator: " "
       indices:
         - name: docs
-          bodyTypes: [ "px:Page" ]
+          bodyTypes: ["px:Page"]
           fields:
             - name: bodyType
               path: "$.body.type"
@@ -65,7 +65,7 @@ projects:
     textRepo:
       uri: https://globalise.tt.di.huc.knaw.nl
 
-  - name: 'mondriaan'
+  - name: "mondriaan"
     views:
       - name: textOrig
         conf:
@@ -105,7 +105,7 @@ projects:
       deleteKey: "mondriaan-dev-mag-weg"
       indices:
         - name: divs
-          bodyTypes: [ tf:Letter, tei:Div, tei:Rs ]
+          bodyTypes: [tf:Letter, tei:Div, tei:Rs]
           fields:
             - name: bodyType
               path: "$.body.type"
@@ -132,94 +132,138 @@ projects:
             - name: location
               path: "$.body.metadata.location"
     annoRepo:
-      containerName: 'mondriaan-0.9.0'
+      containerName: "mondriaan-0.9.0"
       uri: https://mondriaan.annorepo.dev.clariah.nl
     textRepo:
       uri: https://mondriaan.tt.di.huc.knaw.nl
 
-  - name: 'republic'
+  - name: "republic"
     topTierBodyType: Volume
     textType: LogicalText
     brinta:
       uri: http://localhost:9200
-      deleteKey: 'republic-dev-mag-weg'
+      deleteKey: "republic-dev-mag-weg"
       joinSeparator: " "
       indices:
-        - name: 'rep-2024.11.18'
-          bodyTypes: [ Resolution ]
+        - name: "rep-2024.11.30"
+          bodyTypes: [Resolution]
           fields:
-            - name: attendantId
+            - name: textType
+              path: "$.body.metadata.textType"
+            - name: resolutionType
+              path: "$.body.metadata.resolutionType"
+            - name: propositionType
+              path: "$.body.metadata.propositionType"
+            - name: delegateName
               logical:
-                scope: attendants
-                path: ".id"
-            - name: attendantName
-              logical:
-                scope: attendants
+                scope: delegates
                 path: ".name"
+            - name: personName
+              logical:
+                scope: entities
+                path: ".name"
+                fixed:
+                  path: ".type"
+                  value: PER
+            - name: roleName
+              logical:
+                scope: entities
+                path: ".name"
+                fixed:
+                  path: ".type"
+                  value: HOE
+            - name: roleCategories
+              logical:
+                scope: entities
+                path: ".categories"
+                fixed:
+                  path: ".type"
+                  value: HOE
             - name: locationName
               logical:
                 scope: entities
                 path: ".name"
                 fixed:
-                  path: ".category"
+                  path: ".type"
                   value: LOC
-            - name: locationLabels
+            - name: locationCategories
               logical:
                 scope: entities
-                path: ".labels"
+                path: ".categories"
                 fixed:
-                  path: ".category"
+                  path: ".type"
                   value: LOC
             - name: organisationName
               logical:
                 scope: entities
                 path: ".name"
                 fixed:
-                  path: ".category"
+                  path: ".type"
                   value: ORG
-            - name: organisationLabels
+            - name: organisationCategories
               logical:
                 scope: entities
-                path: ".labels"
+                path: ".categories"
                 fixed:
-                  path: ".category"
+                  path: ".type"
                   value: ORG
-            - name: personName
+            - name: commissionName
               logical:
                 scope: entities
                 path: ".name"
                 fixed:
-                  path: ".category"
-                  value: PERS
-            - name: personLabels
+                  path: ".type"
+                  value: COM
+            - name: commissionCategories
               logical:
                 scope: entities
-                path: ".labels"
+                path: ".categories"
                 fixed:
-                  path: ".category"
-                  value: PERS
-            - name: roleName
+                  path: ".type"
+                  value: COM
+            - name: sessionWeekday
+              path: "$.body.metadata.sessionWeekday"
+            - name: delegateId
+              logical:
+                scope: delegates
+                path: ".id"
+            - name: personId
               logical:
                 scope: entities
-                path: ".name"
+                path: ".id"
                 fixed:
-                  path: ".category"
+                  path: ".type"
+                  value: PER
+            - name: roleId
+              logical:
+                scope: entities
+                path: ".id"
+                fixed:
+                  path: ".type"
                   value: HOE
-            - name: roleLabels
+            - name: locationId
               logical:
                 scope: entities
-                path: ".labels"
+                path: ".id"
                 fixed:
-                  path: ".category"
-                  value: HOE
+                  path: ".type"
+                  value: LOC
+            - name: organisationId
+              logical:
+                scope: entities
+                path: ".id"
+                fixed:
+                  path: ".type"
+                  value: ORG
+            - name: commissionId
+              logical:
+                scope: entities
+                path: ".id"
+                fixed:
+                  path: ".type"
+                  value: COM
             - name: bodyType
               path: "$.body.type"
-            - name: propositionType
-              path: "$.body.metadata.propositionType"
-            - name: resolutionType
-              path: "$.body.metadata.resolutionType"
-            - name: textType
-              path: "$.body.metadata.textType"
             - name: sessionDate
               path: "$.body.metadata.sessionDate"
               type: date
@@ -232,43 +276,21 @@ projects:
             - name: sessionYear
               path: "$.body.metadata.sessionYear"
               type: short
-            - name: attendants
-              type: nested
-              nested:
-                from: [ Attendant ]
-                fields:
-                  - name: id
-                    path: "$.body.metadata.delegateId"
-                  - name: name
-                    path: "$.body.metadata.delegateName"
-                with:
-                  - equal: "$.body.metadata.sessionID"
-            - name: entities
-              type: nested
-              nested:
-                from: [ Entity ]
-                fields:
-                  - name: category
-                    path: "$.body.metadata.category"
-                  - name: id
-                    path: "$.body.metadata.entityId"
-                  - name: labels
-                    path: "$.body.metadata.entityLabels"
-                  - name: name
-                    path: "$.body.metadata.name"
-                with:
-                  - overlap: LogicalText
-            - name: bodyType
-              path: "$.body.type"
-            - name: sessionWeekday
-              path: "$.body.metadata.sessionWeekday"
+            - name: delegateProvince
+              logical:
+                scope: delegates
+                path: ".province"
+            - name: delegateIsPresident
+              logical:
+                scope: delegates
+                path: ".president"
     annoRepo:
-      containerName: republic-2024.11.18
+      containerName: republic-2024.11.30
       uri: https://annorepo.republic-caf.diginfra.org
     textRepo:
       uri: https://textrepo.republic-caf.diginfra.org
 
-  - name: 'suriano'
+  - name: "suriano"
     topTierBodyType: tf:Folder
     textType: LogicalText
     views:
@@ -302,54 +324,111 @@ projects:
               value: text
     brinta:
       uri: http://localhost:9200
-      deleteKey: suriano-dev-mag-weg
+      deleteKey: suriano-acc-mag-weg
       indices:
-        - name: suriano-0.4.5e-021
-          bodyTypes: [ LetterBody ]
+        - name: "surind-029"
+          bodyTypes: [LetterBody]
           fields:
-            - name: bodyType
-              path: "$.body.type"
             - name: date
               path: "$.body.metadata.date"
               type: date
             - name: recipient
               path: "$.body.metadata.recipient"
-            - name: recipientLoc
-              path: "$.body.metadata.recipientLoc"
             - name: sender
               path: "$.body.metadata.sender"
-            - name: senderLoc
-              path: "$.body.metadata.senderLoc"
-            - name: editorNotes
-              path: "$.body.metadata.editorNotes"
-            - name: shelfmark
-              path: "$.body.metadata.shelfmark"
             - name: summary
               path: "$.body.metadata.summary"
               type: text
+            - name: entityNames
+              path: "$.body.metadata.entities"
     annoRepo:
-      containerName: 'suriano-0.4.5e-021'
-      uri: https://suriano.annorepo.dev.clariah.nl/
+      containerName: "suriano-1.0.1e-029"
+      uri: https://annorepo.suriano.huygens.knaw.nl/
     textRepo:
       uri: https://suriano.tt.di.huc.knaw.nl
 
-  - name: 'hooft'
+  #  - name: 'suriano'
+  #    topTierBodyType: tf:Folder
+  #    textType: LogicalText
+  #    views:
+  #      - name: appendix
+  #        conf:
+  #          anno:
+  #            - path: body.type
+  #              value: tei:Div
+  #            - path: body.metadata.type
+  #              value: appendix
+  #      - name: original
+  #        conf:
+  #          anno:
+  #            - path: body.type
+  #              value: tei:Div
+  #            - path: body.metadata.type
+  #              value: original
+  #      - name: secretarial
+  #        conf:
+  #          anno:
+  #            - path: body.type
+  #              value: tei:Div
+  #            - path: body.metadata.type
+  #              value: secretarial
+  #      - name: text
+  #        conf:
+  #          anno:
+  #            - path: body.type
+  #              value: tei:Div
+  #            - path: body.metadata.type
+  #              value: text
+  #    brinta:
+  #      uri: http://localhost:9200
+  #      deleteKey: suriano-dev-mag-weg
+  #      indices:
+  #        - name: suriano-0.4.5e-021
+  #          bodyTypes: [ LetterBody ]
+  #          fields:
+  #            - name: bodyType
+  #              path: "$.body.type"
+  #            - name: date
+  #              path: "$.body.metadata.date"
+  #              type: date
+  #            - name: recipient
+  #              path: "$.body.metadata.recipient"
+  #            - name: recipientLoc
+  #              path: "$.body.metadata.recipientLoc"
+  #            - name: sender
+  #              path: "$.body.metadata.sender"
+  #            - name: senderLoc
+  #              path: "$.body.metadata.senderLoc"
+  #            - name: editorNotes
+  #              path: "$.body.metadata.editorNotes"
+  #            - name: shelfmark
+  #              path: "$.body.metadata.shelfmark"
+  #            - name: summary
+  #              path: "$.body.metadata.summary"
+  #              type: text
+  #    annoRepo:
+  #      containerName: 'suriano-0.4.5e-021'
+  #      uri: https://suriano.annorepo.dev.clariah.nl/
+  #    textRepo:
+  #      uri: https://suriano.tt.di.huc.knaw.nl
+  #
+  - name: "hooft"
     annoRepo:
-      containerName: 'brieven-van-hooft'
+      containerName: "brieven-van-hooft"
       uri: https://brieven-van-hooft.annorepo.dev.clariah.nl/
     brinta:
       uri: http://localhost:9200
       deleteKey: hooft-dev-mag-weg
       indices:
         - name: letters-2024-03-28
-          bodyTypes: [ Letter ]
+          bodyTypes: [Letter]
           fields:
             - name: bodyType
               path: "$.body.type"
     textRepo:
       uri: https://brieven-van-hooft.tt.di.huc.knaw.nl
 
-  - name: 'vangogh'
+  - name: "vangogh"
     views:
       - name: textOrig
         conf:
@@ -370,7 +449,7 @@ projects:
       uri: http://localhost:9200
       indices:
         - name: "letters-vangogh-0.2.0"
-          bodyTypes: [ tf:Letter ]
+          bodyTypes: [tf:Letter]
           fields:
             - name: correspondent
               path: "$.body.metadata.correspondent"
@@ -385,7 +464,7 @@ projects:
             - name: periodLong
               path: "$.body.metadata.periodLong"
     annoRepo:
-      containerName: 'vangogh-0.2.0'
+      containerName: "vangogh-0.2.0"
       uri: https://vangogh.annorepo.dev.clariah.nl
     textRepo:
       uri: https://vangogh.tt.di.huc.knaw.nl
