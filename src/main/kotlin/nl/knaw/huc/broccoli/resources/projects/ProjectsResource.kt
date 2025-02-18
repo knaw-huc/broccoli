@@ -120,7 +120,13 @@ class ProjectsResource(
             context.read<Map<String, Any>>("$.hits.total")
                 ?.let { result["total"] = it }
 
-            extractAggregations(index, context)?.let { aggs.putAll(it) }
+            extractAggregations(index, context)?.let { aggsFromElastic ->
+                aggsFromElastic.forEach { (aggKey, aggValues) ->
+                    aggs[aggKey] = queryString.terms?.get(aggKey)?.let { askedFor ->
+                        (aggValues as Map<*, *>).filterKeys { it in (askedFor as List<*>) }
+                    } ?: aggValues
+                }
+            }
             logger.atTrace().addKeyValue("aggs", aggs).log("base")
 
             context.read<List<Map<String, Any>>>("$.hits.hits[*]")
