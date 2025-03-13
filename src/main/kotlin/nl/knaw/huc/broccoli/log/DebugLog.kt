@@ -48,7 +48,6 @@ class DebugLogAnnotationProcessorClientRequestFilter : ReaderInterceptor {
 annotation class Logged
 
 @Logged
-@Provider
 class DebugLoggingFilter : ContainerRequestFilter {
     @Throws(IOException::class)
     override fun filter(requestContext: ContainerRequestContext) {
