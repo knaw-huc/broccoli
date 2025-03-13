@@ -1,5 +1,6 @@
 package nl.knaw.huc.broccoli
 
+import DebugLoggingFilter
 import V0Resource
 import V1Resource
 import V2Resource
@@ -29,7 +30,6 @@ import nl.knaw.huc.broccoli.config.*
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
-import nl.knaw.huc.broccoli.resources.brinta.BrintaResource
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.eclipse.jetty.servlets.CrossOriginFilter
@@ -86,6 +86,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             register(V0Resource(projects, client, jsonParser, objectMapper))
             register(V1Resource(projects, client, jsonParser, objectMapper))
             register(V2Resource(projects, client, jsonParser, objectMapper))
+            register(DebugLoggingFilter())
         }
 
         setupCORSHeaders(environment.servlets())
