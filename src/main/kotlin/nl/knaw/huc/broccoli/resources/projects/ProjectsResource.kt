@@ -1,7 +1,6 @@
 package nl.knaw.huc.broccoli.resources.projects
 
 import DebugLog
-import Logged
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.jayway.jsonpath.ParseContext
@@ -14,9 +13,6 @@ import jakarta.ws.rs.core.*
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.isIn
 import nl.knaw.huc.broccoli.api.IndexQuery
-import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
-import nl.knaw.huc.broccoli.api.ResourcePaths.V1
-import nl.knaw.huc.broccoli.api.ResourcePaths.V2
 import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.ElasticQueryBuilder
@@ -63,7 +59,7 @@ open class ProjectsResource(
     @Path("{projectId}/search")
     @Consumes(MediaType.APPLICATION_JSON)
 //    @DebugLog("log me")
-    @Logged
+    @DebugLog
     fun searchIndex(
         queryString: IndexQuery,
         @PathParam("projectId") projectId: String,

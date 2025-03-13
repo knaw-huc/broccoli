@@ -1,4 +1,7 @@
 {
+  "logging": {
+    "level": "DEBUG"
+  },
   "server": {
     "applicationConnectors": [
       {
