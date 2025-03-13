@@ -22,7 +22,7 @@ class V1ProjectsResource(
 
     companion object {
         private val logger =
-            LoggerFactory.getLogger(V2ProjectsResource::class.java)
+            LoggerFactory.getLogger(V1ProjectsResource::class.java)
     }
 
 }
