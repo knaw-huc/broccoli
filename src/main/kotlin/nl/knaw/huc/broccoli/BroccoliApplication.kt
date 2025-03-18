@@ -16,7 +16,6 @@ import io.dropwizard.core.setup.Environment
 import io.dropwizard.jetty.setup.ServletEnvironment
 import io.federecio.dropwizard.swagger.SwaggerBundle
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration
-import io.github.serpro69.kotlinacj.HelloAnnotation
 import jakarta.servlet.DispatcherType
 import jakarta.ws.rs.client.Client
 import nl.knaw.huc.annorepo.client.AnnoRepoClient
@@ -24,6 +23,7 @@ import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.Constants.APP_NAME
 import nl.knaw.huc.broccoli.config.*
 import nl.knaw.huc.broccoli.core.Project
+import nl.knaw.huc.broccoli.log.DebugLog
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
 import nl.knaw.huc.broccoli.resources.brinta.BrintaResource
@@ -143,7 +143,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         corsFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType::class.java), true, "/*")
     }
 
-    @HelloAnnotation
+    @DebugLog
     fun testHello() {
         println("run testHello")
     }
