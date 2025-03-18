@@ -16,6 +16,7 @@ import io.dropwizard.core.setup.Environment
 import io.dropwizard.jetty.setup.ServletEnvironment
 import io.federecio.dropwizard.swagger.SwaggerBundle
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration
+import io.github.serpro69.kotlinacj.HelloAnnotation
 import jakarta.servlet.DispatcherType
 import jakarta.ws.rs.client.Client
 import nl.knaw.huc.annorepo.client.AnnoRepoClient
@@ -142,11 +143,18 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         corsFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType::class.java), true, "/*")
     }
 
+    @HelloAnnotation
+    fun testHello() {
+        println("run testHello")
+    }
+
     companion object {
         @Throws(Exception::class)
         @JvmStatic
         fun main(args: Array<String>) {
-            BroccoliApplication().run(*args)
+            val app = BroccoliApplication()
+            app.testHello()
+            app.run(*args)
         }
     }
 }
