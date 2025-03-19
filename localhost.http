@@ -1,3 +1,4 @@
+# Default suriano search query:
 POST http://localhost:8080/projects/suriano/search?size=0&indexName=suriano-1.0.1e-029
 Content-Type: application/json
 

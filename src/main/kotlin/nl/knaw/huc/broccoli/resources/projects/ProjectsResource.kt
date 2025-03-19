@@ -1,5 +1,6 @@
 package nl.knaw.huc.broccoli.resources.projects
 
+import RequestDebugLog
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.jayway.jsonpath.ParseContext
@@ -64,6 +65,7 @@ class ProjectsResource(
     @POST
     @Path("{projectId}/search")
     @DebugLog
+    @RequestDebugLog
     fun searchIndex(
         @PathParam("projectId") projectId: String,
         queryString: IndexQuery,
