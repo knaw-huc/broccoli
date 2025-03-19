@@ -15,6 +15,7 @@ import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.isIn
+import nl.knaw.huc.broccoli.api.ElasticQuery
 import nl.knaw.huc.broccoli.api.IndexQuery
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
 import nl.knaw.huc.broccoli.api.TextMarker
@@ -98,12 +99,7 @@ class ProjectsResource(
         val baseQuery = queryBuilder.toElasticQuery()
         logger.atTrace().addKeyValue("ES query", jsonWriter.writeValueAsString(baseQuery)).log("base")
 
-        val baseResult = client
-            .target(project.brinta.uri).path(index.name).path("_search")
-            .request().post(Entity.json(baseQuery))
-        validateElasticResult(baseResult, queryString)
-        val baseJson = baseResult.readEntityAsJsonString()
-        logger.atTrace().addKeyValue("json", baseJson).log("base")
+        val baseJson = runQuery(project.brinta.uri, index.name, baseQuery, queryString)
 
         val result: MutableMap<String, Any> = mutableMapOf()
         val aggs: MutableMap<String, Any> = mutableMapOf()
@@ -123,11 +119,7 @@ class ProjectsResource(
         auxQueries.forEachIndexed { auxIndex, auxQuery ->
             logger.atTrace().addKeyValue("query[$auxIndex]", jsonWriter.writeValueAsString(auxQuery)).log("aux")
 
-            val auxResult = client.target(project.brinta.uri).path(index.name).path("_search")
-                .request().post(Entity.json(auxQuery))
-            validateElasticResult(auxResult, queryString)
-            val auxJson = auxResult.readEntityAsJsonString()
-            logger.atTrace().addKeyValue("json", auxJson).log("aux")
+            val auxJson = runQuery(project.brinta.uri, index.name, auxQuery, queryString)
 
             jsonParser.parse(auxJson).let { context ->
                 extractAggregations(index, context)
@@ -163,6 +155,23 @@ class ProjectsResource(
         }
 
         return Response.ok(result).build()
+    }
+
+    @DebugLog
+    private fun runQuery(
+        esUrl: String,
+        indexName: String,
+        baseQuery: ElasticQuery,
+        queryString: IndexQuery
+    ): String {
+        val baseResult = client
+            .target(esUrl)
+            .path(indexName)
+            .path("_search")
+            .request()
+            .post(Entity.json(baseQuery))
+        validateElasticResult(baseResult, queryString)
+        return baseResult.readEntityAsJsonString()
     }
 
     private fun validateElasticResult(result: Response, queryString: IndexQuery) {

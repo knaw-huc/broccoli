@@ -304,7 +304,7 @@ projects:
       uri: http://localhost:9200
       deleteKey: suriano-dev-mag-weg
       indices:
-        - name: suriano-0.4.5e-021
+        - name: suriano-1.0.1e-029
           bodyTypes: [ LetterBody ]
           fields:
             - name: bodyType

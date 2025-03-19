@@ -149,8 +149,10 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
     }
 
     @DebugLog
-    fun testHello(name: String) {
-        log.debug("Hello $name!")
+    fun testHello(name: String): String {
+        val result = "Hello $name!"
+        log.debug(result)
+        return result
     }
 
     companion object {

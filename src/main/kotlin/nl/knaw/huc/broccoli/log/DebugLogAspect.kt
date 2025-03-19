@@ -2,24 +2,33 @@ package nl.knaw.huc.broccoli.log;
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import org.aspectj.lang.JoinPoint
+import org.aspectj.lang.ProceedingJoinPoint
+import org.aspectj.lang.annotation.Around
 import org.aspectj.lang.annotation.Aspect
-import org.aspectj.lang.annotation.Before
 import org.slf4j.LoggerFactory
 
 @Aspect
 class DebugLogAspect {
-    private val log = LoggerFactory.getLogger(DebugLog::class.java.name)
+    private val log = LoggerFactory.getLogger(DebugLog::class.java.simpleName)
     private val mapper = ObjectMapper().registerKotlinModule()
 
-    @Before("@annotation(DebugLog) && execution(* *(..))")
-    fun before(joinPoint: JoinPoint){
-        if (!log.isDebugEnabled) {
-            return;
-        }
+    @Around("@annotation(DebugLog) && execution(* *(..))")
+    fun around(joinPoint: ProceedingJoinPoint): Any {
         val methodName = joinPoint.signature.toShortString()
-        val args = mapper.writeValueAsString(joinPoint.args)
-        log.debug("$methodName called with: $args");
+        if (log.isDebugEnabled) {
+            val args = mapper.writeValueAsString(joinPoint.args)
+            log.atDebug()
+                .addKeyValue("args", args)
+                .log("$methodName called:")
+        }
+        val result = joinPoint.proceed()
+        if (log.isDebugEnabled) {
+            val resultAsJson = mapper.writeValueAsString(result)
+            log.atDebug()
+                .addKeyValue("result", resultAsJson)
+                .log("$methodName returned:")
+        }
+        return result
     }
 
 }

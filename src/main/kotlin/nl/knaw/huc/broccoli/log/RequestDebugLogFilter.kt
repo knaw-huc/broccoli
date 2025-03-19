@@ -9,7 +9,7 @@ import java.io.IOException
 
 @RequestDebugLog
 class RequestDebugLogFilter : ContainerRequestFilter {
-    private val log = LoggerFactory.getLogger(RequestDebugLog::class.java.name)
+    private val log = LoggerFactory.getLogger(RequestDebugLog::class.java.simpleName)
 
     @Throws(IOException::class)
     override fun filter(requestContext: ContainerRequestContext) {
