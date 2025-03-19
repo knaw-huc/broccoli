@@ -64,7 +64,6 @@ class ProjectsResource(
 
     @POST
     @Path("{projectId}/search")
-    @DebugLog
     @RequestDebugLog
     fun searchIndex(
         @PathParam("projectId") projectId: String,
@@ -78,18 +77,6 @@ class ProjectsResource(
     ): Response {
         val project = getProject(projectId)
         val index = getIndex(indexParam, project)
-
-        logger.atDebug()
-            .setMessage("searchIndex")
-            .addKeyValue("projectId", projectId)
-            .addKeyValue("queryString", queryString)
-            .addKeyValue("indexName", indexParam)
-            .addKeyValue("from", from)
-            .addKeyValue("size", size)
-            .addKeyValue("fragmentSize", fragmentSize)
-            .addKeyValue("sortBy", sortBy)
-            .addKeyValue("sortOrder", sortOrder)
-            .log()
 
         index.fields.map { it.name }
             .plus("_doc")
