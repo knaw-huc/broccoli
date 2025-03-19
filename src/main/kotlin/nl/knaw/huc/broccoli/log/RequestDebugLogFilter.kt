@@ -24,6 +24,9 @@ class RequestDebugLogFilter : ContainerRequestFilter {
         requestContext.bufferEntity()
         val body = requestContext.readEntity(String::class.java)
 
-        log.debug("$method $path: \n --> params: $params\n --> body:   $body")
+        log.atDebug()
+            .addKeyValue("params", params)
+            .addKeyValue("body", body)
+            .log("$method $path:")
     }
 }
