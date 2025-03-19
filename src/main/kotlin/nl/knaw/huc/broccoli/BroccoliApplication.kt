@@ -93,6 +93,9 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
                     "       locally accessible at http://localhost:${System.getenv(Constants.EnvironmentVariable.BR_SERVER_PORT.name) ?: 8080}\n" +
                     "    externally accessible at ${configuration.externalBaseUrl}\n"
         )
+
+        this.testHello("Broccoli")
+
     }
 
     private fun createClient(jerseyClient: JerseyClientConfiguration, environment: Environment): Client {
@@ -144,8 +147,8 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
     }
 
     @DebugLog
-    fun testHello() {
-        println("run testHello")
+    fun testHello(name: String) {
+        log.debug("Hello $name!")
     }
 
     companion object {
@@ -153,7 +156,6 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         @JvmStatic
         fun main(args: Array<String>) {
             val app = BroccoliApplication()
-            app.testHello()
             app.run(*args)
         }
     }

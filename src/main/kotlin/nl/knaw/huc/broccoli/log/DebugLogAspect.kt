@@ -5,19 +5,21 @@ import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import org.aspectj.lang.JoinPoint
 import org.aspectj.lang.annotation.Aspect
 import org.aspectj.lang.annotation.Before
-import java.util.logging.Logger
+import org.slf4j.LoggerFactory
 
 @Aspect
 class DebugLogAspect {
     private val mapper = ObjectMapper().registerKotlinModule()
-    private val log: Logger = Logger.getLogger(DebugLogAspect::class.java.name)
+    private val log = LoggerFactory.getLogger(javaClass)
 
     @Before("@annotation(DebugLog) && execution(* *(..))")
-    public fun before(joinPoint: JoinPoint){
+    fun before(joinPoint: JoinPoint){
+        if (!log.isDebugEnabled) {
+            return;
+        }
         val methodName = joinPoint.signature.toShortString()
         val args = mapper.writeValueAsString(joinPoint.args)
-//        log.info("$methodName called with: $args");
-        println("$methodName called with: $args");
+        log.debug("$methodName called with: $args");
     }
 
 }
