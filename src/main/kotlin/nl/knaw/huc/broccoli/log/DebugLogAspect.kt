@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory
 @Aspect
 class DebugLogAspect {
     private val mapper = ObjectMapper().registerKotlinModule()
-    private val log = LoggerFactory.getLogger(javaClass)
+    private val log = LoggerFactory.getLogger("DebugLog")
 
     @Before("@annotation(DebugLog) && execution(* *(..))")
     fun before(joinPoint: JoinPoint){

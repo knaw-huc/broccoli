@@ -20,6 +20,7 @@ import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.ElasticQueryBuilder
 import nl.knaw.huc.broccoli.core.Project
+import nl.knaw.huc.broccoli.log.DebugLog
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo.Offset
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
@@ -62,6 +63,7 @@ class ProjectsResource(
 
     @POST
     @Path("{projectId}/search")
+    @DebugLog
     fun searchIndex(
         @PathParam("projectId") projectId: String,
         queryString: IndexQuery,
