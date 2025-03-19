@@ -23,9 +23,12 @@ class DebugLogAspect {
         }
         val result = joinPoint.proceed()
         if (log.isDebugEnabled) {
-            val resultAsJson = mapper.writeValueAsString(result)
+            val resultAsString =
+                if (result is String) result
+                else mapper.writeValueAsString(result)
+
             log.atDebug()
-                .addKeyValue("result", resultAsJson)
+                .addKeyValue("result", resultAsString)
                 .log("$methodName returned:")
         }
         return result
