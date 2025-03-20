@@ -23,7 +23,6 @@ import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.Constants.APP_NAME
 import nl.knaw.huc.broccoli.config.*
 import nl.knaw.huc.broccoli.core.Project
-import nl.knaw.huc.broccoli.log.TraceLog
 import nl.knaw.huc.broccoli.log.RequestTraceLogFilter
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
@@ -150,8 +149,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         @Throws(Exception::class)
         @JvmStatic
         fun main(args: Array<String>) {
-            val app = BroccoliApplication()
-            app.run(*args)
+            BroccoliApplication().run(*args)
         }
     }
 }
