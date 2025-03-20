@@ -96,8 +96,6 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
                     "    externally accessible at ${configuration.externalBaseUrl}\n"
         )
 
-        this.testHello("Broccoli")
-
     }
 
     private fun createClient(jerseyClient: JerseyClientConfiguration, environment: Environment): Client {
@@ -146,13 +144,6 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
 
         // Add URL mapping
         corsFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType::class.java), true, "/*")
-    }
-
-    @TraceLog
-    fun testHello(name: String): String {
-        val result = "Hello $name!"
-        log.debug(result)
-        return result
     }
 
     companion object {
