@@ -1,13 +1,13 @@
 # Suriano
 
 ### Init index
-POST http://localhost:8080/brinta/suriano/suriano-0.4.5e-021
+POST http://localhost:8080/brinta/suriano/surind-029
 
 ### Populate index
-POST http://localhost:8080/brinta/suriano/suriano-0.4.5e-021/fill
+POST http://localhost:8080/brinta/suriano/surind-029/fill
 
 ### Do default search query
-POST http://localhost:8080/projects/suriano/search?size=0&indexName=suriano-0.4.5e-021
+POST http://localhost:8080/projects/suriano/search?size=0&indexName=surind-029
 Content-Type: application/json
 
 {"terms":{},"aggs":{"bodyType":{"order":"countDesc","size":10},"date":{"order":"countDesc","size":10},"recipient":{"order":"countDesc","size":10},"recipientLoc":{"order":"countDesc","size":10},"sender":{"order":"countDesc","size":10},"senderLoc":{"order":"countDesc","size":10},"editorNotes":{"order":"countDesc","size":10},"shelfmark":{"order":"countDesc","size":10},"summary":{"order":"countDesc","size":10}}}
