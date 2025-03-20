@@ -1,6 +1,5 @@
 package nl.knaw.huc.broccoli.resources.projects
 
-import RequestTraceLog
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.jayway.jsonpath.ParseContext
@@ -22,6 +21,7 @@ import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.ElasticQueryBuilder
 import nl.knaw.huc.broccoli.core.Project
+import nl.knaw.huc.broccoli.log.RequestTraceLog
 import nl.knaw.huc.broccoli.log.TraceLog
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo.Offset
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
