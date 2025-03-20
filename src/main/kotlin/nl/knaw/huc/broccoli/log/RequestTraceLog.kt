@@ -7,4 +7,4 @@ import jakarta.ws.rs.NameBinding
     AnnotationTarget.FUNCTION,
     AnnotationTarget.CLASS
 )
-annotation class RequestDebugLog
+annotation class RequestTraceLog

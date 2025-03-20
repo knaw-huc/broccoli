@@ -11,7 +11,7 @@ server:
       port: ${BR_SERVER_PORT:-8080}
 
 logging:
-  level: DEBUG
+  level: TRACE
   appenders:
     - type: console
       logFormat: "%-5p [%d{ISO8601,UTC}] %c: %m %kvp%n%dwREx"
@@ -35,7 +35,7 @@ logging:
             - QRY
 
   loggers:
-    nl.knaw.huc: DEBUG
+    nl.knaw.huc: TRACE
     org: WARN
     org.glassfish: ERROR
     com.jayway: ERROR

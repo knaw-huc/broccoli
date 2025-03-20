@@ -23,8 +23,8 @@ import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.Constants.APP_NAME
 import nl.knaw.huc.broccoli.config.*
 import nl.knaw.huc.broccoli.core.Project
-import nl.knaw.huc.broccoli.log.DebugLog
-import nl.knaw.huc.broccoli.log.RequestDebugLogFilter
+import nl.knaw.huc.broccoli.log.TraceLog
+import nl.knaw.huc.broccoli.log.RequestTraceLogFilter
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
 import nl.knaw.huc.broccoli.resources.brinta.BrintaResource
@@ -85,7 +85,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             register(HomePageResource())
             register(ProjectsResource(projects, client, jsonParser, objectMapper))
             register(BrintaResource(projects, client))
-            register(RequestDebugLogFilter())
+            register(RequestTraceLogFilter())
         }
 
         setupCORSHeaders(environment.servlets())
@@ -148,7 +148,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         corsFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType::class.java), true, "/*")
     }
 
-    @DebugLog
+    @TraceLog
     fun testHello(name: String): String {
         val result = "Hello $name!"
         log.debug(result)
