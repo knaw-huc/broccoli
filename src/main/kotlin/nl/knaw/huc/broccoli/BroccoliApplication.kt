@@ -23,6 +23,7 @@ import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.Constants.APP_NAME
 import nl.knaw.huc.broccoli.config.*
 import nl.knaw.huc.broccoli.core.Project
+import nl.knaw.huc.broccoli.log.RequestTraceLogFilter
 import nl.knaw.huc.broccoli.resources.AboutResource
 import nl.knaw.huc.broccoli.resources.HomePageResource
 import nl.knaw.huc.broccoli.resources.brinta.BrintaResource
@@ -83,6 +84,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             register(HomePageResource())
             register(ProjectsResource(projects, client, jsonParser, objectMapper))
             register(BrintaResource(projects, client))
+            register(RequestTraceLogFilter())
         }
 
         setupCORSHeaders(environment.servlets())
