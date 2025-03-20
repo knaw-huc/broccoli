@@ -1,3 +1,4 @@
+package nl.knaw.huc.broccoli.log;
 
 import jakarta.ws.rs.NameBinding
 

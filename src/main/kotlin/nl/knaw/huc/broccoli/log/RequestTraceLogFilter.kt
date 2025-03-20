@@ -1,6 +1,5 @@
 package nl.knaw.huc.broccoli.log
 
-import RequestTraceLog
 import jakarta.ws.rs.container.ContainerRequestContext
 import jakarta.ws.rs.container.ContainerRequestFilter
 import org.glassfish.jersey.server.ContainerRequest
