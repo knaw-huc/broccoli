@@ -94,7 +94,6 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
                     "       locally accessible at http://localhost:${System.getenv(Constants.EnvironmentVariable.BR_SERVER_PORT.name) ?: 8080}\n" +
                     "    externally accessible at ${configuration.externalBaseUrl}\n"
         )
-
     }
 
     private fun createClient(jerseyClient: JerseyClientConfiguration, environment: Environment): Client {
