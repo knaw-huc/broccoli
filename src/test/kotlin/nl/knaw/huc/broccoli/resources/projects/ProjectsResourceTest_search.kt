@@ -26,7 +26,7 @@ import org.mockserver.model.JsonBody.json
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(DropwizardExtensionsSupport::class)
-class ProjectsResourceTest {
+class ProjectsResourceTest_search {
 
     lateinit var mockServer: ClientAndServer
     var projectId = "dummy"
@@ -56,49 +56,6 @@ class ProjectsResourceTest {
     @AfterAll
     fun teardown() {
         mockServer.stop()
-    }
-
-    @Test
-    fun `ProjectsResource should list projects at root`() {
-        val response: Response =
-            application.client().target(toUrl(port, "/$PROJECTS"))
-                .request()
-                .get()
-        assertThat(response.status)
-            .isEqualTo(Response.Status.OK.statusCode)
-        assertThat(response.readEntityAsJsonString()).isEqualTo("[\"${projectId}\"]")
-    }
-
-    @Test
-    fun `ProjectsResource should list projects at v1`() {
-        val response: Response =
-            application.client().target(toUrl(port, "/$V1/$PROJECTS"))
-                .request()
-                .get()
-        assertThat(response.status)
-            .isEqualTo(Response.Status.OK.statusCode)
-        assertThat(response.readEntityAsJsonString()).isEqualTo("[\"${projectId}\"]")
-    }
-
-    @Test
-    fun `ProjectsResource should list projects at v2`() {
-        val response: Response =
-            application.client().target(toUrl(port, "/$V2/$PROJECTS"))
-                .request()
-                .get()
-        assertThat(response.status)
-            .isEqualTo(Response.Status.OK.statusCode)
-        assertThat(response.readEntityAsJsonString()).isEqualTo("[\"${projectId}\"]")
-    }
-
-    @Test
-    fun `ProjectsResource does not list projects at v3`() {
-        val response: Response =
-            application.client().target(toUrl(port ,"/v3/$PROJECTS"))
-                .request()
-                .get()
-        assertThat(response.status)
-            .isEqualTo(Response.Status.NOT_FOUND.statusCode)
     }
 
     @Test
