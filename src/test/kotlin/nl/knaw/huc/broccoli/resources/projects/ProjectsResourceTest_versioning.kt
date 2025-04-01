@@ -23,22 +23,13 @@ import org.mockserver.integration.ClientAndServer
 @ExtendWith(DropwizardExtensionsSupport::class)
 class ProjectsResourceTest_versioning {
 
-    lateinit var mockServer: ClientAndServer
     lateinit var resource: ResourceExtension
 
     var projectId = "dummy"
 
     @BeforeAll
     fun setup() {
-        mockServer =
-            ClientAndServer.startClientAndServer(9200)
-
         resource = createTestResources(projectId)
-    }
-
-    @AfterAll
-    fun teardown() {
-        mockServer.stop()
     }
 
     @Test

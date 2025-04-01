@@ -16,21 +16,11 @@ import org.mockserver.integration.ClientAndServer
 @ExtendWith(DropwizardExtensionsSupport::class)
 class HomePageResourceTest {
 
-    lateinit var mockServer: ClientAndServer
     lateinit var resource: ResourceExtension
 
     @BeforeAll
     fun setup() {
-        mockServer =
-            ClientAndServer.startClientAndServer(9200)
-
         resource = createTestResources("dummy")
-
-    }
-
-    @AfterAll
-    fun teardown() {
-        mockServer.stop()
     }
 
     @Test
