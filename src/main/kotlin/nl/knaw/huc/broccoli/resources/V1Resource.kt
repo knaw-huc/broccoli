@@ -20,11 +20,12 @@ class V1Resource(
     private val client: Client,
     private val jsonParser: ParseContext,
     private val jsonWriter: ObjectMapper,
-) {
+    private val esClient: ElasticSearchClient,
+    ) {
 
     @Path(PROJECTS)
     fun getProjectsResource(): ProjectsResource {
-        return V1ProjectsResource(projects, client, jsonParser, jsonWriter)
+        return V1ProjectsResource(projects, client, jsonParser, jsonWriter, esClient)
     }
 
     @Path(BRINTA)

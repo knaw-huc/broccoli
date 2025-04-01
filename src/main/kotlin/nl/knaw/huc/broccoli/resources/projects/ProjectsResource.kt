@@ -1,29 +1,25 @@
 package nl.knaw.huc.broccoli.resources.projects
 
+import ElasticSearchClient
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
-import com.jayway.jsonpath.ParseContext
 import io.swagger.v3.oas.annotations.Operation
 import jakarta.validation.constraints.Min
 import jakarta.ws.rs.*
 import jakarta.ws.rs.client.Client
-import jakarta.ws.rs.client.Entity
-import jakarta.ws.rs.core.*
+import jakarta.ws.rs.core.GenericType
+import jakarta.ws.rs.core.HttpHeaders
+import jakarta.ws.rs.core.MediaType
+import jakarta.ws.rs.core.Response
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.isIn
 import nl.knaw.huc.broccoli.api.IndexQuery
-import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
-import nl.knaw.huc.broccoli.api.ResourcePaths.V1
-import nl.knaw.huc.broccoli.api.ResourcePaths.V2
 import nl.knaw.huc.broccoli.api.TextMarker
-import nl.knaw.huc.broccoli.config.IndexConfiguration
-import nl.knaw.huc.broccoli.core.ElasticQueryBuilder
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo.Offset
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
 import nl.knaw.huc.broccoli.service.anno.TextSelector
-import nl.knaw.huc.broccoli.service.extractAggregations
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
 import org.slf4j.MarkerFactory
@@ -32,8 +28,8 @@ import org.slf4j.MarkerFactory
 open class ProjectsResource(
     private val projects: Map<String, Project>,
     private val client: Client,
-    private val jsonParser: ParseContext,
-    private val jsonWriter: ObjectMapper
+    private val jsonWriter: ObjectMapper,
+    private val esClient: ElasticSearchClient
 ) {
     init {
         logger.info("init: projects=$projects, client=$client")
@@ -94,97 +90,13 @@ open class ProjectsResource(
 
         logQuery(queryString, from, size)
 
-        val queryBuilder = ElasticQueryBuilder(index)
-            .query(queryString)
-            .from(from)
-            .size(size)
-            .sortBy(sortBy)
-            .sortOrder(sortOrder.toString())
-            .fragmentSize(fragmentSize)
-
-        val baseQuery = queryBuilder.toElasticQuery()
-        logger.atTrace().addKeyValue("ES query", jsonWriter.writeValueAsString(baseQuery)).log("base")
-
-        val baseResult = client
-            .target(project.brinta.uri).path(index.name).path("_search")
-            .request().post(Entity.json(baseQuery))
-        validateElasticResult(baseResult, queryString)
-        val baseJson = baseResult.readEntityAsJsonString()
-        logger.atTrace().addKeyValue("json", baseJson).log("base")
-
-        val result: MutableMap<String, Any> = mutableMapOf()
-        val aggs: MutableMap<String, Any> = mutableMapOf()
-        jsonParser.parse(baseJson).let { context ->
-            context.read<Map<String, Any>>("$.hits.total")
-                ?.let { result["total"] = it }
-
-            extractAggregations(index, context)?.let { aggs.putAll(it) }
-            logger.atTrace().addKeyValue("aggs", aggs).log("base")
-
-            context.read<List<Map<String, Any>>>("$.hits.hits[*]")
-                ?.map { buildHitResult(index, it) }
-                ?.let { result["results"] = it }
-        }
-
-        val auxQueries = queryBuilder.toMultiFacetCountQueries()
-        auxQueries.forEachIndexed { auxIndex, auxQuery ->
-            logger.atTrace().addKeyValue("query[$auxIndex]", jsonWriter.writeValueAsString(auxQuery)).log("aux")
-
-            val auxResult = client
-                .target(project.brinta.uri)
-                .path(index.name)
-                .path("_search")
-                .request()
-                .post(Entity.json(auxQuery))
-            validateElasticResult(auxResult, queryString)
-            val auxJson = auxResult.readEntityAsJsonString()
-            logger.atTrace().addKeyValue("json", auxJson).log("aux")
-
-            jsonParser.parse(auxJson).let { context ->
-                extractAggregations(index, context)
-                    ?.forEach { entry ->
-                        @Suppress("UNCHECKED_CAST")
-                        (aggs[entry.key] as MutableMap<String, Any>).putAll(entry.value as Map<String, Any>)
-                    }
-            }
-        }
-
-        // use LinkedHashMap to fix aggregation order
-        result["aggs"] = LinkedHashMap<String, Any?>().apply {
-            queryString.aggregations?.keys?.forEach { name ->
-                val nameAndOrder = "$name@${queryString.aggregations[name]?.get("order")}"
-                if (!aggs.containsKey(name) && aggs.containsKey(nameAndOrder)) {
-                    aggs[name] = aggs[nameAndOrder] as Any
-                }
-                (aggs[name] as MutableMap<*, *>?)?.apply {
-                    val desiredAmount: Int = (queryString.aggregations[name]?.get("size") as Int?) ?: size
-                    if (desiredAmount < entries.size) {
-                        val keep = LinkedHashMap<Any, Any>()
-                        entries.take(desiredAmount).forEach {
-                            keep[it.key as Any] = it.value as Any
-                        }
-                        aggs[name] = keep
-                    }
-                }
-            }
-            // prefer query string order; default to order from config
-            (queryString.aggregations?.keys ?: index.fields.map { it.name }).forEach { name ->
-                aggs[name]?.let { aggregationResult -> put(name, aggregationResult) }
-            }
-        }
-
+        val result = this.esClient.search(
+            index,
+            project.brinta.uri,
+            queryString,
+            Params(from, size, fragmentSize, sortBy, sortOrder)
+        )
         return Response.ok(result).build()
-    }
-
-    private fun validateElasticResult(result: Response, queryString: IndexQuery) {
-        if (result.status != 200) {
-            logger.atWarn()
-                .addKeyValue("status", result.status)
-                .addKeyValue("query", queryString)
-                .addKeyValue("result", result.readEntityAsJsonString())
-                .log("ElasticSearch failed")
-            throw BadRequestException("Query not understood: $queryString")
-        }
     }
 
     private fun logQuery(query: IndexQuery, from: Int, size: Int) {
@@ -197,20 +109,6 @@ open class ProjectsResource(
             .addMarker(queryMarker)
             .log("${query}from=$from|size=$size")
     }
-
-    private fun buildHitResult(index: IndexConfiguration, hit: Map<String, Any>) =
-        mutableMapOf("_id" to hit["_id"]).apply {
-            // store highlight if available
-            hit["highlight"]?.let { put("_hits", it) }
-
-            @Suppress("UNCHECKED_CAST")
-            val source = hit["_source"] as Map<String, Any>
-
-            // store all configured index fields with their search result, if any
-            index.fields.forEach { field ->
-                source[field.name]?.let { put(field.name, it) }
-            }
-        }
 
     @Suppress("unused")
     enum class SortOrder {

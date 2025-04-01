@@ -79,10 +79,9 @@ object TestUtils {
         )
         val projects = mapOf(projectId to project)
         val client = createClient()
-
         val jsonParser = createJsonParser()
         val jsonWriter = createJsonMapper()
-
+        val esClient = ElasticSearchClient(client, jsonParser, jsonWriter)
 
         val resource = ResourceExtension
             .builder()
@@ -102,6 +101,7 @@ object TestUtils {
                     client,
                     jsonParser,
                     jsonWriter,
+                    esClient
                 )
             )
             .addResource(
@@ -110,6 +110,7 @@ object TestUtils {
                     client,
                     jsonParser,
                     jsonWriter,
+                    esClient
                 )
             )
             .addResource(
@@ -118,6 +119,7 @@ object TestUtils {
                     client,
                     jsonParser,
                     jsonWriter,
+                    esClient
                 )
             )
             .build()

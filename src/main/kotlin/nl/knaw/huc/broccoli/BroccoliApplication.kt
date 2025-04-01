@@ -1,5 +1,6 @@
 package nl.knaw.huc.broccoli
 
+import ElasticSearchClient
 import V0Resource
 import V1Resource
 import V2Resource
@@ -73,19 +74,17 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         )
 
         val projects = configureProjects(configuration.projects)
-
         val client = createClient(configuration.jerseyClient, environment)
-
         val jsonParser = createJsonParser()
-
         val objectMapper = createJsonMapper()
+        val esClient = ElasticSearchClient(client, jsonParser, objectMapper)
 
         with(environment.jersey()) {
             register(HomePageResource())
             register(AboutResource(configuration.externalBaseUrl, name, appVersion))
-            register(V0Resource(projects, client, jsonParser, objectMapper))
-            register(V1Resource(projects, client, jsonParser, objectMapper))
-            register(V2Resource(projects, client, jsonParser, objectMapper))
+            register(V0Resource(projects, client, jsonParser, objectMapper, esClient))
+            register(V1Resource(projects, client, jsonParser, objectMapper, esClient))
+            register(V2Resource(projects, client, jsonParser, objectMapper, esClient))
         }
 
         setupCORSHeaders(environment.servlets())

@@ -1,5 +1,6 @@
 package nl.knaw.huc.broccoli.resources.projects
 
+import ElasticSearchClient
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.jayway.jsonpath.ParseContext
 import jakarta.ws.rs.client.Client
@@ -10,9 +11,10 @@ class V1ProjectsResource(
     private val projects: Map<String, Project>,
     client: Client,
     jsonParser: ParseContext,
-    jsonWriter: ObjectMapper
+    jsonWriter: ObjectMapper,
+    esClient: ElasticSearchClient,
 ) : ProjectsResource(
-    projects, client, jsonParser, jsonWriter
+    projects, client, jsonWriter, esClient
 ) {
 
     override fun listProjects(): Set<String> {
