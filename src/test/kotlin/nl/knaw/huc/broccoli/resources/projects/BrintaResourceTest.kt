@@ -1,18 +1,13 @@
 package nl.knaw.huc.broccoli.resources.projects;
 
-import TestUtils.*
-import com.google.gson.Gson
-import com.google.gson.JsonParser
+import TestUtils.mockAnnoRepo
+import TestUtils.toUrl
 import io.dropwizard.testing.ResourceHelpers.resourceFilePath
 import io.dropwizard.testing.junit5.DropwizardAppExtension
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport
-import jakarta.ws.rs.client.Entity
-import jakarta.ws.rs.core.MediaType.APPLICATION_JSON_TYPE
 import jakarta.ws.rs.core.Response
 import nl.knaw.huc.broccoli.BroccoliApplication
-import nl.knaw.huc.broccoli.api.IndexQuery
 import nl.knaw.huc.broccoli.api.ResourcePaths.BRINTA
-import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
 import nl.knaw.huc.broccoli.api.ResourcePaths.V1
 import nl.knaw.huc.broccoli.api.ResourcePaths.V2
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
@@ -21,9 +16,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockserver.integration.ClientAndServer
-import org.mockserver.model.HttpRequest.request
-import org.mockserver.model.HttpResponse.response
-import org.mockserver.model.JsonBody.json
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(DropwizardExtensionsSupport::class)

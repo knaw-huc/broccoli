@@ -1,15 +1,17 @@
-import TestUtils.mockAnnoRepo
-import TestUtils.toUrl
-import io.dropwizard.testing.ResourceHelpers.resourceFilePath
+import TestUtils.createTestResources
 import io.dropwizard.testing.junit5.DropwizardAppExtension
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport
+import io.dropwizard.testing.junit5.ResourceExtension
 import jakarta.ws.rs.core.Response
 import nl.knaw.huc.broccoli.BroccoliApplication
 import nl.knaw.huc.broccoli.api.ResourcePaths.V1
 import nl.knaw.huc.broccoli.api.ResourcePaths.V2
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.*
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockserver.integration.ClientAndServer
 
@@ -17,27 +19,21 @@ import org.mockserver.integration.ClientAndServer
 @ExtendWith(DropwizardExtensionsSupport::class)
 class HomePageResourceTest {
 
-    lateinit var application: DropwizardAppExtension<BroccoliConfiguration>
     lateinit var mockServer: ClientAndServer
-    var port: Int = -1
+    lateinit var resource: ResourceExtension
+    lateinit var application: DropwizardAppExtension<BroccoliConfiguration>
 
     @BeforeAll
     fun setup() {
         mockServer =
             ClientAndServer.startClientAndServer(9200)
 
-        mockAnnoRepo(mockServer)
-
         application = DropwizardAppExtension(
-            BroccoliApplication::class.java,
-            resourceFilePath("./broccoliConfig.json")
+            BroccoliApplication::class.java
         )
-    }
 
-    @BeforeEach
-    fun findPort() {
-        // Port not yet available during setup:
-        port = application.localPort
+        resource = createTestResources("dummy")
+
     }
 
     @AfterAll
@@ -48,7 +44,7 @@ class HomePageResourceTest {
     @Test
     fun `HomePageResource should provide index html at root`() {
         val response: Response =
-            application.client().target(toUrl(port, "/"))
+            resource.target("/")
                 .request()
                 .get()
 
@@ -63,7 +59,7 @@ class HomePageResourceTest {
     @Test
     fun `HomePageResource should not provide index html at v1`() {
         val response: Response =
-            application.client().target(toUrl(port, "/$V1/"))
+            resource.target("/$V1/")
                 .request()
                 .get()
 
@@ -73,7 +69,7 @@ class HomePageResourceTest {
     @Test
     fun `HomePageResource should not provide index html at v2`() {
         val response: Response =
-            application.client().target(toUrl(port, "/$V2/"))
+            resource.target("/$V2/")
                 .request()
                 .get()
 

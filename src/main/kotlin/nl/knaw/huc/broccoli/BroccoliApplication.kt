@@ -82,7 +82,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
 
         with(environment.jersey()) {
             register(HomePageResource())
-            register(AboutResource(configuration, name, appVersion))
+            register(AboutResource(configuration.externalBaseUrl, name, appVersion))
             register(V0Resource(projects, client, jsonParser, objectMapper))
             register(V1Resource(projects, client, jsonParser, objectMapper))
             register(V2Resource(projects, client, jsonParser, objectMapper))

@@ -1,6 +1,8 @@
 package nl.knaw.huc.broccoli.resources.projects;
 
-import TestUtils.*
+import TestUtils.mockAnnoRepo
+import TestUtils.resourceAsString
+import TestUtils.toUrl
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import io.dropwizard.testing.ResourceHelpers.resourceFilePath
@@ -12,7 +14,6 @@ import jakarta.ws.rs.core.Response
 import nl.knaw.huc.broccoli.BroccoliApplication
 import nl.knaw.huc.broccoli.api.IndexQuery
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
-import nl.knaw.huc.broccoli.api.ResourcePaths.V1
 import nl.knaw.huc.broccoli.api.ResourcePaths.V2
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.service.readEntityAsJsonString
