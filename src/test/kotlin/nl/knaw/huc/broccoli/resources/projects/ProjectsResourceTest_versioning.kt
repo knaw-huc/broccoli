@@ -25,7 +25,6 @@ class ProjectsResourceTest_versioning {
 
     lateinit var mockServer: ClientAndServer
     lateinit var resource: ResourceExtension
-    lateinit var application: DropwizardAppExtension<BroccoliConfiguration>
 
     var projectId = "dummy"
 
@@ -33,10 +32,6 @@ class ProjectsResourceTest_versioning {
     fun setup() {
         mockServer =
             ClientAndServer.startClientAndServer(9200)
-
-        application = DropwizardAppExtension(
-            BroccoliApplication::class.java
-        )
 
         resource = createTestResources(projectId)
     }

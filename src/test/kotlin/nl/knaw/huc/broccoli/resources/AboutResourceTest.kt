@@ -22,16 +22,11 @@ class AboutResourceTest {
 
     lateinit var mockServer: ClientAndServer
     lateinit var resource: ResourceExtension
-    lateinit var application: DropwizardAppExtension<BroccoliConfiguration>
 
     @BeforeAll
     fun setup() {
         mockServer =
             ClientAndServer.startClientAndServer(9200)
-
-        application = DropwizardAppExtension(
-            BroccoliApplication::class.java
-        )
 
         resource = createTestResources("dummy")
 
