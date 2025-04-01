@@ -1,6 +1,8 @@
 package nl.knaw.huc.broccoli.resources.projects;
 
+import TestUtils.mockAnnoRepo
 import TestUtils.resourceAsString
+import TestUtils.toUrl
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import io.dropwizard.testing.ResourceHelpers.resourceFilePath
@@ -12,12 +14,11 @@ import jakarta.ws.rs.core.Response
 import nl.knaw.huc.broccoli.BroccoliApplication
 import nl.knaw.huc.broccoli.api.IndexQuery
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
+import nl.knaw.huc.broccoli.api.ResourcePaths.V2
 import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import nl.knaw.huc.broccoli.service.readEntityAsJsonString
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockserver.integration.ClientAndServer
 import org.mockserver.model.HttpRequest.request
@@ -26,40 +27,35 @@ import org.mockserver.model.JsonBody.json
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(DropwizardExtensionsSupport::class)
-class ProjectsResourceTest {
+class ProjectsResourceSearchTest {
 
     lateinit var mockServer: ClientAndServer
     var projectId = "dummy"
     lateinit var application: DropwizardAppExtension<BroccoliConfiguration>
-
+    var port = -1
 
     @BeforeAll
     fun setup() {
         mockServer =
             ClientAndServer.startClientAndServer(9200)
 
-        mockServer
-            .`when`(request().withPath("/anno-repo.*"))
-            .respond(response().withStatusCode(200).withBody(json(
-                resourceAsString("./arAboutResponse.json")
-            )))
+        mockAnnoRepo(mockServer)
 
         application = DropwizardAppExtension(
             BroccoliApplication::class.java,
             resourceFilePath("./broccoliConfig.json")
         )
-
     }
 
-    @Test
-    fun `ProjectsResource should list projects`() {
-        val response: Response =
-            application.client().target(toUrl("/$PROJECTS"))
-                .request()
-                .get()
-        assertThat(response.status)
-            .isEqualTo(Response.Status.OK.statusCode)
-        assertThat(response.readEntityAsJsonString()).isEqualTo("[\"${projectId}\"]")
+    @BeforeEach
+    fun findPort() {
+        // Port not yet available during setup:
+        port = application.localPort
+    }
+
+    @AfterAll
+    fun teardown() {
+        mockServer.stop()
     }
 
     @Test
@@ -83,7 +79,7 @@ class ProjectsResourceTest {
         )
 
         val query: IndexQuery = Gson().fromJson(request, IndexQuery::class.java)
-        val target = toUrl("/$PROJECTS/${projectId}/search")
+        val target = toUrl(port, "/$V2/$PROJECTS/${projectId}/search")
         val response: Response =
             application.client()
                 .target(target)
@@ -100,10 +96,4 @@ class ProjectsResourceTest {
             .isEqualTo(expectedJson)
     }
 
-    /**
-     * Application context needs host
-     */
-    fun toUrl(path: String): String {
-        return String.format("http://localhost:%d$path", application.localPort)
-    }
 }

@@ -1,13 +1,9 @@
 import TestUtils.createTestResources
-import io.dropwizard.testing.junit5.DropwizardAppExtension
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport
 import io.dropwizard.testing.junit5.ResourceExtension
 import jakarta.ws.rs.core.Response
-import nl.knaw.huc.broccoli.BroccoliApplication
-import nl.knaw.huc.broccoli.api.ResourcePaths.ABOUT
 import nl.knaw.huc.broccoli.api.ResourcePaths.V1
 import nl.knaw.huc.broccoli.api.ResourcePaths.V2
-import nl.knaw.huc.broccoli.config.BroccoliConfiguration
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -18,7 +14,7 @@ import org.mockserver.integration.ClientAndServer
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(DropwizardExtensionsSupport::class)
-class AboutResourceTest {
+class HomePageResourceTest {
 
     lateinit var resource: ResourceExtension
 
@@ -28,20 +24,24 @@ class AboutResourceTest {
     }
 
     @Test
-    fun `AboutResource should provide app name at root`() {
+    fun `HomePageResource should provide index html at root`() {
         val response: Response =
-            resource
-                .target("/$ABOUT")
+            resource.target("/")
                 .request()
                 .get()
-        assertThat(response.status)
-            .isEqualTo(Response.Status.OK.statusCode)
+
+        assertThat(response.status).isEqualTo(200)
+        val body = response.readEntity(String::class.java)
+        assertThat(body)
+            .contains("Broccoli")
+            .contains("API")
+            .contains("about")
     }
 
     @Test
-    fun `AboutResource should provide not run at v1`() {
+    fun `HomePageResource should not provide index html at v1`() {
         val response: Response =
-            resource.target("/$V1/$ABOUT")
+            resource.target("/$V1/")
                 .request()
                 .get()
 
@@ -49,9 +49,9 @@ class AboutResourceTest {
     }
 
     @Test
-    fun `AboutResource should not run at v2`() {
+    fun `HomePageResource should not provide index html at v2`() {
         val response: Response =
-            resource.target("/$V2/$ABOUT")
+            resource.target("/$V2/")
                 .request()
                 .get()
 

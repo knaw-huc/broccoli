@@ -5,7 +5,12 @@
     {
       "name": "dummy-index",
       "bodyTypes": [],
-      "fields": []
+      "fields": [
+        {
+          "name": "bodyType",
+          "path": "$.body.type"
+        }
+      ]
     }
   ],
   "deleteKey": "confirm-deletion-c6451546-ee86-45af-ac62-7cb1a3a405ed"
