@@ -27,7 +27,7 @@ import org.mockserver.model.JsonBody.json
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(DropwizardExtensionsSupport::class)
-class ProjectsResourceTest_search {
+class ProjectsResourceSearchTest {
 
     lateinit var mockServer: ClientAndServer
     var projectId = "dummy"
@@ -40,7 +40,6 @@ class ProjectsResourceTest_search {
             ClientAndServer.startClientAndServer(9200)
 
         mockAnnoRepo(mockServer)
-
 
         application = DropwizardAppExtension(
             BroccoliApplication::class.java,
