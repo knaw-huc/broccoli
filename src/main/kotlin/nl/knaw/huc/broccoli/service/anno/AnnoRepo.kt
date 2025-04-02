@@ -57,6 +57,10 @@ class AnnoRepo(
         return value
     }
 
+    fun invalidateCache() = cachedQueryResults
+        .also { log.debug("invalidateCache: deleting ${it.size()} cached queries") }
+        .clear()
+
     fun findByMetadata(bodyType: String, metadata: List<Pair<String, String>>) =
         mutableMapOf("body.type" to bodyType).apply {
             metadata.forEach { put("body.metadata.${it.first}", it.second) }

@@ -65,78 +65,6 @@ projects:
     textRepo:
       uri: https://globalise.tt.di.huc.knaw.nl
 
-  - name: "mondriaan"
-    views:
-      - name: textOrig
-        conf:
-          anno:
-            - path: body.type
-              value: tei:Div
-            - path: body.metadata.type
-              value: original
-      - name: textTrans
-        conf:
-          anno:
-            - path: body.type
-              value: tei:Div
-            - path: body.metadata.type
-              value: translation
-      - name: notesEN
-        conf:
-          anno:
-            - path: body.type
-              value: tei:Note
-            - path: body.metadata.lang
-              value: en
-      - name: title
-        conf:
-          anno:
-            - path: body.type
-              value: tei:Title
-      - name: postalData
-        conf:
-          anno:
-            - path: body.type
-              value: tei:Div
-            - path: body.metadata.type
-              value: postalData
-    brinta:
-      uri: http://localhost:9200
-      deleteKey: "mondriaan-dev-mag-weg"
-      indices:
-        - name: divs
-          bodyTypes: [tf:Letter, tei:Div, tei:Rs]
-          fields:
-            - name: bodyType
-              path: "$.body.type"
-            - name: lang
-              path: "$.body.metadata.lang"
-            - name: type
-              path: "$.body.metadata.type"
-            - name: anno
-              path: "$.body.metadata.anno"
-            - name: country
-              path: "$.body.metadata.country"
-            - name: institution
-              path: "$.body.metadata.institution"
-            - name: msid
-              path: "$.body.metadata.msid"
-            - name: period
-              path: "$.body.metadata.period"
-            - name: periodLong
-              path: "$.body.metadata.periodlong"
-            - name: letterId
-              path: "$.body.metadata.letterid"
-            - name: correspondent
-              path: "$.body.metadata.correspondent"
-            - name: location
-              path: "$.body.metadata.location"
-    annoRepo:
-      containerName: "mondriaan-0.9.0"
-      uri: https://mondriaan.annorepo.dev.clariah.nl
-    textRepo:
-      uri: https://mondriaan.tt.di.huc.knaw.nl
-
   - name: "republic"
     topTierBodyType: Volume
     textType: LogicalText
@@ -411,24 +339,32 @@ projects:
   #      uri: https://suriano.annorepo.dev.clariah.nl/
   #    textRepo:
   #      uri: https://suriano.tt.di.huc.knaw.nl
-  #
-  - name: "hooft"
-    annoRepo:
-      containerName: "brieven-van-hooft"
-      uri: https://brieven-van-hooft.annorepo.dev.clariah.nl/
-    brinta:
-      uri: http://localhost:9200
-      deleteKey: hooft-dev-mag-weg
-      indices:
-        - name: letters-2024-03-28
-          bodyTypes: [Letter]
-          fields:
-            - name: bodyType
-              path: "$.body.type"
-    textRepo:
-      uri: https://brieven-van-hooft.tt.di.huc.knaw.nl
-
+  
   - name: "vangogh"
+    topTierBodyType: tf:Letter
+    textType: LogicalText
+    annoRepo:
+      containerName: vangogh
+      uri: https://preview.dev.diginfra.org/annorepo
+    brinta:
+      uri: http://brinta:9200
+      deleteKey: peen-vangogh-mag-weg
+      indices:
+        - name: vangogh
+          bodyTypes: [tf:LetterBody]
+          fields:
+            - name: correspondent
+              path: "$.body.metadata.correspondent"
+            - name: file
+              path: "$.body.metadata.file"
+            - name: location
+              path: "$.body.metadata.location"
+            - name: period
+              path: "$.body.metadata.period"
+            - name: periodLong
+              path: "$.body.metadata.periodLong"
+            - name: sender
+              path: "$.body.metadata.sender"
     views:
       - name: textOrig
         conf:
@@ -444,27 +380,3 @@ projects:
               value: tei:Div
             - path: body.metadata.type
               value: translation
-    brinta:
-      deleteKey: vangogh-dev-mag-weg
-      uri: http://localhost:9200
-      indices:
-        - name: "letters-vangogh-0.2.0"
-          bodyTypes: [tf:Letter]
-          fields:
-            - name: correspondent
-              path: "$.body.metadata.correspondent"
-            - name: institution
-              path: "$.body.metadata.institution"
-            - name: location
-              path: "$.body.metadata.location"
-            - name: msid
-              path: "$.body.metadata.msid"
-            - name: period
-              path: "$.body.metadata.period"
-            - name: periodLong
-              path: "$.body.metadata.periodLong"
-    annoRepo:
-      containerName: "vangogh-0.2.0"
-      uri: https://vangogh.annorepo.dev.clariah.nl
-    textRepo:
-      uri: https://vangogh.tt.di.huc.knaw.nl

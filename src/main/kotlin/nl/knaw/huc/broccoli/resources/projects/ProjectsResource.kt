@@ -55,10 +55,14 @@ class ProjectsResource(
         Response.ok(it.annoRepo.findDistinct(AR_BODY_TYPE)).build()
     }
 
-    @GET
-    @Path("{projectId}/views")
-    fun getViews(@PathParam("projectId") projectId: String) = getProject(projectId).views
-
+    @DELETE
+    @Path("{projectId}/cache")
+    fun invalidateCache(
+        @PathParam("projectId") projectId: String
+    ): Response {
+        getProject(projectId).annoRepo.invalidateCache()
+        return Response.noContent().build()
+    }
 
     @POST
     @Path("{projectId}/search")
@@ -173,6 +177,10 @@ class ProjectsResource(
 
         return Response.ok(result).build()
     }
+
+    @GET
+    @Path("{projectId}/views")
+    fun getViews(@PathParam("projectId") projectId: String) = getProject(projectId).views
 
     private fun validateElasticResult(result: Response, queryString: IndexQuery) {
         if (result.status != 200) {
