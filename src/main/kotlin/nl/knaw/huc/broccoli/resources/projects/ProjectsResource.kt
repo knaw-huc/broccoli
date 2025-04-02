@@ -136,7 +136,7 @@ class ProjectsResource(
                 .request().post(Entity.json(auxQuery))
             validateElasticResult(auxResult, queryString)
             val auxJson = auxResult.readEntityAsJsonString()
-            logger.atTrace().addKeyValue("json", auxJson).log("aux")
+            logger.atTrace().addKeyValue("json[$auxIndex]", auxJson).log("aux")
 
             jsonParser.parse(auxJson).let { context ->
                 extractAggregations(index, context)
