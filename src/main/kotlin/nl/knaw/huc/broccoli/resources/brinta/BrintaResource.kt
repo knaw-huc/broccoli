@@ -1,5 +1,6 @@
 package nl.knaw.huc.broccoli.resources.brinta
 
+import ElasticSearchClient
 import com.jayway.jsonpath.PathNotFoundException
 import jakarta.ws.rs.*
 import jakarta.ws.rs.client.Client
@@ -11,7 +12,6 @@ import jakarta.ws.rs.core.Response
 import jakarta.ws.rs.core.Response.Status.OK
 import jakarta.ws.rs.core.Response.Status.UNAUTHORIZED
 import nl.knaw.huc.broccoli.api.Constants
-import nl.knaw.huc.broccoli.api.ResourcePaths.BRINTA
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
@@ -22,7 +22,8 @@ import org.slf4j.LoggerFactory
 @Produces(MediaType.APPLICATION_JSON)
 class BrintaResource (
     private val projects: Map<String, Project>,
-    private val client: Client
+    private val client: Client,
+    private val esClient: ElasticSearchClient
 ) {
 
     @POST
@@ -114,16 +115,7 @@ class BrintaResource (
             throw WebApplicationException(UNAUTHORIZED)
         }
 
-        return client.target(project.brinta.uri)
-            .path(index.name)
-            .request()
-            .delete()
-            .also { logger.info("response: $it") }
-            .readEntityAsJsonString()
-            .also { logger.info("entity: $it") }
-            .let { result ->
-                Response.ok(result).build()
-            }
+        return this.esClient.deleteIndex(index, project.brinta.uri)
     }
 
     @POST

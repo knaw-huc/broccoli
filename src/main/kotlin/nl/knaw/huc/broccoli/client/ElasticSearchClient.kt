@@ -9,7 +9,6 @@ import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.ElasticQueryBuilder
 import nl.knaw.huc.broccoli.resources.projects.Params
 import nl.knaw.huc.broccoli.service.extractAggregations
-import nl.knaw.huc.broccoli.service.readEntityAsJsonString
 import org.slf4j.LoggerFactory
 
 class ElasticSearchClient(
@@ -34,7 +33,9 @@ class ElasticSearchClient(
             .fragmentSize(params.fragmentSize)
 
         val baseQuery = queryBuilder.toElasticQuery()
-        log.atTrace().addKeyValue("ES query", jsonWriter.writeValueAsString(baseQuery)).log("base")
+        log.atTrace()
+            .addKeyValue("ES query", jsonWriter.writeValueAsString(baseQuery))
+            .log("base")
 
         val baseResult = client
             .target(projectUri).path(index.name).path("_search")
@@ -59,7 +60,10 @@ class ElasticSearchClient(
 
         val auxQueries = queryBuilder.toMultiFacetCountQueries()
         auxQueries.forEachIndexed { auxIndex, auxQuery ->
-            log.atTrace().addKeyValue("query[$auxIndex]", jsonWriter.writeValueAsString(auxQuery)).log("aux")
+            log.atTrace().addKeyValue(
+                "query[$auxIndex]",
+                jsonWriter.writeValueAsString(auxQuery)
+            ).log("aux")
 
             val auxResult = client
                 .target(projectUri)
@@ -75,7 +79,9 @@ class ElasticSearchClient(
                 extractAggregations(index, context)
                     ?.forEach { entry ->
                         @Suppress("UNCHECKED_CAST")
-                        (aggs[entry.key] as MutableMap<String, Any>).putAll(entry.value as Map<String, Any>)
+                        (aggs[entry.key] as MutableMap<String, Any>).putAll(
+                            entry.value as Map<String, Any>
+                        )
                     }
             }
         }
@@ -83,12 +89,14 @@ class ElasticSearchClient(
         // use LinkedHashMap to fix aggregation order
         result["aggs"] = LinkedHashMap<String, Any?>().apply {
             query.aggregations?.keys?.forEach { name ->
-                val nameAndOrder = "$name@${query.aggregations[name]?.get("order")}"
+                val nameAndOrder =
+                    "$name@${query.aggregations[name]?.get("order")}"
                 if (!aggs.containsKey(name) && aggs.containsKey(nameAndOrder)) {
                     aggs[name] = aggs[nameAndOrder] as Any
                 }
                 (aggs[name] as MutableMap<*, *>?)?.apply {
-                    val desiredAmount: Int = (query.aggregations[name]?.get("size") as Int?) ?: size
+                    val desiredAmount: Int =
+                        (query.aggregations[name]?.get("size") as Int?) ?: size
                     if (desiredAmount < entries.size) {
                         val keep = LinkedHashMap<Any, Any>()
                         entries.take(desiredAmount).forEach {
@@ -99,16 +107,40 @@ class ElasticSearchClient(
                 }
             }
             // prefer query string order; default to order from config
-            (query.aggregations?.keys ?: index.fields.map { it.name }).forEach { name ->
-                aggs[name]?.let { aggregationResult -> put(name, aggregationResult) }
+            (query.aggregations?.keys
+                ?: index.fields.map { it.name }).forEach { name ->
+                aggs[name]?.let { aggregationResult ->
+                    put(
+                        name,
+                        aggregationResult
+                    )
+                }
             }
         }
         return result;
 
     }
 
+    fun deleteIndex(
+        index: IndexConfiguration,
+        projectUri: String,
+    ): Response {
+        return client.target(projectUri)
+            .path(index.name)
+            .request()
+            .delete()
+            .also { log.info("response: $it") }
+            .readEntityAsJsonString()
+            .also { log.info("entity: $it") }
+            .let { result ->
+                Response.ok(result).build()
+            }
+    }
 
-    private fun validateElasticResult(result: Response, queryString: IndexQuery) {
+    private fun validateElasticResult(
+        result: Response,
+        queryString: IndexQuery
+    ) {
         if (result.status != 200) {
             log.atWarn()
                 .addKeyValue("status", result.status)
@@ -119,7 +151,10 @@ class ElasticSearchClient(
         }
     }
 
-    private fun buildHitResult(index: IndexConfiguration, hit: Map<String, Any>) =
+    private fun buildHitResult(
+        index: IndexConfiguration,
+        hit: Map<String, Any>
+    ) =
         mutableMapOf("_id" to hit["_id"]).apply {
             // store highlight if available
             hit["highlight"]?.let { put("_hits", it) }
@@ -132,4 +167,8 @@ class ElasticSearchClient(
                 source[field.name]?.let { put(field.name, it) }
             }
         }
+
+    private fun Response.readEntityAsJsonString(): String =
+        readEntity(String::class.java) ?: ""
+
 }

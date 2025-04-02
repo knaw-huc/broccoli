@@ -117,8 +117,6 @@ open class ProjectsResource(
         override fun toString() = name.lowercase()
     }
 
-    private fun Response.readEntityAsJsonString(): String = readEntity(String::class.java) ?: ""
-
     @GET
     @Path("{projectId}/{bodyId}")
     @Operation(summary = "Get project's annotations by bodyId")
@@ -144,6 +142,7 @@ open class ProjectsResource(
         val before = System.currentTimeMillis()
 
         val project = getProject(projectId)
+
         val annoRepo = project.annoRepo
         val textRepo = project.textRepo
         val allViews = project.views.keys.plus("self")
