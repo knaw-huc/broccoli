@@ -90,7 +90,7 @@ open class ProjectsResource(
 
         logQuery(queryString, from, size)
 
-        val result = this.esClient.search(
+        val result = this.esClient.searchIndex(
             index,
             project.brinta.uri,
             queryString,

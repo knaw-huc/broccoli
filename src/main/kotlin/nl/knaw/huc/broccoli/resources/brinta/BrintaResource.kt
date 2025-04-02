@@ -16,11 +16,10 @@ import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.readEntityAsJsonString
-import nl.knaw.huc.broccoli.service.toJsonString
 import org.slf4j.LoggerFactory
 
 @Produces(MediaType.APPLICATION_JSON)
-class BrintaResource (
+class BrintaResource(
     private val projects: Map<String, Project>,
     private val client: Client,
     private val esClient: ElasticSearchClient
@@ -36,53 +35,7 @@ class BrintaResource (
         val index = getIndex(project, indexName)
         logger.info("Creating ${project.name} index: ${index.name}")
 
-        val properties = mutableMapOf(
-            "text" to mapOf(
-                "type" to "text",
-                "fields" to mapOf(
-                    "tokenCount" to mapOf(
-                        "type" to "token_count",
-                        "analyzer" to "fulltext_analyzer"
-                    )
-                ),
-                "index_options" to "offsets",
-                "analyzer" to "fulltext_analyzer"
-            ),
-        )
-        index.fields.forEach { field ->
-            field.type.let { type -> properties[field.name] = mapOf("type" to type) }
-        }
-
-        val mappings = mapOf("properties" to properties)
-
-        return """
-            {
-              "mappings": ${mappings.toJsonString()},
-              "settings": {
-                "analysis": {
-                  "analyzer": {
-                    "fulltext_analyzer": {
-                      "type": "custom",
-                      "tokenizer": "standard",
-                      "filter": [
-                        "lowercase"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-        """.trimIndent()
-            .also { mapping -> logger.info("mapping: $mapping") }
-            .let { mapping ->
-                client.target(project.brinta.uri)
-                    .path(index.name)
-                    .request()
-                    .put(Entity.json(mapping))
-                    .also { logger.info("response: $it") }
-                    .readEntityAsJsonString()
-                    .also { logger.info("entity: $it") }
-            }
+        return this.esClient.createIndex(index, project.brinta.uri)
             .let { result ->
                 Response.ok(result).build()
             }
@@ -94,7 +47,8 @@ class BrintaResource (
         getProject(projectId).brinta.indices
             .associate { idx ->
                 idx.name to idx.fields.associate { field ->
-                    field.name to (field.nested?.let { nf -> nf.fields.associate { it.name to it.type } } ?: field.type)
+                    field.name to (field.nested?.let { nf -> nf.fields.associate { it.name to it.type } }
+                        ?: field.type)
                 }
             }
             .let { Response.ok(it).build() }
@@ -159,7 +113,8 @@ class BrintaResource (
         )
 
         todo.forEachIndexed { i, cur ->
-            logger.atInfo().log("Indexing #{} -> {}: {}", i, cur.bodyType(), cur.bodyId())
+            logger.atInfo()
+                .log("Indexing #{} -> {}: {}", i, cur.bodyType(), cur.bodyId())
 
             // fetch all text lines for current item
             val textLines = fetchTextLines(project, cur)
@@ -174,7 +129,8 @@ class BrintaResource (
                 end = selector["end"] as Int
             ).apply {
                 take?.let { limit ->
-                    logger.atInfo().log("limiting: only indexing first {} item(s)", limit)
+                    logger.atInfo()
+                        .log("limiting: only indexing first {} item(s)", limit)
                     take(limit)
                 }
             }
@@ -182,7 +138,10 @@ class BrintaResource (
                 .forEach { anno ->
                     // use anno's body.id as Elastic documentId
                     val docId = anno.bodyId()
-                    logger.atDebug().log("gathering index info for annoId / ES docId: {}", docId)
+                    logger.atDebug().log(
+                        "gathering index info for annoId / ES docId: {}",
+                        docId
+                    )
 
                     // build index payload for current anno
                     val payload = mutableMapOf<String, Any>()
@@ -193,11 +152,17 @@ class BrintaResource (
                         .first() // more than one text target without selector? -> arbitrarily choose the first
                         .let { textTarget ->
                             val textURL = textTarget["source"] as String
-                            val fetchedSegments = fetchTextSegmentsLocal(textLines, textURL)
+                            val fetchedSegments =
+                                fetchTextSegmentsLocal(textLines, textURL)
                             if (fetchedSegments.isNotEmpty()) {
-                                payload["text"] = fetchedSegments.joinToString(joinSeparator)
+                                payload["text"] =
+                                    fetchedSegments.joinToString(joinSeparator)
                             } else {
-                                logger.atWarn().log("Failed to fetch text for {} from {}", docId, textURL)
+                                logger.atWarn().log(
+                                    "Failed to fetch text for {} from {}",
+                                    docId,
+                                    textURL
+                                )
                                 err.add(
                                     mapOf(
                                         "bodyId" to docId,
@@ -212,8 +177,13 @@ class BrintaResource (
                     index.fields.forEach { field ->
                         field.path?.let { path ->
                             try {
-                                anno.read(path)?.let { payload[field.name] = it }
-                                logger.atTrace().log("payload[{}] -> {}", field.name, payload[field.name])
+                                anno.read(path)
+                                    ?.let { payload[field.name] = it }
+                                logger.atTrace().log(
+                                    "payload[{}] -> {}",
+                                    field.name,
+                                    payload[field.name]
+                                )
                             } catch (e: PathNotFoundException) {
                                 // Must catch PNF, even though DEFAULT_PATH_LEAF_TO_NULL is set, because intermediate
                                 //   nodes can also be null, i.e., they don't exist, which still yields a PNF Exception.
@@ -222,7 +192,11 @@ class BrintaResource (
                         }
                     }
 
-                    logger.atInfo().log("Indexing {}, payload.size={}", docId, payload.size)
+                    logger.atInfo().log(
+                        "Indexing {}, payload.size={}",
+                        docId,
+                        payload.size
+                    )
 
                     client.target(project.brinta.uri)
                         .path(index.name).path("_doc").path(docId)
@@ -230,8 +204,13 @@ class BrintaResource (
                         .put(Entity.json(payload))
                         .run {
                             if (statusInfo.family != Response.Status.Family.SUCCESSFUL) {   // could be OK or CREATED
-                                val entity = readEntityAsJsonString()       // !! must read entity to close connection!
-                                logger.atWarn().log("Failed to index {}: {}", docId, entity)
+                                val entity =
+                                    readEntityAsJsonString()       // !! must read entity to close connection!
+                                logger.atWarn().log(
+                                    "Failed to index {}: {}",
+                                    docId,
+                                    entity
+                                )
                                 err.add(
                                     mapOf(
                                         "bodyId" to docId,
@@ -250,7 +229,10 @@ class BrintaResource (
         return Response.ok(result).build()
     }
 
-    private fun fetchTextLines(project: Project, anno: AnnoRepoSearchResult): List<String> =
+    private fun fetchTextLines(
+        project: Project,
+        anno: AnnoRepoSearchResult
+    ): List<String> =
         anno.withoutField<String>(project.textType, "selector")
             .also { if (it.size > 1) logger.warn("multiple Text targets without selector: $it") }
             .first() // more than one text target without selector? -> arbitrarily choose the first
@@ -269,16 +251,24 @@ class BrintaResource (
 
                 return when (resp.status) {
                     OK.statusCode -> {
-                        resp.readEntity(object : GenericType<ArrayList<String>>() {})
+                        resp.readEntity(object :
+                            GenericType<ArrayList<String>>() {})
                     }
 
                     UNAUTHORIZED.statusCode -> {
                         logger.atWarn().log("Auth failed fetching {}", textURL)
-                        throw ClientErrorException("Need credentials for $textURL", UNAUTHORIZED)
+                        throw ClientErrorException(
+                            "Need credentials for $textURL",
+                            UNAUTHORIZED
+                        )
                     }
 
                     else -> {
-                        logger.atWarn().log("Failed to fetch {} (status: {})", textURL, resp.status)
+                        logger.atWarn().log(
+                            "Failed to fetch {} (status: {})",
+                            textURL,
+                            resp.status
+                        )
                         emptyList()
                     }
                 }
@@ -289,7 +279,10 @@ class BrintaResource (
             ?: throw NotFoundException("Unknown project: $projectId. See /projects for known projects")
     }
 
-    private fun getIndex(project: Project, indexName: String?): IndexConfiguration =
+    private fun getIndex(
+        project: Project,
+        indexName: String?
+    ): IndexConfiguration =
         indexName
             ?.let {
                 project.brinta.indices.find { index -> index.name == indexName }
@@ -301,8 +294,12 @@ class BrintaResource (
         private val logger = LoggerFactory.getLogger(BrintaResource::class.java)
 
         @JvmStatic
-        fun fetchTextSegmentsLocal(textLines: List<String>, textURL: String): List<String> {
-            val coords = textURL.indexOf("segments/index/") + "segments/index/".length
+        fun fetchTextSegmentsLocal(
+            textLines: List<String>,
+            textURL: String
+        ): List<String> {
+            val coords =
+                textURL.indexOf("segments/index/") + "segments/index/".length
             val parts = textURL.substring(coords).split('/')
             return when (parts.size) {
                 2 -> {
@@ -337,15 +334,18 @@ class BrintaResource (
                     // adjust first and last segments according to start-/endIndex
                     result[0] = result.first().substring(startIndex)
                     if (result.lastIndex == 0) {
-                        result[result.lastIndex] = result.last().substring(0, endIndex - startIndex + 1)
+                        result[result.lastIndex] = result.last()
+                            .substring(0, endIndex - startIndex + 1)
                     } else {
-                        result[result.lastIndex] = result.last().substring(0, endIndex + 1)
+                        result[result.lastIndex] =
+                            result.last().substring(0, endIndex + 1)
                     }
                     result
                 }
 
                 else -> {
-                    logger.atWarn().log("Failed to extract coordinates from {}", coords)
+                    logger.atWarn()
+                        .log("Failed to extract coordinates from {}", coords)
                     emptyList()
                 }
             }

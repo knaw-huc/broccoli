@@ -9,6 +9,7 @@ import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.ElasticQueryBuilder
 import nl.knaw.huc.broccoli.resources.projects.Params
 import nl.knaw.huc.broccoli.service.extractAggregations
+import nl.knaw.huc.broccoli.service.toJsonString
 import org.slf4j.LoggerFactory
 
 class ElasticSearchClient(
@@ -18,7 +19,62 @@ class ElasticSearchClient(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    fun search(
+    fun createIndex(
+        index: IndexConfiguration,
+        projectUri: String
+    ) {
+        val properties = mutableMapOf(
+            "text" to mapOf(
+                "type" to "text",
+                "fields" to mapOf(
+                    "tokenCount" to mapOf(
+                        "type" to "token_count",
+                        "analyzer" to "fulltext_analyzer"
+                    )
+                ),
+                "index_options" to "offsets",
+                "analyzer" to "fulltext_analyzer"
+            ),
+        )
+        index.fields.forEach { field ->
+            field.type.let { type ->
+                properties[field.name] = mapOf("type" to type)
+            }
+        }
+
+        val mappings = mapOf("properties" to properties)
+
+        return """
+            {
+              "mappings": ${mappings.toJsonString()},
+              "settings": {
+                "analysis": {
+                  "analyzer": {
+                    "fulltext_analyzer": {
+                      "type": "custom",
+                      "tokenizer": "standard",
+                      "filter": [
+                        "lowercase"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+        """.trimIndent()
+            .also { mapping -> log.info("mapping: $mapping") }
+            .let { mapping ->
+                client.target(projectUri)
+                    .path(index.name)
+                    .request()
+                    .put(Entity.json(mapping))
+                    .also { log.info("response: $it") }
+                    .readEntityAsJsonString()
+                    .also { log.info("entity: $it") }
+            }
+    }
+
+    fun searchIndex(
         index: IndexConfiguration,
         projectUri: String,
         query: IndexQuery,
