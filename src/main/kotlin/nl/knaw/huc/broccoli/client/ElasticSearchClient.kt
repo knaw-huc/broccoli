@@ -22,7 +22,7 @@ class ElasticSearchClient(
     fun createIndex(
         index: IndexConfiguration,
         projectUri: String
-    ) {
+    ): String {
         val properties = mutableMapOf(
             "text" to mapOf(
                 "type" to "text",
@@ -180,7 +180,7 @@ class ElasticSearchClient(
     fun deleteIndex(
         index: IndexConfiguration,
         projectUri: String,
-    ): Response {
+    ): String {
         return client.target(projectUri)
             .path(index.name)
             .request()
@@ -188,9 +188,6 @@ class ElasticSearchClient(
             .also { log.info("response: $it") }
             .readEntityAsJsonString()
             .also { log.info("entity: $it") }
-            .let { result ->
-                Response.ok(result).build()
-            }
     }
 
     private fun validateElasticResult(

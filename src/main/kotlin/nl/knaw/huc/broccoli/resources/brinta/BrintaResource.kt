@@ -70,6 +70,9 @@ class BrintaResource(
         }
 
         return this.esClient.deleteIndex(index, project.brinta.uri)
+            .let { result ->
+                Response.ok(result).build()
+            }
     }
 
     @POST
