@@ -1,5 +1,6 @@
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.jayway.jsonpath.ParseContext
+import com.jayway.jsonpath.PathNotFoundException
 import jakarta.ws.rs.BadRequestException
 import jakarta.ws.rs.client.Client
 import jakarta.ws.rs.client.Entity
@@ -8,6 +9,7 @@ import nl.knaw.huc.broccoli.api.IndexQuery
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.ElasticQueryBuilder
 import nl.knaw.huc.broccoli.resources.projects.Params
+import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.extractAggregations
 import nl.knaw.huc.broccoli.service.toJsonString
 import org.slf4j.LoggerFactory
@@ -174,6 +176,73 @@ class ElasticSearchClient(
             }
         }
         return result;
+
+    }
+
+    fun indexAnno(
+        index: IndexConfiguration,
+        projectUri: String,
+        docId: String,
+        anno: AnnoRepoSearchResult,
+        payload: MutableMap<String, Any>
+    ): Pair<Boolean, Any> {
+
+        // Then: optional extra payload: fields from config
+        // TODO: to es client
+        index.fields.forEach { field ->
+            field.path?.let { path ->
+                try {
+                    anno.read(path)
+                        ?.let { payload[field.name] = it }
+                    log.atTrace().log(
+                        "payload[{}] -> {}",
+                        field.name,
+                        payload[field.name]
+                    )
+                } catch (e: PathNotFoundException) {
+                    // Must catch PNF, even though DEFAULT_PATH_LEAF_TO_NULL is set, because intermediate
+                    //   nodes can also be null, i.e., they don't exist, which still yields a PNF Exception.
+                    // Ignore this, just means the annotation doesn't have a value for this field
+                }
+            }
+        }
+
+        log.atInfo().log(
+            "Indexing {}, payload.size={}",
+            docId,
+            payload.size
+        )
+
+        // TODO: to es client
+        client.target(projectUri)
+            .path(index.name).path("_doc").path(docId)
+            .request()
+            .put(Entity.json(payload))
+            .run {
+                if (statusInfo.family != Response.Status.Family.SUCCESSFUL) {   // could be OK or CREATED
+                    val entity =
+                        readEntityAsJsonString()       // !! must read entity to close connection!
+                    log.atWarn().log(
+                        "Failed to index {}: {}",
+                        docId,
+                        entity
+                    )
+                    return Pair(
+                        false,
+                        mapOf(
+                            "bodyId" to docId,
+                            "annoURL" to anno.read("$.id"),
+                            "elastic" to entity
+                        )
+                    )
+                } else {
+                    close() // explicit close, or connection pool will be exhausted !!!
+                    return Pair(
+                        true,
+                        docId
+                    )
+                }
+            }
 
     }
 

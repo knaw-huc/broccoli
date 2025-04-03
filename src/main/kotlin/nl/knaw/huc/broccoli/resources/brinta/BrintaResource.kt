@@ -1,10 +1,8 @@
 package nl.knaw.huc.broccoli.resources.brinta
 
 import ElasticSearchClient
-import com.jayway.jsonpath.PathNotFoundException
 import jakarta.ws.rs.*
 import jakarta.ws.rs.client.Client
-import jakarta.ws.rs.client.Entity
 import jakarta.ws.rs.core.GenericType
 import jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION
 import jakarta.ws.rs.core.MediaType
@@ -15,7 +13,6 @@ import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
-import nl.knaw.huc.broccoli.service.readEntityAsJsonString
 import org.slf4j.LoggerFactory
 
 @Produces(MediaType.APPLICATION_JSON)
@@ -174,60 +171,30 @@ class BrintaResource(
                                     )
                                 )
                             }
-                        }
-
-                    // Then: optional extra payload: fields from config
-                    index.fields.forEach { field ->
-                        field.path?.let { path ->
-                            try {
-                                anno.read(path)
-                                    ?.let { payload[field.name] = it }
-                                logger.atTrace().log(
-                                    "payload[{}] -> {}",
-                                    field.name,
-                                    payload[field.name]
-                                )
-                            } catch (e: PathNotFoundException) {
-                                // Must catch PNF, even though DEFAULT_PATH_LEAF_TO_NULL is set, because intermediate
-                                //   nodes can also be null, i.e., they don't exist, which still yields a PNF Exception.
-                                // Ignore this, just means the annotation doesn't have a value for this field
-                            }
-                        }
-                    }
-
-                    logger.atInfo().log(
-                        "Indexing {}, payload.size={}",
-                        docId,
-                        payload.size
-                    )
-
-                    client.target(project.brinta.uri)
-                        .path(index.name).path("_doc").path(docId)
-                        .request()
-                        .put(Entity.json(payload))
-                        .run {
-                            if (statusInfo.family != Response.Status.Family.SUCCESSFUL) {   // could be OK or CREATED
-                                val entity =
-                                    readEntityAsJsonString()       // !! must read entity to close connection!
-                                logger.atWarn().log(
-                                    "Failed to index {}: {}",
-                                    docId,
-                                    entity
-                                )
+                            // Then: optional extra payload: fields from config
+                            val indexed = this.esClient.indexAnno(
+                                index,
+                                project.brinta.uri,
+                                docId,
+                                anno,
+                                payload
+                            )
+                            if (!indexed.first) {
                                 err.add(
                                     mapOf(
                                         "bodyId" to docId,
                                         "annoURL" to anno.read("$.id"),
-                                        "elastic" to entity
+                                        "elastic" to indexed.second
                                     )
                                 )
                             } else {
-                                close() // explicit close, or connection pool will be exhausted !!!
                                 ok.add(docId)
                             }
                         }
                 }
         }
+
+
 
         return Response.ok(result).build()
     }
