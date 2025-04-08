@@ -1,6 +1,7 @@
 package nl.knaw.huc.broccoli.resources.brinta
 
 import ElasticSearchClient
+import com.jayway.jsonpath.PathNotFoundException
 import jakarta.ws.rs.*
 import jakarta.ws.rs.client.Client
 import jakarta.ws.rs.core.GenericType
@@ -172,19 +173,36 @@ class BrintaResource(
                                 )
                             }
                             // Then: optional extra payload: fields from config
-                            val indexed = this.esClient.indexAnno(
+                            index.fields.forEach { field ->
+                                field.path?.let { path ->
+                                    try {
+                                        anno.read(path)
+                                            ?.let { payload[field.name] = it }
+                                        logger.atTrace().log(
+                                            "payload[{}] -> {}",
+                                            field.name,
+                                            payload[field.name]
+                                        )
+                                    } catch (e: PathNotFoundException) {
+                                        // Must catch PNF, even though DEFAULT_PATH_LEAF_TO_NULL is set, because intermediate
+                                        //   nodes can also be null, i.e., they don't exist, which still yields a PNF Exception.
+                                        // Ignore this, just means the annotation doesn't have a value for this field
+                                    }
+                                }
+                            }
+                            // Then: optional extra payload: fields from config
+                            val indexed = this.esClient.addToIndex(
                                 index,
                                 project.brinta.uri,
                                 docId,
-                                anno,
                                 payload
                             )
-                            if (!indexed.first) {
+                            if (!indexed) {
                                 err.add(
                                     mapOf(
                                         "bodyId" to docId,
                                         "annoURL" to anno.read("$.id"),
-                                        "elastic" to indexed.second
+                                        "elastic" to payload
                                     )
                                 )
                             } else {
