@@ -7,7 +7,7 @@
     <groupId>nl.knaw.huc</groupId>
     <artifactId>broccoli</artifactId>
 
-    <version>0.41-tokencount-in-result-0</version>
+    <version>0.41-tokencount-in-result-1</version>
 
     <packaging>jar</packaging>
 

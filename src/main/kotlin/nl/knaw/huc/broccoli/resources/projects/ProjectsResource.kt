@@ -152,8 +152,10 @@ class ProjectsResource(
             jsonParser.parse(auxJson).let { context ->
                 extractAggregations(index, context)
                     ?.forEach { entry ->
-                        @Suppress("UNCHECKED_CAST")
-                        (aggs[entry.key] as MutableMap<String, Any>).putAll(entry.value as Map<String, Any>)
+                        aggs[entry.key]?.let { agg ->
+                            @Suppress("UNCHECKED_CAST")
+                            (agg as MutableMap<String, Any>).putAll(entry.value as Map<String, Any>)
+                        }
                     }
             }
         }
