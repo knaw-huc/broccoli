@@ -8,6 +8,8 @@ import jakarta.validation.Valid
 import jakarta.validation.constraints.NotNull
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.resources.AboutResource
+import nl.knaw.huc.broccoli.service.anno.AnnoRepo.Companion.DEFAULT_CACHE_CAPACITY
+import nl.knaw.huc.broccoli.service.anno.AnnoRepo.Companion.DEFAULT_CACHE_THRESHOLD
 
 class BroccoliConfiguration : Configuration() {
     @Valid
@@ -48,6 +50,16 @@ class AnnoRepoConfiguration {
     @Valid
     @JsonProperty
     var apiKey: String? = null
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    var cacheCapacity = DEFAULT_CACHE_CAPACITY
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    var cacheThreshold = DEFAULT_CACHE_THRESHOLD
 }
 
 class TextRepoConfiguration {

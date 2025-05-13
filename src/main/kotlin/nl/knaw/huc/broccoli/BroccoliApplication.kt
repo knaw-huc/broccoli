@@ -124,9 +124,10 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
         with(annoRepoConfig) {
             val serverURI = URI.create(uri)
             val userAgent = "$name (${this@BroccoliApplication.javaClass.name}/$appVersion)"
+            val client = AnnoRepoClient(serverURI, apiKey, userAgent)
             log.info("- setting up AnnoRepo: uri=$serverURI, container=$containerName, apiKey=$apiKey, userAgent=$userAgent")
 
-            AnnoRepo(AnnoRepoClient(serverURI, apiKey, userAgent), containerName, textType)
+            AnnoRepo(client, containerName, textType, cacheCapacity, cacheThreshold)
         }
 
     private fun setupCORSHeaders(environment: ServletEnvironment) {

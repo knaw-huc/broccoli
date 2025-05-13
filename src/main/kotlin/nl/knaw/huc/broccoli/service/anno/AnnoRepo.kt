@@ -20,12 +20,18 @@ import kotlin.streams.asSequence
 class AnnoRepo(
     private val annoRepoClient: AnnoRepoClient,
     private val defaultContainerName: String,
-    private val textType: String
+    private val textType: String,
+    cacheCapacity: Int = DEFAULT_CACHE_CAPACITY,
+    private val cacheThreshold: Int = DEFAULT_CACHE_THRESHOLD
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
+    init {
+        log.debug("Initializing AnnoRepo (cacheCapacity=$cacheCapacity, cacheThreshold=$cacheThreshold)")
+    }
+
     private val cachedQueryResults =
-        LRUCache<Pair<String, Map<String, Any>>, List<DocumentContext>>(capacity = CACHE_CAPACITY)
+        LRUCache<Pair<String, Map<String, Any>>, List<DocumentContext>>(capacity = cacheCapacity)
 
     // choose 'null' over throwing exceptions when json paths cannot be found
     private val jsonParser = JsonPath.using(defaultConfiguration().addOptions(DEFAULT_PATH_LEAF_TO_NULL))
@@ -48,11 +54,11 @@ class AnnoRepo(
 
         log.info("cache miss for: $key, hashCode=${key.hashCode()}")
         val value = liveQuery(containerName, query).toList() // note: this pulls in the entire result list
-        if (value.size < CACHE_RESULT_SET_SIZE_THRESHOLD) {
-            log.info("resultSet.size (${value.size}) < $CACHE_RESULT_SET_SIZE_THRESHOLD) -> caching")
+        if (value.size <= cacheThreshold) {
+            log.info("resultSet.size (${value.size}) <= $cacheThreshold) -> caching")
             cachedQueryResults.put(key, value)
         } else {
-            log.info("resultSet.size (${value.size}) < $CACHE_RESULT_SET_SIZE_THRESHOLD) -> not caching")
+            log.info("resultSet.size (${value.size}) > $cacheThreshold) -> not caching")
         }
         return value
     }
@@ -142,7 +148,7 @@ class AnnoRepo(
     data class Offset(val value: Int, val id: String)
 
     companion object {
-        const val CACHE_CAPACITY = 1000
-        const val CACHE_RESULT_SET_SIZE_THRESHOLD = 100
+        const val DEFAULT_CACHE_CAPACITY = 1000
+        const val DEFAULT_CACHE_THRESHOLD = 100
     }
 }
