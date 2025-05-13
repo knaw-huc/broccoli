@@ -1,0 +1,42 @@
+{
+  "server": {
+    "applicationConnectors": [
+      {
+        "type": "http",
+        "port": "8080"
+      }
+    ]
+  },
+  "externalBaseUrl": "http://localhost:8080",
+  "projects": [
+    {
+      "name": "dummy",
+      "textType": "Text",
+      "topTierBodyType": "tf:File",
+      "views": [],
+      "brinta": {
+        "uri": "http://localhost:9200",
+        "joinSeparator": ",",
+        "indices": [
+          {
+            "name": "dummy-index",
+            "bodyTypes": [],
+            "fields": [
+              {
+                "name": "bodyType",
+                "path": "$.body.type"
+              }
+            ]
+          }
+        ],
+        "deleteKey": "confirm-deletion-c6451546-ee86-45af-ac62-7cb1a3a405ed"
+      },
+      "annoRepo": {
+        "uri": "http://localhost:9200/anno-repo"
+      },
+      "textRepo": {
+        "uri": "http://localhost:7200"
+      }
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "_source": true,
+  "track_total_hits": true,
+  "fields": [
+    "text.tokenCount"
+  ],
+  "from": 0,
+  "size": 10,
+  "sort": {
+    "_score": {
+      "order": "desc"
+    }
+  },
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "query_string": {
+            "query": "text:koe"
+          }
+        }
+      ]
+    }
+  },
+  "highlight": {
+    "fields": {
+      "text": {
+        "type": "unified",
+        "fragment_size": 100
+      }
+    },
+    "highlight_query": {
+      "query_string": {
+        "query": "text:koe"
+      }
+    }
+  },
+  "aggregations": {}
+}
