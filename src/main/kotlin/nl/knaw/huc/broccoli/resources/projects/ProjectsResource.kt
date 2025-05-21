@@ -67,9 +67,10 @@ class ProjectsResource(
 
     @POST
     @Path("{projectId}/search")
+    @Consumes(MediaType.APPLICATION_JSON)
     fun searchIndex(
-        @PathParam("projectId") projectId: String,
         queryString: IndexQuery,
+        @PathParam("projectId") projectId: String,
         @QueryParam("indexName") indexParam: String?,
         @QueryParam("from") @Min(0) @DefaultValue("0") from: Int,
         @QueryParam("size") @Min(0) @DefaultValue("10") size: Int,
@@ -143,8 +144,12 @@ class ProjectsResource(
         auxQueries.forEachIndexed { auxIndex, auxQuery ->
             logger.atTrace().addKeyValue("query[$auxIndex]", jsonWriter.writeValueAsString(auxQuery)).log("aux")
 
-            val auxResult = client.target(project.brinta.uri).path(index.name).path("_search")
-                .request().post(Entity.json(auxQuery))
+            val auxResult = client
+                .target(project.brinta.uri)
+                .path(index.name)
+                .path("_search")
+                .request()
+                .post(Entity.json(auxQuery))
             validateElasticResult(auxResult, queryString)
             val auxJson = auxResult.readEntityAsJsonString()
             logger.atTrace().addKeyValue("json[$auxIndex]", auxJson).log("aux")

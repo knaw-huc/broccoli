@@ -14,7 +14,10 @@ target/
 /.classpath
 /.project
 /.make
+
 *.json
+!src/test/resources/**/*.json
+
 *.lst
 *.log
 globalise.http
