@@ -16,7 +16,7 @@ import java.time.Instant
 @Path(ResourcePaths.ABOUT)
 @Produces(MediaType.APPLICATION_JSON)
 class AboutResource(
-    private val configuration: BroccoliConfiguration,
+    private val externalBaseUrl: String,
     private val appName: String,
     private val version: String
 ) {
@@ -28,7 +28,7 @@ class AboutResource(
         appName = appName,
         version = version,
         startedAt = startedAt,
-        baseURI = configuration.externalBaseUrl,
+        baseURI = externalBaseUrl,
         hucLogLevel = findHucLogLevel()
     )
 

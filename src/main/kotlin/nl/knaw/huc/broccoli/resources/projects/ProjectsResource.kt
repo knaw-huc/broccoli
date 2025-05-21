@@ -8,15 +8,14 @@ import jakarta.validation.constraints.Min
 import jakarta.ws.rs.*
 import jakarta.ws.rs.client.Client
 import jakarta.ws.rs.client.Entity
-import jakarta.ws.rs.core.GenericType
-import jakarta.ws.rs.core.HttpHeaders
-import jakarta.ws.rs.core.MediaType
-import jakarta.ws.rs.core.Response
+import jakarta.ws.rs.core.*
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.TEXT_TOKEN_COUNT
 import nl.knaw.huc.broccoli.api.Constants.isIn
 import nl.knaw.huc.broccoli.api.IndexQuery
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
+import nl.knaw.huc.broccoli.api.ResourcePaths.V1
+import nl.knaw.huc.broccoli.api.ResourcePaths.V2
 import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.ElasticQueryBuilder
@@ -30,9 +29,8 @@ import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
 import org.slf4j.MarkerFactory
 
-@Path(PROJECTS)
 @Produces(MediaType.APPLICATION_JSON)
-class ProjectsResource(
+open class ProjectsResource(
     private val projects: Map<String, Project>,
     private val client: Client,
     private val jsonParser: ParseContext,
@@ -43,9 +41,8 @@ class ProjectsResource(
     }
 
     @GET
-    @Path("")
     @Operation(summary = "Get configured projects")
-    fun listProjects(): Set<String> = projects.keys
+    open fun listProjects(): Set<String> = projects.keys
 
     @GET
     @Path("{projectId}")
