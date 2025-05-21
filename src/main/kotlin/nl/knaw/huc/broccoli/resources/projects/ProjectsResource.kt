@@ -13,6 +13,7 @@ import jakarta.ws.rs.core.HttpHeaders
 import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
+import nl.knaw.huc.broccoli.api.Constants.TEXT_TOKEN_COUNT
 import nl.knaw.huc.broccoli.api.Constants.isIn
 import nl.knaw.huc.broccoli.api.IndexQuery
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
@@ -55,10 +56,14 @@ class ProjectsResource(
         Response.ok(it.annoRepo.findDistinct(AR_BODY_TYPE)).build()
     }
 
-    @GET
-    @Path("{projectId}/views")
-    fun getViews(@PathParam("projectId") projectId: String) = getProject(projectId).views
-
+    @DELETE
+    @Path("{projectId}/cache")
+    fun invalidateCache(
+        @PathParam("projectId") projectId: String
+    ): Response {
+        getProject(projectId).annoRepo.invalidateCache()
+        return Response.noContent().build()
+    }
 
     @POST
     @Path("{projectId}/search")
@@ -121,7 +126,13 @@ class ProjectsResource(
             context.read<Map<String, Any>>("$.hits.total")
                 ?.let { result["total"] = it }
 
-            extractAggregations(index, context)?.let { aggs.putAll(it) }
+            extractAggregations(index, context)?.let { aggsFromElastic ->
+                aggsFromElastic.forEach { (aggKey, aggValues) ->
+                    aggs[aggKey] = queryString.terms?.get(aggKey)?.let { askedFor ->
+                        (aggValues as Map<*, *>).filterKeys { it in (askedFor as List<*>) }
+                    } ?: aggValues
+                }
+            }
             logger.atTrace().addKeyValue("aggs", aggs).log("base")
 
             context.read<List<Map<String, Any>>>("$.hits.hits[*]")
@@ -141,13 +152,15 @@ class ProjectsResource(
                 .post(Entity.json(auxQuery))
             validateElasticResult(auxResult, queryString)
             val auxJson = auxResult.readEntityAsJsonString()
-            logger.atTrace().addKeyValue("json", auxJson).log("aux")
+            logger.atTrace().addKeyValue("json[$auxIndex]", auxJson).log("aux")
 
             jsonParser.parse(auxJson).let { context ->
                 extractAggregations(index, context)
                     ?.forEach { entry ->
-                        @Suppress("UNCHECKED_CAST")
-                        (aggs[entry.key] as MutableMap<String, Any>).putAll(entry.value as Map<String, Any>)
+                        aggs[entry.key]?.let { agg ->
+                            @Suppress("UNCHECKED_CAST")
+                            (agg as MutableMap<String, Any>).putAll(entry.value as Map<String, Any>)
+                        }
                     }
             }
         }
@@ -179,6 +192,10 @@ class ProjectsResource(
         return Response.ok(result).build()
     }
 
+    @GET
+    @Path("{projectId}/views")
+    fun getViews(@PathParam("projectId") projectId: String) = getProject(projectId).views
+
     private fun validateElasticResult(result: Response, queryString: IndexQuery) {
         if (result.status != 200) {
             logger.atWarn()
@@ -208,6 +225,13 @@ class ProjectsResource(
 
             @Suppress("UNCHECKED_CAST")
             val source = hit["_source"] as Map<String, Any>
+
+            hit["fields"]?.let { fields ->
+                @Suppress("UNCHECKED_CAST")
+                (fields as Map<String, Any>)[TEXT_TOKEN_COUNT]?.let {
+                    put("textTokenCount", (it as List<*>).first())
+                }
+            }
 
             // store all configured index fields with their search result, if any
             index.fields.forEach { field ->
