@@ -34,7 +34,7 @@
         <dropwizard-swagger-ui.version>4.6.2</dropwizard-swagger-ui.version>
         <dropwizard-swagger.version>4.0.5-1</dropwizard-swagger.version>
         <dropwizard.version>4.0.1</dropwizard.version>
-        <jackson-module-kotlin.version>2.19.0</jackson-module-kotlin.version>
+        <jackson-bom.version>2.19.0</jackson-bom.version>
         <json-path.version>2.9.0</json-path.version>
         <mockito-kotlin.version>5.1.0</mockito-kotlin.version>
         <mockito.version>5.5.0</mockito.version>
@@ -57,6 +57,14 @@
                 <version>${dropwizard.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+	    <!-- https://github.com/FasterXML/jackson-annotations/issues/284#issuecomment-2837647751
+		 https://github.com/FasterXML/jackson-annotations/issues/284#issuecomment-2839601763 -->
+            <dependency>
+                <groupId>com.fasterxml.jackson.module</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson-bom.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -246,9 +254,15 @@
             <groupId>io.dropwizard</groupId>
             <artifactId>dropwizard-assets</artifactId>
         </dependency>
+
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
+        </dependency>
+        <!-- https://github.com/FasterXML/jackson/discussions/170 -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-parameter-names</artifactId>
         </dependency>
 
         <dependency>
@@ -293,7 +307,6 @@
         <dependency>
             <groupId>com.fasterxml.jackson.module</groupId>
             <artifactId>jackson-module-kotlin</artifactId>
-            <version>${jackson-module-kotlin.version}</version>
         </dependency>
 
         <!-- test dependencies -->
@@ -341,12 +354,6 @@
             <artifactId>mockito-kotlin</artifactId>
             <version>${mockito-kotlin.version}</version>
             <scope>test</scope>
-        </dependency>
-
-        <!-- https://github.com/FasterXML/jackson/discussions/170 -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.module</groupId>
-            <artifactId>jackson-module-parameter-names</artifactId>
         </dependency>
 
         <!-- testing: mock server -->
