@@ -35,6 +35,6 @@ class AboutResource(
     private fun findHucLogLevel(): String {
         val loggerContext = LoggerFactory.getILoggerFactory()
         val logger: Logger = (loggerContext as LoggerContext).getLogger("nl.knaw.huc")
-        return logger.level.toString()
+        return logger.level?.toString() ?: ""
     }
 }
