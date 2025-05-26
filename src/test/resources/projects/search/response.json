@@ -11,7 +11,8 @@
           "Maer de Sax dunkt mij een vorst,  11\n die met loode voeten gaet, ende van 't volk die de <em>koe</em> gebonden¹¹"
         ]
       },
-      "bodyType": "Letter"
+      "bodyType": "Letter",
+      "textTokenCount":968
     }
   ],
   "aggs": {}
