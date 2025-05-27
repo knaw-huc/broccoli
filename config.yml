@@ -36,6 +36,8 @@ logging:
 
   loggers:
     nl.knaw.huc: TRACE
+    TraceLog: TRACE
+    RequestTraceLog: TRACE
     org: WARN
     org.glassfish: ERROR
     com.jayway: ERROR
@@ -43,182 +45,7 @@ logging:
 externalBaseUrl: ${BR_EXTERNAL_BASE_URL:-http://localhost:8080}
 
 projects:
-  - name: "globalise"
-    textType: LogicalText
-    annoRepo:
-      containerName: globalise-2024-03-18
-      uri: https://annorepo.globalise.huygens.knaw.nl
-    brinta:
-      uri: http://localhost:9200
-      deleteKey: 00b9a2d3-0176-46ae-be0c-4909b1df0cfe
-      joinSeparator: " "
-      indices:
-        - name: docs
-          bodyTypes: ["px:Page"]
-          fields:
-            - name: bodyType
-              path: "$.body.type"
-            - name: invNr
-              path: "$.body.metadata.inventoryNumber"
-            - name: document
-              path: "$.body.metadata.document"
-    textRepo:
-      uri: https://globalise.tt.di.huc.knaw.nl
-
-  - name: "republic"
-    topTierBodyType: Volume
-    textType: LogicalText
-    brinta:
-      uri: http://localhost:9200
-      deleteKey: "republic-dev-mag-weg"
-      joinSeparator: " "
-      indices:
-        - name: "rep-2024.11.30"
-          bodyTypes: [Resolution]
-          fields:
-            - name: textType
-              path: "$.body.metadata.textType"
-            - name: resolutionType
-              path: "$.body.metadata.resolutionType"
-            - name: propositionType
-              path: "$.body.metadata.propositionType"
-            - name: delegateName
-              logical:
-                scope: delegates
-                path: ".name"
-            - name: personName
-              logical:
-                scope: entities
-                path: ".name"
-                fixed:
-                  path: ".type"
-                  value: PER
-            - name: roleName
-              logical:
-                scope: entities
-                path: ".name"
-                fixed:
-                  path: ".type"
-                  value: HOE
-            - name: roleCategories
-              logical:
-                scope: entities
-                path: ".categories"
-                fixed:
-                  path: ".type"
-                  value: HOE
-            - name: locationName
-              logical:
-                scope: entities
-                path: ".name"
-                fixed:
-                  path: ".type"
-                  value: LOC
-            - name: locationCategories
-              logical:
-                scope: entities
-                path: ".categories"
-                fixed:
-                  path: ".type"
-                  value: LOC
-            - name: organisationName
-              logical:
-                scope: entities
-                path: ".name"
-                fixed:
-                  path: ".type"
-                  value: ORG
-            - name: organisationCategories
-              logical:
-                scope: entities
-                path: ".categories"
-                fixed:
-                  path: ".type"
-                  value: ORG
-            - name: commissionName
-              logical:
-                scope: entities
-                path: ".name"
-                fixed:
-                  path: ".type"
-                  value: COM
-            - name: commissionCategories
-              logical:
-                scope: entities
-                path: ".categories"
-                fixed:
-                  path: ".type"
-                  value: COM
-            - name: sessionWeekday
-              path: "$.body.metadata.sessionWeekday"
-            - name: delegateId
-              logical:
-                scope: delegates
-                path: ".id"
-            - name: personId
-              logical:
-                scope: entities
-                path: ".id"
-                fixed:
-                  path: ".type"
-                  value: PER
-            - name: roleId
-              logical:
-                scope: entities
-                path: ".id"
-                fixed:
-                  path: ".type"
-                  value: HOE
-            - name: locationId
-              logical:
-                scope: entities
-                path: ".id"
-                fixed:
-                  path: ".type"
-                  value: LOC
-            - name: organisationId
-              logical:
-                scope: entities
-                path: ".id"
-                fixed:
-                  path: ".type"
-                  value: ORG
-            - name: commissionId
-              logical:
-                scope: entities
-                path: ".id"
-                fixed:
-                  path: ".type"
-                  value: COM
-            - name: bodyType
-              path: "$.body.type"
-            - name: sessionDate
-              path: "$.body.metadata.sessionDate"
-              type: date
-            - name: sessionDay
-              path: "$.body.metadata.sessionDay"
-              type: byte
-            - name: sessionMonth
-              path: "$.body.metadata.sessionMonth"
-              type: byte
-            - name: sessionYear
-              path: "$.body.metadata.sessionYear"
-              type: short
-            - name: delegateProvince
-              logical:
-                scope: delegates
-                path: ".province"
-            - name: delegateIsPresident
-              logical:
-                scope: delegates
-                path: ".president"
-    annoRepo:
-      containerName: republic-2024.11.30
-      uri: https://annorepo.republic-caf.diginfra.org
-    textRepo:
-      uri: https://textrepo.republic-caf.diginfra.org
-
-  - name: "suriano"
+  - name: 'suriano'
     topTierBodyType: tf:Folder
     textType: LogicalText
     views:
@@ -254,8 +81,8 @@ projects:
       uri: http://localhost:9200
       deleteKey: suriano-acc-mag-weg
       indices:
-        - name: "surind-029"
-          bodyTypes: [LetterBody]
+        - name: 'surind-029'
+          bodyTypes: [ LetterBody ]
           fields:
             - name: date
               path: "$.body.metadata.date"
@@ -270,113 +97,8 @@ projects:
             - name: entityNames
               path: "$.body.metadata.entities"
     annoRepo:
-      containerName: "suriano-1.0.1e-029"
+      containerName: 'suriano-1.0.1e-029'
       uri: https://annorepo.suriano.huygens.knaw.nl/
     textRepo:
       uri: https://suriano.tt.di.huc.knaw.nl
-
-  #  - name: 'suriano'
-  #    topTierBodyType: tf:Folder
-  #    textType: LogicalText
-  #    views:
-  #      - name: appendix
-  #        conf:
-  #          anno:
-  #            - path: body.type
-  #              value: tei:Div
-  #            - path: body.metadata.type
-  #              value: appendix
-  #      - name: original
-  #        conf:
-  #          anno:
-  #            - path: body.type
-  #              value: tei:Div
-  #            - path: body.metadata.type
-  #              value: original
-  #      - name: secretarial
-  #        conf:
-  #          anno:
-  #            - path: body.type
-  #              value: tei:Div
-  #            - path: body.metadata.type
-  #              value: secretarial
-  #      - name: text
-  #        conf:
-  #          anno:
-  #            - path: body.type
-  #              value: tei:Div
-  #            - path: body.metadata.type
-  #              value: text
-  #    brinta:
-  #      uri: http://localhost:9200
-  #      deleteKey: suriano-dev-mag-weg
-  #      indices:
-  #        - name: suriano-0.4.5e-021
-  #          bodyTypes: [ LetterBody ]
-  #          fields:
-  #            - name: bodyType
-  #              path: "$.body.type"
-  #            - name: date
-  #              path: "$.body.metadata.date"
-  #              type: date
-  #            - name: recipient
-  #              path: "$.body.metadata.recipient"
-  #            - name: recipientLoc
-  #              path: "$.body.metadata.recipientLoc"
-  #            - name: sender
-  #              path: "$.body.metadata.sender"
-  #            - name: senderLoc
-  #              path: "$.body.metadata.senderLoc"
-  #            - name: editorNotes
-  #              path: "$.body.metadata.editorNotes"
-  #            - name: shelfmark
-  #              path: "$.body.metadata.shelfmark"
-  #            - name: summary
-  #              path: "$.body.metadata.summary"
-  #              type: text
-  #    annoRepo:
-  #      containerName: 'suriano-0.4.5e-021'
-  #      uri: https://suriano.annorepo.dev.clariah.nl/
-  #    textRepo:
-  #      uri: https://suriano.tt.di.huc.knaw.nl
-  
-  - name: "vangogh"
-    topTierBodyType: tf:Letter
-    textType: LogicalText
-    annoRepo:
-      containerName: vangogh
-      uri: https://preview.dev.diginfra.org/annorepo
-    brinta:
-      uri: http://brinta:9200
-      deleteKey: peen-vangogh-mag-weg
-      indices:
-        - name: vangogh
-          bodyTypes: [tf:LetterBody]
-          fields:
-            - name: correspondent
-              path: "$.body.metadata.correspondent"
-            - name: file
-              path: "$.body.metadata.file"
-            - name: location
-              path: "$.body.metadata.location"
-            - name: period
-              path: "$.body.metadata.period"
-            - name: periodLong
-              path: "$.body.metadata.periodLong"
-            - name: sender
-              path: "$.body.metadata.sender"
-    views:
-      - name: textOrig
-        conf:
-          anno:
-            - path: body.type
-              value: tei:Div
-            - path: body.metadata.type
-              value: original
-      - name: textTrans
-        conf:
-          anno:
-            - path: body.type
-              value: tei:Div
-            - path: body.metadata.type
-              value: translation
+      

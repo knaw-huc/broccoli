@@ -15,12 +15,15 @@ import jakarta.ws.rs.core.Response
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
 import nl.knaw.huc.broccoli.api.Constants.TEXT_TOKEN_COUNT
 import nl.knaw.huc.broccoli.api.Constants.isIn
+import nl.knaw.huc.broccoli.api.ElasticQuery
 import nl.knaw.huc.broccoli.api.IndexQuery
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
 import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.ElasticQueryBuilder
 import nl.knaw.huc.broccoli.core.Project
+import nl.knaw.huc.broccoli.log.RequestTraceLog
+import nl.knaw.huc.broccoli.log.TraceLog
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo.Offset
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
@@ -67,6 +70,7 @@ class ProjectsResource(
 
     @POST
     @Path("{projectId}/search")
+    @RequestTraceLog
     @Consumes(MediaType.APPLICATION_JSON)
     fun searchIndex(
         queryString: IndexQuery,
@@ -80,18 +84,6 @@ class ProjectsResource(
     ): Response {
         val project = getProject(projectId)
         val index = getIndex(indexParam, project)
-
-        logger.atDebug()
-            .setMessage("searchIndex")
-            .addKeyValue("projectId", projectId)
-            .addKeyValue("queryString", queryString)
-            .addKeyValue("indexName", indexParam)
-            .addKeyValue("from", from)
-            .addKeyValue("size", size)
-            .addKeyValue("fragmentSize", fragmentSize)
-            .addKeyValue("sortBy", sortBy)
-            .addKeyValue("sortOrder", sortOrder)
-            .log()
 
         index.fields.map { it.name }
             .plus("_doc")
@@ -113,12 +105,7 @@ class ProjectsResource(
         val baseQuery = queryBuilder.toElasticQuery()
         logger.atTrace().addKeyValue("ES query", jsonWriter.writeValueAsString(baseQuery)).log("base")
 
-        val baseResult = client
-            .target(project.brinta.uri).path(index.name).path("_search")
-            .request().post(Entity.json(baseQuery))
-        validateElasticResult(baseResult, queryString)
-        val baseJson = baseResult.readEntityAsJsonString()
-        logger.atTrace().addKeyValue("json", baseJson).log("base")
+        val baseJson = runQuery(project.brinta.uri, index.name, baseQuery, queryString)
 
         val result: MutableMap<String, Any> = mutableMapOf()
         val aggs: MutableMap<String, Any> = mutableMapOf()
@@ -144,15 +131,7 @@ class ProjectsResource(
         auxQueries.forEachIndexed { auxIndex, auxQuery ->
             logger.atTrace().addKeyValue("query[$auxIndex]", jsonWriter.writeValueAsString(auxQuery)).log("aux")
 
-            val auxResult = client
-                .target(project.brinta.uri)
-                .path(index.name)
-                .path("_search")
-                .request()
-                .post(Entity.json(auxQuery))
-            validateElasticResult(auxResult, queryString)
-            val auxJson = auxResult.readEntityAsJsonString()
-            logger.atTrace().addKeyValue("json[$auxIndex]", auxJson).log("aux")
+            val auxJson = runQuery(project.brinta.uri, index.name, auxQuery, queryString)
 
             jsonParser.parse(auxJson).let { context ->
                 extractAggregations(index, context)
@@ -195,6 +174,23 @@ class ProjectsResource(
     @GET
     @Path("{projectId}/views")
     fun getViews(@PathParam("projectId") projectId: String) = getProject(projectId).views
+    
+    @TraceLog
+    private fun runQuery(
+        esUrl: String,
+        indexName: String,
+        baseQuery: ElasticQuery,
+        queryString: IndexQuery
+    ): String {
+        val baseResult = client
+            .target(esUrl)
+            .path(indexName)
+            .path("_search")
+            .request()
+            .post(Entity.json(baseQuery))
+        validateElasticResult(baseResult, queryString)
+        return baseResult.readEntityAsJsonString()
+    }
 
     private fun validateElasticResult(result: Response, queryString: IndexQuery) {
         if (result.status != 200) {
