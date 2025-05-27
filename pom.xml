@@ -396,6 +396,7 @@
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjweaver</artifactId>
             <version>${aspectj.version}</version>
+        </dependency>
         <!-- testing: mock server -->
         <dependency>
             <groupId>org.mock-server</groupId>
