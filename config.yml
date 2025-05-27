@@ -37,6 +37,7 @@ logging:
   loggers:
     nl.knaw.huc: TRACE
     TraceLog: TRACE
+    RequestTraceLog: TRACE
     org: WARN
     org.glassfish: ERROR
     com.jayway: ERROR
