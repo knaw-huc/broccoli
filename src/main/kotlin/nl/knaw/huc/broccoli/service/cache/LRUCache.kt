@@ -27,5 +27,9 @@ class LRUCache<K, V>(private val capacity: Int = 5) {
         return evictedKey
     }
 
+    fun clear() = cache.clear()
+
+    fun size() = cache.size
+
     override fun toString(): String = cache.toString()
 }

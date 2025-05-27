@@ -1,0 +1,11 @@
+{
+  "appName": "AnnoRepo",
+  "version": "-1",
+  "startedAt": "2025-01-20T14:47:19.598639258Z",
+  "baseURI": "https://annorepo.project.nl",
+  "withAuthentication": true,
+  "sourceCode": "https://github.com/knaw-huc/annorepo",
+  "mongoVersion": "-1",
+  "grpcHostName": "localhost",
+  "grpcPort": -1
+}

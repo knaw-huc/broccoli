@@ -147,6 +147,9 @@ class BrintaResource(
 
         val index = getIndex(project, indexName)
 
+        // assume AnnoRepo may just have had new data uploaded, so invalidate query cache
+        project.annoRepo.invalidateCache()
+
         val metadataKey = metaAnno ?: project.topTierBodyType
         val requestedMetadataPairs = metaValues
             ?.split(',')
