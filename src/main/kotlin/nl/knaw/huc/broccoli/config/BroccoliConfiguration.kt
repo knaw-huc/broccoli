@@ -149,7 +149,7 @@ class ViewAnnoConstraint {
     @Valid
     @NotNull
     @JsonProperty
-    val value: String = ""
+    val values: List<String> = emptyList()
 }
 
 class BrintaConfiguration {

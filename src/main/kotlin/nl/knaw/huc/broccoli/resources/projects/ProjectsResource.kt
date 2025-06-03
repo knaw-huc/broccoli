@@ -174,7 +174,7 @@ class ProjectsResource(
     @GET
     @Path("{projectId}/views")
     fun getViews(@PathParam("projectId") projectId: String) = getProject(projectId).views
-    
+
     @TraceLog
     private fun runQuery(
         esUrl: String,
@@ -325,7 +325,7 @@ class ProjectsResource(
 
         val views = mutableMapOf<String, Any>()
         interestedViews(project, requestedViews).forEach { (viewName, viewConf) ->
-            val constraints = viewConf.anno.associate { it.path to it.value }
+            val constraints = viewConf.anno.associate { it.path to it.values }
             annos.find { it.satisfies(constraints) }
                 ?.let { viewAnno ->
                     val viewResult = mutableMapOf<String, Any>()

@@ -53,30 +53,30 @@ projects:
         conf:
           anno:
             - path: body.type
-              value: tei:Div
+              values: [ tei:Div ]
             - path: body.metadata.type
-              value: appendix
+              values: [ appendix ]
       - name: original
         conf:
           anno:
             - path: body.type
-              value: tei:Div
+              values: [ tei:Div ]
             - path: body.metadata.type
-              value: original
+              values: [ original ]
       - name: secretarial
         conf:
           anno:
             - path: body.type
-              value: tei:Div
+              values: [ tei:Div ]
             - path: body.metadata.type
-              value: secretarial
+              values: [ secretarial ]
       - name: text
         conf:
           anno:
             - path: body.type
-              value: tei:Div
+              values: [ tei:Div ]
             - path: body.metadata.type
-              value: text
+              values: [ text ]
     brinta:
       uri: http://localhost:9200
       deleteKey: suriano-acc-mag-weg
@@ -101,4 +101,3 @@ projects:
       uri: https://annorepo.suriano.huygens.knaw.nl/
     textRepo:
       uri: https://suriano.tt.di.huc.knaw.nl
-      
