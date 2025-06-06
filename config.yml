@@ -1,9 +1,6 @@
 jerseyClient:
-  connectionTimeout: 1m
   timeout: 30s
-  tls:
-    verifyHostname: false
-    trustSelfSignedCertificates: true
+  connectionTimeout: 1m
 
 server:
   applicationConnectors:
@@ -15,29 +12,11 @@ logging:
   appenders:
     - type: console
       logFormat: "%-5p [%d{ISO8601,UTC}] %c: %m %kvp%n%dwREx"
-      discardingThreshold: 0
       target: stderr
-    - type: file
-      currentLogFilename: ./query.log
-      threshold: ALL
-      queueSize: 512
       discardingThreshold: 0
-      archive: true
-      archivedLogFilenamePattern: ./query-log-%d.gz
-      archivedFileCount: 5
-      timeZone: UTC
-      logFormat: "%d{ISO8601,UTC}|%m|%kvp%n"
-      bufferSize: 256KiB
-      immediateFlush: true
-      filterFactories:
-        - type: marker
-          markers:
-            - QRY
-
   loggers:
-    nl.knaw.huc: TRACE
-    TraceLog: TRACE
-    RequestTraceLog: TRACE
+    nl.knaw.huc: DEBUG
+    AnnoRepoSearchResult: TRACE
     org: WARN
     org.glassfish: ERROR
     com.jayway: ERROR
@@ -45,59 +24,74 @@ logging:
 externalBaseUrl: ${BR_EXTERNAL_BASE_URL:-http://localhost:8080}
 
 projects:
-  - name: 'suriano'
-    topTierBodyType: tf:Folder
+  - name: "israels"
+    topTierBodyType: "tf:Letter"
     textType: LogicalText
-    views:
-      - name: appendix
-        conf:
-          anno:
-            - path: body.type
-              values: [ tei:Div ]
-            - path: body.metadata.type
-              values: [ appendix ]
-      - name: original
-        conf:
-          anno:
-            - path: body.type
-              values: [ tei:Div ]
-            - path: body.metadata.type
-              values: [ original ]
-      - name: secretarial
-        conf:
-          anno:
-            - path: body.type
-              values: [ tei:Div ]
-            - path: body.metadata.type
-              values: [ secretarial ]
-      - name: text
-        conf:
-          anno:
-            - path: body.type
-              values: [ tei:Div ]
-            - path: body.metadata.type
-              values: [ text ]
+    annoRepo:
+      containerName: israels
+      uri: https://preview.dev.diginfra.org/annorepo
+      cacheCapacity: 1000
+      cacheThreshold: 500
     brinta:
       uri: http://localhost:9200
-      deleteKey: suriano-acc-mag-weg
+      deleteKey: peen-israels-mag-weg
       indices:
-        - name: 'surind-029'
-          bodyTypes: [ LetterBody ]
+        - name: isrent
+          bodyTypes: ["tf:Letter"]
           fields:
-            - name: date
-              path: "$.body.metadata.date"
-              type: date
-            - name: recipient
-              path: "$.body.metadata.recipient"
+            - name: period
+              path: "$.body.metadata.period"
+            - name: persons
+              path: "$.body.metadata.persons"
+            - name: location
+              path: "$.body.metadata.location"
+            - name: artworksNL
+              path: "$.body.metadata.artworkNL"
+            - name: artworksEN
+              path: "$.body.metadata.artworkEN"
+            - name: file
+              path: "$.body.metadata.file"
+            - name: correspondent
+              path: "$.body.metadata.correspondent"
+            - name: periodLong
+              path: "$.body.metadata.periodLong"
             - name: sender
               path: "$.body.metadata.sender"
-            - name: summary
-              path: "$.body.metadata.summary"
+            - name: originalText
               type: text
-            - name: entityNames
-              path: "$.body.metadata.entities"
-    annoRepo:
-      containerName: 'suriano-1.0.1e-029'
-      uri: https://annorepo.suriano.huygens.knaw.nl/
+            - name: translatedText
+              type: text
+            - name: notesText
+              type: text
     textRepo:
-      uri: https://suriano.tt.di.huc.knaw.nl
+      apiKey: YXBpOmU2NGRkYjgxLTliZjUtNGM2OC04ZTFlLTc0ZTZmMDg1ZmZlOQ==
+      uri: https://preview.dev.diginfra.org/israels/textrepo
+    views:
+      - name: textOrig
+        conf:
+          anno:
+            - path: body.type
+              values: [tei:Div]
+            - path: body.metadata.tei:type
+              values: [original]
+      - name: textTrans
+        conf:
+          anno:
+            - path: body.type
+              values: [tei:Div]
+            - path: body.metadata.tei:type
+              values: [translation]
+      - name: textNotes
+        conf:
+          anno:
+            - path: body.type
+              values: [tei:ListAnnotation]
+            - path: body.metadata.tei:type
+              values: [notes, langnotes]
+      - name: typedNotes
+        conf:
+          anno:
+            - path: body.type
+              values: [tei:ListAnnotation]
+            - path: body.metadata.tei:type
+              values: [typednotes]
