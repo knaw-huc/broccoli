@@ -7,7 +7,7 @@
     <groupId>nl.knaw.huc</groupId>
     <artifactId>broccoli</artifactId>
 
-    <version>0.41.5-SNAPSHOT</version>
+    <version>0.41.5-SNAPSHOT-2</version>
 
     <packaging>jar</packaging>
 
@@ -61,8 +61,8 @@
                 <scope>import</scope>
             </dependency>
 
-	    <!-- https://github.com/FasterXML/jackson-annotations/issues/284#issuecomment-2837647751
-		 https://github.com/FasterXML/jackson-annotations/issues/284#issuecomment-2839601763 -->
+            <!-- https://github.com/FasterXML/jackson-annotations/issues/284#issuecomment-2837647751
+             https://github.com/FasterXML/jackson-annotations/issues/284#issuecomment-2839601763 -->
             <dependency>
                 <groupId>com.fasterxml.jackson.module</groupId>
                 <artifactId>jackson-bom</artifactId>
@@ -116,8 +116,10 @@
                 <configuration>
                     <createDependencyReducedPom>true</createDependencyReducedPom>
                     <transformers>
-                        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-                        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                        <transformer
+                                implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                        <transformer
+                                implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                             <mainClass>${mainClass}</mainClass>
                         </transformer>
                     </transformers>
@@ -154,8 +156,10 @@
                         </goals>
                         <configuration>
                             <transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                <transformer
+                                        implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                <transformer
+                                        implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>${mainClass}</mainClass>
                                 </transformer>
                             </transformers>

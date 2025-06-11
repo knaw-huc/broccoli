@@ -16,7 +16,7 @@ logging:
       discardingThreshold: 0
   loggers:
     nl.knaw.huc: DEBUG
-    AnnoRepoSearchResult: TRACE
+    AnnoRepoSearchResult: DEBUG
     org: WARN
     org.glassfish: ERROR
     com.jayway: ERROR
@@ -37,7 +37,7 @@ projects:
       deleteKey: peen-israels-mag-weg
       indices:
         - name: isrent
-          bodyTypes: ["tf:Letter"]
+          bodyTypes: [ "tf:Letter" ]
           fields:
             - name: period
               path: "$.body.metadata.period"
@@ -67,31 +67,26 @@ projects:
       apiKey: YXBpOmU2NGRkYjgxLTliZjUtNGM2OC04ZTFlLTc0ZTZmMDg1ZmZlOQ==
       uri: https://preview.dev.diginfra.org/israels/textrepo
     views:
-      - name: textOrig
-        conf:
-          anno:
-            - path: body.type
-              values: [tei:Div]
-            - path: body.metadata.tei:type
-              values: [original]
-      - name: textTrans
-        conf:
-          anno:
-            - path: body.type
-              values: [tei:Div]
-            - path: body.metadata.tei:type
-              values: [translation]
+      - name: text
+        anno:
+          - path: "body.type"
+            values: [ "tei:Div" ]
+        groupBy: "body.metadata.lang"
       - name: textNotes
-        conf:
-          anno:
-            - path: body.type
-              values: [tei:ListAnnotation]
-            - path: body.metadata.tei:type
-              values: [notes, langnotes]
+        anno:
+          - path: "body.type"
+            values: [ "tei:ListAnnotation" ]
+          - path: "body.metadata.tei:type"
+            values: [ notes, langnotes ]
+        groupBy: "body.metadata.lang"
+        findWithin:
+          path: "body.type"
+          value: "tei:Note"
+          groupBy: "body.metadata.n"
       - name: typedNotes
-        conf:
-          anno:
-            - path: body.type
-              values: [tei:ListAnnotation]
-            - path: body.metadata.tei:type
-              values: [typednotes]
+        anno:
+          - path: "body.type"
+            values: [ "tei:ListAnnotation" ]
+          - path: "body.metadata.tei:type"
+            values: [ typednotes ]
+        groupBy: "body.metadata.lang"

@@ -2,7 +2,6 @@ package nl.knaw.huc.broccoli.service.anno
 
 import com.jayway.jsonpath.DocumentContext
 import nl.knaw.huc.broccoli.service.getValueAtPath
-import org.slf4j.LoggerFactory
 
 class AnnoRepoSearchResult(val context: DocumentContext) {
     fun root(): Map<String, Any> = context.read("$")
@@ -39,20 +38,5 @@ class AnnoRepoSearchResult(val context: DocumentContext) {
             }
 
     fun satisfies(constraints: Map<String, List<String>>) =
-        constraints.all { (path, allowedValues) ->
-            read("$.$path")
-                .let { actual ->
-                    allowedValues
-                        .contains(actual)
-                        .also { pass ->
-                            logger
-                                .atTrace()
-                                .log("{}: value at {} = {} (in {}: {})", bodyId(), path, actual, allowedValues, pass)
-                        }
-                }
-        }
-
-    companion object {
-        private val logger = LoggerFactory.getLogger(AnnoRepoSearchResult::class.java.simpleName)
-    }
+        constraints.all { (path, allowedValues) -> allowedValues.contains(read("$.$path")) }
 }
