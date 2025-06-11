@@ -368,15 +368,13 @@ class ProjectsResource(
                                 }
                         }
 
-                        if (relocatedAnnotations.isNotEmpty()) {
-                            viewResult["locations"] = mapOf(
-                                "relativeTo" to mapOf(
-                                    "bodyId" to viewAnno.bodyId(),
-                                    "bodyType" to viewAnno.bodyType()
-                                ),
-                                "annotations" to relocatedAnnotations
-                            )
-                        }
+                        viewResult["locations"] = mapOf(
+                            "relativeTo" to mapOf(
+                                "bodyId" to viewAnno.bodyId(),
+                                "bodyType" to viewAnno.bodyType()
+                            ),
+                            "annotations" to relocatedAnnotations
+                        )
                     } else {
                         with(AnnoSearchResultInterpreter(viewAnno, "Text").findSelector()) {
                             annos
@@ -413,15 +411,13 @@ class ProjectsResource(
                                                 )
                                             }
 
-                                        if (relocated.isNotEmpty()) {
-                                            noteResult["locations"] = mapOf(
-                                                "relativeTo" to mapOf(
-                                                    "bodyId" to innerNote.bodyId(),
-                                                    "bodyType" to innerNote.bodyType()
-                                                ),
-                                                "annotations" to relocated
-                                            )
-                                        }
+                                        noteResult["locations"] = mapOf(
+                                            "relativeTo" to mapOf(
+                                                "bodyId" to innerNote.bodyId(),
+                                                "bodyType" to innerNote.bodyType()
+                                            ),
+                                            "annotations" to relocated
+                                        )
                                     }
 
                                     viewResult[noteGroup] = noteResult
