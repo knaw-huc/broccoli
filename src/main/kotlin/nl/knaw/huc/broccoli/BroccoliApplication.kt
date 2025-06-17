@@ -2,7 +2,6 @@ package nl.knaw.huc.broccoli
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import com.fasterxml.jackson.module.paramnames.ParameterNamesModule
 import com.jayway.jsonpath.Configuration
 import com.jayway.jsonpath.JsonPath
 import com.jayway.jsonpath.Option
@@ -111,7 +110,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
                 name = config.name,
                 textType = config.textType,
                 topTierBodyType = config.topTierBodyType,
-                views = config.views.associate { view -> view.name to view.conf },
+                views = config.views.associateBy { view -> view.name },
                 brinta = config.brinta,
                 textRepo = createTextRepo(config.textRepo),
                 annoRepo = createAnnoRepo(config.annoRepo, config.textType)

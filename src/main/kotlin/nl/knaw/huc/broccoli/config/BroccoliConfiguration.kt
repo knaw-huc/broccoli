@@ -116,7 +116,32 @@ class NamedViewConfiguration {
     @Valid
     @NotNull
     @JsonProperty
-    val conf: ViewConfiguration = ViewConfiguration()
+    val anno: List<ViewAnnoConstraint> = emptyList()
+
+    @Valid
+    @JsonProperty
+    val groupBy: String? = null
+
+    @Valid
+    @JsonProperty
+    val findWithin: ViewFindWithinConfiguration? = null
+}
+
+class ViewFindWithinConfiguration {
+    @Valid
+    @NotNull
+    @JsonProperty
+    val path: String = ""
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    val value: String = ""
+
+    @Valid
+    @NotNull
+    @JsonProperty
+    val groupBy: String = ""
 }
 
 class ViewConfiguration {
@@ -149,7 +174,7 @@ class ViewAnnoConstraint {
     @Valid
     @NotNull
     @JsonProperty
-    val value: String = ""
+    val values: List<String> = emptyList()
 }
 
 class BrintaConfiguration {

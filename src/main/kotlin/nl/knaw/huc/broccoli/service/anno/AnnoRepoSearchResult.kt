@@ -37,6 +37,6 @@ class AnnoRepoSearchResult(val context: DocumentContext) {
                 } ?: false
             }
 
-    fun satisfies(constraints: Map<String, String>) =
-        constraints.all { (path, value) -> read("$.$path") == value }
+    fun satisfies(constraints: Map<String, List<String>>) =
+        constraints.all { (path, allowedValues) -> allowedValues.contains(read("$.$path")) }
 }
