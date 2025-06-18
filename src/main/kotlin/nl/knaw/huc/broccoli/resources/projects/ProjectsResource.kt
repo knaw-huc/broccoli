@@ -29,6 +29,7 @@ import nl.knaw.huc.broccoli.service.anno.AnnoRepo.Offset
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
 import nl.knaw.huc.broccoli.service.anno.TextSelector
+import nl.knaw.huc.broccoli.service.cache.LRUCache
 import nl.knaw.huc.broccoli.service.extractAggregations
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
@@ -65,6 +66,7 @@ class ProjectsResource(
     fun invalidateCache(
         @PathParam("projectId") projectId: String
     ): Response {
+        frontDoorCache.clear()
         getProject(projectId).annoRepo.invalidateCache()
         return Response.noContent().build()
     }
@@ -245,6 +247,17 @@ class ProjectsResource(
 
     private fun Response.readEntityAsJsonString(): String = readEntity(String::class.java) ?: ""
 
+    data class ParamsAsKey(
+        val projectId: String,
+        val bodyId: String,
+        val includeResults: String?,
+        val views: String?,
+        val overlapTypes: String?,
+        val relevanceTypes: String,
+    )
+
+    private val frontDoorCache: LRUCache<ParamsAsKey, Any> = LRUCache(capacity = 1500)
+
     @GET
     @Path("{projectId}/{bodyId}")
     @Operation(summary = "Get project's annotations by bodyId")
@@ -266,6 +279,13 @@ class ProjectsResource(
             .addKeyValue("overlapTypes", overlapTypesParam)
             .addKeyValue("relativeTo", relativeTo)
             .log()
+
+        val paramsAsKey = ParamsAsKey(projectId, bodyId, includesParam, viewsParam, overlapTypesParam, relativeTo)
+        frontDoorCache.get(paramsAsKey)?.run {
+            logger.atDebug().log("returning cached response")
+            return Response.ok(this).build()
+        }
+        logger.atDebug().log("not in cache, computing response")
 
         val before = System.currentTimeMillis()
 
@@ -505,6 +525,9 @@ class ProjectsResource(
 
         val after = System.currentTimeMillis()
         selfTimings["total"] = after - before
+
+        logger.atDebug().addKeyValue("key", paramsAsKey).log("caching")
+        frontDoorCache.put(paramsAsKey, result)
 
         return Response.ok(result).build()
     }
