@@ -245,6 +245,17 @@ class ProjectsResource(
 
     private fun Response.readEntityAsJsonString(): String = readEntity(String::class.java) ?: ""
 
+    data class ParamsAsKey(
+        val projectId: String,
+        val bodyId: String,
+        val includeResults: String?,
+        val views: String?,
+        val overlapTypes: String?,
+        val relevanceTypes: String,
+    )
+
+    private val cachedResults: MutableMap<ParamsAsKey, Any> = mutableMapOf()
+
     @GET
     @Path("{projectId}/{bodyId}")
     @Operation(summary = "Get project's annotations by bodyId")
@@ -266,6 +277,14 @@ class ProjectsResource(
             .addKeyValue("overlapTypes", overlapTypesParam)
             .addKeyValue("relativeTo", relativeTo)
             .log()
+
+        val key = ParamsAsKey(projectId, bodyId, includesParam, viewsParam, overlapTypesParam, relativeTo)
+        if (cachedResults.containsKey(key)) {
+            logger.atDebug().log("returning cached response")
+            return Response.ok(cachedResults.getValue(key)).build()
+        } else {
+            logger.atDebug().log("not in cache, computing response")
+        }
 
         val before = System.currentTimeMillis()
 
@@ -505,6 +524,9 @@ class ProjectsResource(
 
         val after = System.currentTimeMillis()
         selfTimings["total"] = after - before
+
+        logger.atDebug().addKeyValue("key", key).addKeyValue("resp", result).log("caching")
+        cachedResults[key] = result
 
         return Response.ok(result).build()
     }
