@@ -7,7 +7,7 @@
     <groupId>nl.knaw.huc</groupId>
     <artifactId>broccoli</artifactId>
 
-    <version>0.43-SNAPSHOT</version>
+    <version>0.43.0</version>
 
     <packaging>jar</packaging>
 
