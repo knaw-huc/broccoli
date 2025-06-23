@@ -447,6 +447,12 @@ class ProjectsResource(
                         }
                     }
 
+                    val groupBy = viewAnno.read(viewConf.groupBy ?: "body.id").toString().let {
+                        if (it == "null" || it.isEmpty() || it.isBlank()) { // wing it
+                            "${viewAnno.bodyId()}_has_unusable_${viewConf.groupBy}".also { str -> logger.warn(str) }
+                        } else it
+                    }
+
                     // store the view result we just built
                     val view = views.getOrPut(viewName) { mutableMapOf<String, Any>() }
                     @Suppress("UNCHECKED_CAST")
