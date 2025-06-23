@@ -30,6 +30,7 @@ import nl.knaw.huc.broccoli.resources.HomePageResource
 import nl.knaw.huc.broccoli.resources.brinta.BrintaResource
 import nl.knaw.huc.broccoli.resources.projects.ProjectsResource
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
+import nl.knaw.huc.broccoli.service.cache.LRUCache
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.eclipse.jetty.servlets.CrossOriginFilter
 import org.eclipse.jetty.servlets.CrossOriginFilter.*
@@ -79,10 +80,12 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
 
         val objectMapper = createJsonMapper()
 
+        val globalCache = configuration.globalCache?.let { LRUCache<Any, Any>(capacity = it.capacity) }
+
         with(environment.jersey()) {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())
-            register(ProjectsResource(projects, client, jsonParser, objectMapper))
+            register(ProjectsResource(projects, client, jsonParser, objectMapper, globalCache))
             register(BrintaResource(projects, client))
             register(RequestTraceLogFilter())
         }

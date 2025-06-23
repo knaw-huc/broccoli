@@ -29,6 +29,7 @@ import nl.knaw.huc.broccoli.service.anno.AnnoRepo.Offset
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
 import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
 import nl.knaw.huc.broccoli.service.anno.TextSelector
+import nl.knaw.huc.broccoli.service.cache.LRUCache
 import nl.knaw.huc.broccoli.service.extractAggregations
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
@@ -40,7 +41,8 @@ class ProjectsResource(
     private val projects: Map<String, Project>,
     private val client: Client,
     private val jsonParser: ParseContext,
-    private val jsonWriter: ObjectMapper
+    private val jsonWriter: ObjectMapper,
+    private val globalCache: LRUCache<Any, Any>? = null
 ) {
     init {
         logger.info("init: projects=$projects, client=$client")
@@ -65,6 +67,7 @@ class ProjectsResource(
     fun invalidateCache(
         @PathParam("projectId") projectId: String
     ): Response {
+        globalCache?.clear()
         getProject(projectId).annoRepo.invalidateCache()
         return Response.noContent().build()
     }
@@ -245,6 +248,15 @@ class ProjectsResource(
 
     private fun Response.readEntityAsJsonString(): String = readEntity(String::class.java) ?: ""
 
+    data class ParamsAsKey(
+        val projectId: String,
+        val bodyId: String,
+        val includeResults: String?,
+        val views: String?,
+        val overlapTypes: String?,
+        val relevanceTypes: String,
+    )
+
     @GET
     @Path("{projectId}/{bodyId}")
     @Operation(summary = "Get project's annotations by bodyId")
@@ -266,6 +278,16 @@ class ProjectsResource(
             .addKeyValue("overlapTypes", overlapTypesParam)
             .addKeyValue("relativeTo", relativeTo)
             .log()
+
+        val paramsAsKey = ParamsAsKey(projectId, bodyId, includesParam, viewsParam, overlapTypesParam, relativeTo)
+
+        globalCache?.run {
+            get(paramsAsKey)?.run {
+                logger.atDebug().addKeyValue("key", paramsAsKey).log("cache hit")
+                return Response.ok(this).build()
+            }
+            logger.atDebug().addKeyValue("key", paramsAsKey).log("cache miss")
+        }
 
         val before = System.currentTimeMillis()
 
@@ -425,8 +447,13 @@ class ProjectsResource(
                         }
                     }
 
+                    val groupBy = viewAnno.read(viewConf.groupBy ?: "body.id").toString().let {
+                        if (it == "null" || it.isEmpty() || it.isBlank()) { // wing it
+                            "${viewAnno.bodyId()}_has_unusable_${viewConf.groupBy}".also { str -> logger.warn(str) }
+                        } else it
+                    }
+
                     // store the view result we just built
-                    val groupBy = viewAnno.read(viewConf.groupBy ?: "body.id").toString()
                     val view = views.getOrPut(viewName) { mutableMapOf<String, Any>() }
                     @Suppress("UNCHECKED_CAST")
                     (view as MutableMap<String, MutableMap<String, Any>>)
@@ -505,6 +532,11 @@ class ProjectsResource(
 
         val after = System.currentTimeMillis()
         selfTimings["total"] = after - before
+
+        globalCache?.run {
+            logger.atDebug().addKeyValue("key", paramsAsKey).log("caching")
+            put(paramsAsKey, result)
+        }
 
         return Response.ok(result).build()
     }
