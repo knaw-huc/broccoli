@@ -35,6 +35,17 @@ class BroccoliConfiguration : Configuration() {
     @NotNull
     @JsonProperty
     var projects = ArrayList<ProjectConfiguration>()
+
+    @Valid
+    @JsonProperty
+    val globalCache: CacheConfiguration? = null
+}
+
+class CacheConfiguration {
+    @Valid
+    @NotNull
+    @JsonProperty
+    val capacity = 1000
 }
 
 class AnnoRepoConfiguration {

@@ -1,3 +1,6 @@
+globalCache:
+  capacity: 1500
+
 jerseyClient:
   timeout: 30s
   connectionTimeout: 1m

@@ -41,7 +41,8 @@ class ProjectsResource(
     private val projects: Map<String, Project>,
     private val client: Client,
     private val jsonParser: ParseContext,
-    private val jsonWriter: ObjectMapper
+    private val jsonWriter: ObjectMapper,
+    private val globalCache: LRUCache<Any, Any>? = null
 ) {
     init {
         logger.info("init: projects=$projects, client=$client")
@@ -66,7 +67,7 @@ class ProjectsResource(
     fun invalidateCache(
         @PathParam("projectId") projectId: String
     ): Response {
-        frontDoorCache.clear()
+        globalCache?.clear()
         getProject(projectId).annoRepo.invalidateCache()
         return Response.noContent().build()
     }
@@ -256,8 +257,6 @@ class ProjectsResource(
         val relevanceTypes: String,
     )
 
-    private val frontDoorCache: LRUCache<ParamsAsKey, Any> = LRUCache(capacity = 1500)
-
     @GET
     @Path("{projectId}/{bodyId}")
     @Operation(summary = "Get project's annotations by bodyId")
@@ -281,11 +280,14 @@ class ProjectsResource(
             .log()
 
         val paramsAsKey = ParamsAsKey(projectId, bodyId, includesParam, viewsParam, overlapTypesParam, relativeTo)
-        frontDoorCache.get(paramsAsKey)?.run {
-            logger.atDebug().log("returning cached response")
-            return Response.ok(this).build()
+
+        globalCache?.run {
+            get(paramsAsKey)?.run {
+                logger.atDebug().addKeyValue("key", paramsAsKey).log("cache hit")
+                return Response.ok(this).build()
+            }
+            logger.atDebug().addKeyValue("key", paramsAsKey).log("cache miss")
         }
-        logger.atDebug().log("not in cache, computing response")
 
         val before = System.currentTimeMillis()
 
@@ -446,7 +448,6 @@ class ProjectsResource(
                     }
 
                     // store the view result we just built
-                    val groupBy = viewAnno.read(viewConf.groupBy ?: "body.id").toString()
                     val view = views.getOrPut(viewName) { mutableMapOf<String, Any>() }
                     @Suppress("UNCHECKED_CAST")
                     (view as MutableMap<String, MutableMap<String, Any>>)
@@ -526,8 +527,10 @@ class ProjectsResource(
         val after = System.currentTimeMillis()
         selfTimings["total"] = after - before
 
-        logger.atDebug().addKeyValue("key", paramsAsKey).log("caching")
-        frontDoorCache.put(paramsAsKey, result)
+        globalCache?.run {
+            logger.atDebug().addKeyValue("key", paramsAsKey).log("caching")
+            put(paramsAsKey, result)
+        }
 
         return Response.ok(result).build()
     }
