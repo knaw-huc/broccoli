@@ -405,7 +405,6 @@ class ProjectsResource(
                                 .forEach { innerNote ->
                                     val noteResult: MutableMap<String, Any> = mutableMapOf()
                                     val noteGroup = innerNote.read(findWithin.groupBy).toString()
-                                    logger.debug("NOTE: $noteGroup")
                                     noteResult["lines"] = fetchTextLines(
                                         project.textRepo,
                                         AnnoSearchResultInterpreter(innerNote, project.textType).findTextSource()
