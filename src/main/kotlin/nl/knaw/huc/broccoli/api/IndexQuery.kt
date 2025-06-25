@@ -9,6 +9,7 @@ constructor(
     val date: IndexRange?,
     val terms: IndexTerms?,
     val text: String?,
+    val textViews: List<String>?,
     val range: IndexRange?,
 
     @JsonProperty("aggs")
