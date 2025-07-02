@@ -229,7 +229,7 @@ class IndexFieldConfiguration {
     @Valid
     @NotNull
     @JsonProperty
-    val name: String = ""
+    var name: String = ""
 
     @Valid
     @JsonProperty
