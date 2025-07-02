@@ -40,7 +40,7 @@ class QueryNormalizerTest {
         every { query.textViews } returns listOf("a")
 
         val result = sut.normalizeQuery(query)
-        assertThat(result.text).startsWith("a:")
+        assertThat(result.text).isEqualTo("a:paard")
     }
 
     @Test
@@ -56,9 +56,10 @@ class QueryNormalizerTest {
 
         val parts = result.text!!.split(" OR ")
         assertThat(parts.size).isEqualTo(3)
-        assertThat(parts[0]).startsWith("a")
-        assertThat(parts[1]).startsWith("c")
-        assertThat(parts[2]).startsWith("e")
+        assertThat(parts[0]).startsWith("a:")
+        assertThat(parts[1]).startsWith("c:")
+        assertThat(parts[2]).startsWith("e:")
+        assertThat(parts).allSatisfy { assertThat(it).endsWith("paard") }
     }
 
     @Test
@@ -66,13 +67,13 @@ class QueryNormalizerTest {
         val sut = createQueryNormalizer()
 
         val query = mockk<IndexQuery>(relaxed = true)
-        every { query.textViews } returns listOf("x")
+        every { query.textViews } returns listOf("a", "x", "y")
 
         val exception = assertThrows<BadRequestException> {
             sut.normalizeQuery(query)
         }
 
-        assertThat(exception).hasMessageContainingAll("Unknown", "x", "available", "a, b, c, d, e")
+        assertThat(exception).hasMessageContainingAll("Unknown", "x", "y", "available", "a, b, c, d, e")
     }
 
     private fun createQueryNormalizer(): QueryNormalizer {
