@@ -7,6 +7,8 @@ import org.slf4j.LoggerFactory
 import kotlin.properties.Delegates
 
 class ElasticQueryBuilder(private val index: IndexConfiguration) {
+    private val normalizer = QueryNormalizer(index)
+
     private var from by Delegates.notNull<Int>()
     private var size by Delegates.notNull<Int>()
     private var fragmentSize by Delegates.notNull<Int>()
@@ -24,7 +26,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
 
     fun size(size: Int) = apply { this.size = size }
 
-    fun query(query: IndexQuery) = apply { this.query = normalizeQuery(query) }
+    fun query(query: IndexQuery) = apply { this.query = normalizer.normalizeQuery(query) }
 
     fun toElasticQuery(): ElasticQuery {
         val logicalAggregationBuilder = LogicalAggregationBuilder(index)
@@ -186,41 +188,6 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                     )
                 }
         }
-
-    private fun normalizeQuery(query: IndexQuery): IndexQuery {
-        val available = index.fields.filter { it.type == "text" }.map { it.name }
-
-        val todoViews = query.textViews?.apply {
-            filterNot { it in available }.apply {
-                if (isNotEmpty())
-                    throw BadRequestException("Unknown textView(s): $this, available: $available")
-            }
-        } ?: listOf("text").plus(available)
-
-        logger.atTrace()
-            .addKeyValue("available", available)
-            .addKeyValue("requested", query.textViews)
-            .addKeyValue("todoViews", todoViews)
-            .log("computed views")
-
-        val todoText = query.text?.trim()?.let { q ->
-            if (ES_FIELD_PREFIX.matches(q)) q
-            else {
-                todoViews.joinToString(separator = " OR ") { "${it}:$q" }
-            }
-        }
-
-        logger.atTrace().addKeyValue("text", todoText).log("computed text")
-
-        return IndexQuery(
-            date = query.date,
-            range = query.range,
-            terms = query.terms,
-            aggregations = query.aggregations,
-            textViews = todoViews,
-            text = todoText
-        )
-    }
 
     private fun buildMainQuery(predicate: ((Map.Entry<String, Any>) -> Boolean) = { true }) = ComplexQuery(
         bool = BoolQuery(
