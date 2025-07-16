@@ -15,7 +15,7 @@
       "topTierBodyType": "tf:File",
       "views": [],
       "brinta": {
-        "uri": "http://localhost:9200",
+        "uri": "http://localhost:9292",
         "joinSeparator": ",",
         "indices": [
           {
@@ -32,7 +32,7 @@
         "deleteKey": "confirm-deletion-c6451546-ee86-45af-ac62-7cb1a3a405ed"
       },
       "annoRepo": {
-        "uri": "http://localhost:9200/anno-repo"
+        "uri": "http://localhost:9292/anno-repo"
       },
       "textRepo": {
         "uri": "http://localhost:7200"
@@ -40,3 +40,4 @@
     }
   ]
 }
+

@@ -1,5 +1,5 @@
 {
-  "uri": "http://localhost:9200",
+  "uri": "http://localhost:9292",
   "joinSeparator": ",",
   "indices": [
     {

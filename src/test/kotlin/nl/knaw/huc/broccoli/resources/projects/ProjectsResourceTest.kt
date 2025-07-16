@@ -36,7 +36,7 @@ class ProjectsResourceTest {
     @BeforeAll
     fun setup() {
         mockServer =
-            ClientAndServer.startClientAndServer(9200)
+            ClientAndServer.startClientAndServer(9292)
 
         mockServer
             .`when`(request().withPath("/anno-repo.*"))
