@@ -27,69 +27,55 @@ logging:
 externalBaseUrl: ${BR_EXTERNAL_BASE_URL:-http://localhost:8080}
 
 projects:
-  - name: "israels"
-    topTierBodyType: "tf:Letter"
+  - name: 'suriano'
+    topTierBodyType: tf:Folder
     textType: LogicalText
-    annoRepo:
-      containerName: israels
-      uri: https://preview.dev.diginfra.org/annorepo
-      cacheCapacity: 1000
-      cacheThreshold: 500
-    brinta:
-      uri: http://localhost:9200
-      deleteKey: peen-israels-mag-weg
-      indices:
-        - name: isrent
-          bodyTypes: [ "tf:Letter" ]
-          fields:
-            - name: period
-              path: "$.body.metadata.period"
-            - name: persons
-              path: "$.body.metadata.persons"
-            - name: location
-              path: "$.body.metadata.location"
-            - name: artworksNL
-              path: "$.body.metadata.artworkNL"
-            - name: artworksEN
-              path: "$.body.metadata.artworkEN"
-            - name: file
-              path: "$.body.metadata.file"
-            - name: correspondent
-              path: "$.body.metadata.correspondent"
-            - name: periodLong
-              path: "$.body.metadata.periodLong"
-            - name: sender
-              path: "$.body.metadata.sender"
-            - name: originalText
-              type: text
-            - name: translatedText
-              type: text
-            - name: notesText
-              type: text
-    textRepo:
-      apiKey: YXBpOmU2NGRkYjgxLTliZjUtNGM2OC04ZTFlLTc0ZTZmMDg1ZmZlOQ==
-      uri: https://preview.dev.diginfra.org/israels/textrepo
     views:
+      - name: appendix
+        anno:
+          - path: body.type
+            values: [ tei:Div ]
+          - path: body.metadata.type
+            values: [ appendix ]
+      - name: original
+        anno:
+          - path: body.type
+            values: [ tei:Div ]
+          - path: body.metadata.type
+            values: [ original ]
+      - name: secretarial
+        anno:
+          - path: body.type
+            values: [ tei:Div ]
+          - path: body.metadata.type
+            values: [ secretarial ]
       - name: text
         anno:
-          - path: "body.type"
-            values: [ "tei:Div" ]
-        groupBy: "body.metadata.lang"
-      - name: textNotes
-        anno:
-          - path: "body.type"
-            values: [ "tei:ListAnnotation" ]
-          - path: "body.metadata.tei:type"
-            values: [ notes, langnotes ]
-        groupBy: "body.metadata.lang"
-        findWithin:
-          path: "body.type"
-          value: "tei:Note"
-          groupBy: "body.metadata.n"
-      - name: typedNotes
-        anno:
-          - path: "body.type"
-            values: [ "tei:ListAnnotation" ]
-          - path: "body.metadata.tei:type"
-            values: [ typednotes ]
-        groupBy: "body.metadata.lang"
+          - path: body.type
+            values: [ tei:Div ]
+          - path: body.metadata.type
+            values: [ text ]
+    brinta:
+      uri: http://localhost:9200
+      deleteKey: suriano-acc-mag-weg
+      indices:
+        - name: 'surind-029'
+          bodyTypes: [ LetterBody ]
+          fields:
+            - name: date
+              path: "$.body.metadata.date"
+              type: date
+            - name: recipient
+              path: "$.body.metadata.recipient"
+            - name: sender
+              path: "$.body.metadata.sender"
+            - name: summary
+              path: "$.body.metadata.summary"
+              type: text
+            - name: entityNames
+              path: "$.body.metadata.entities"
+    annoRepo:
+      containerName: 'suriano-1.0.1e-029'
+      uri: https://annorepo.suriano.huygens.knaw.nl/
+    textRepo:
+      uri: https://suriano.tt.di.huc.knaw.nl
