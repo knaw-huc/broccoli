@@ -20,6 +20,7 @@ logging:
   loggers:
     nl.knaw.huc: DEBUG
     AnnoRepoSearchResult: DEBUG
+    RequestTraceLog: TRACE
     org: WARN
     org.glassfish: ERROR
     com.jayway: ERROR
@@ -27,40 +28,40 @@ logging:
 externalBaseUrl: ${BR_EXTERNAL_BASE_URL:-http://localhost:8080}
 
 projects:
-  - name: 'suriano'
+  - name: "suriano"
     topTierBodyType: tf:Folder
     textType: LogicalText
     views:
       - name: appendix
         anno:
           - path: body.type
-            values: [ tei:Div ]
+            values: [tei:Div]
           - path: body.metadata.type
-            values: [ appendix ]
+            values: [appendix]
       - name: original
         anno:
           - path: body.type
-            values: [ tei:Div ]
+            values: [tei:Div]
           - path: body.metadata.type
-            values: [ original ]
+            values: [original]
       - name: secretarial
         anno:
           - path: body.type
-            values: [ tei:Div ]
+            values: [tei:Div]
           - path: body.metadata.type
-            values: [ secretarial ]
+            values: [secretarial]
       - name: text
         anno:
           - path: body.type
-            values: [ tei:Div ]
+            values: [tei:Div]
           - path: body.metadata.type
-            values: [ text ]
+            values: [text]
     brinta:
       uri: http://localhost:9200
       deleteKey: suriano-acc-mag-weg
       indices:
-        - name: 'surind-029'
-          bodyTypes: [ LetterBody ]
+        - name: "surind-029"
+          bodyTypes: [LetterBody]
           fields:
             - name: date
               path: "$.body.metadata.date"
@@ -75,7 +76,7 @@ projects:
             - name: entityNames
               path: "$.body.metadata.entities"
     annoRepo:
-      containerName: 'suriano-1.0.1e-029'
+      containerName: "suriano-1.0.1e-029"
       uri: https://annorepo.suriano.huygens.knaw.nl/
     textRepo:
       uri: https://suriano.tt.di.huc.knaw.nl

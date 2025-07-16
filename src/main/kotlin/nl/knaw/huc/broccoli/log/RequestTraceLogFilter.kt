@@ -8,24 +8,18 @@ import java.io.IOException
 
 @RequestTraceLog
 class RequestTraceLogFilter : ContainerRequestFilter {
-    private val log = LoggerFactory.getLogger(RequestTraceLog::class.java.simpleName)
+    private val logger = LoggerFactory.getLogger(RequestTraceLog::class.java.simpleName)
 
     @Throws(IOException::class)
     override fun filter(requestContext: ContainerRequestContext) {
-        if (!log.isTraceEnabled) {
-            return;
+        if (logger.isTraceEnabled) {
+            with(requestContext as ContainerRequest) {
+                bufferEntity()
+                logger.atTrace()
+                    .addKeyValue("params", requestUri.query)
+                    .addKeyValue("body", readEntity(String::class.java))
+                    .log("$method ${requestUri.path}:")
+            }
         }
-
-        requestContext as ContainerRequest
-        val method = requestContext.method
-        val path = requestContext.requestUri.path
-        val params = requestContext.requestUri.query
-        requestContext.bufferEntity()
-        val body = requestContext.readEntity(String::class.java)
-
-        log.atTrace()
-            .addKeyValue("params", params)
-            .addKeyValue("body", body)
-            .log("$method $path:")
     }
 }
