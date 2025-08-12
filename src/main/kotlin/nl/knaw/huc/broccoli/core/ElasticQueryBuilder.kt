@@ -226,7 +226,7 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
                     }
                 addAll(logicalQueryBuilder.toQueries())
                 query.date?.let {
-                    add(RangeQuery(it.name, it.from, it.to, relation = "within"))
+                    add(RangeQuery(it.name, it.from, it.to))
                 }
                 query.range?.let {
                     add(RangeQuery(it.name, it.from, it.to))
