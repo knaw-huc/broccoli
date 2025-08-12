@@ -7,7 +7,7 @@
     <groupId>nl.knaw.huc</groupId>
     <artifactId>broccoli</artifactId>
 
-    <version>0.45.0</version>
+    <version>0.45.1</version>
 
     <packaging>jar</packaging>
 
@@ -22,7 +22,7 @@
         <aspectj.version>1.9.24</aspectj.version>
         <aspectj.plugin.version>1.15.0</aspectj.plugin.version>
         <kotlin.version>2.1.21</kotlin.version>
-        <java.version>23</java.version>
+        <java.version>17</java.version>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
