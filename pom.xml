@@ -23,8 +23,7 @@
         <aspectj.plugin.version>1.15.0</aspectj.plugin.version>
         <kotlin.version>2.2.0</kotlin.version>
         <java.version>23</java.version>
-        <maven.compiler.source>${java.version}</maven.compiler.source>
-        <maven.compiler.target>${java.version}</maven.compiler.target>
+        <maven.compiler.release>${java.version}</maven.compiler.release>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
