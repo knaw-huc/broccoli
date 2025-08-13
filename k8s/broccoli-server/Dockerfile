@@ -1,15 +1,17 @@
-FROM maven:3.8.5 AS builder
+# Stage 1: Build the application
+FROM maven:3.9.11-amazoncorretto-24-alpine AS builder
 
-WORKDIR /build/
+WORKDIR /build
 COPY ./src /build/src
-COPY ./pom.xml /build/
+COPY ./pom.xml /build
 RUN mvn --no-transfer-progress --batch-mode --update-snapshots --also-make package
 
-FROM openjdk:24-jdk-slim
-RUN apt-get update && apt-get install -y curl jq
+# Stage 2: Create a smaller runtime image, but have 'curl' and 'jq' available
+FROM amazoncorretto:24-alpine
+RUN apk upgrade --no-cache && apk add curl jq
 
-WORKDIR /apps/broccoli
-COPY --from=builder /build/target/broccoli-*.jar /apps/broccoli/broccoli.jar
+WORKDIR /app/broccoli
+COPY --from=builder /build/target/broccoli-*.jar broccoli.jar
 COPY ./k8s/broccoli-server/entrypoint.sh entrypoint.sh
 COPY ./config.yml config.yml
 EXPOSE 8080
