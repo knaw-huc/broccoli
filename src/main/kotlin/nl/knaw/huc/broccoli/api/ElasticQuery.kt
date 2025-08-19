@@ -135,7 +135,13 @@ data class HighlightTerm(
             )
         ).apply {
             extraFields?.forEach {
-                put(it, mapOf("type" to "unified"))
+                put(
+                    it,
+                    mapOf(
+                        "type" to "unified",
+                        "fragment_size" to fragmentSize
+                    )
+                )
             }
         },
         "highlight_query" to FullTextQuery(QueryString(text))
