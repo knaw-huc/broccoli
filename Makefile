@@ -11,6 +11,10 @@ $(JAR): $(shell find src -type f) pom.xml
 .PHONY: build
 build: $(JAR)
 
+.PHONY: build-image
+build-image:
+	docker build --tag $(TAG) --platform=linux/amd64 --file k8s/broccoli-server/Dockerfile .
+
 .PHONY: run-server
 run-server: $(JAR)
 	java -jar $(JAR) server config.yml
@@ -23,6 +27,7 @@ clean:
 .PHONY: version-update
 version-update:
 	mvn versions:set && mvn versions:commit
+
 
 .make:
 	mkdir -p .make
