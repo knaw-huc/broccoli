@@ -34,7 +34,9 @@ class ElasticQueryBuilder(private val index: IndexConfiguration) {
         val query = ElasticQuery(
             from = from,
             size = size,
-            sort = Sort(sortBy, sortOrder),
+            sort = Sort(sortBy.let {
+                if (it == "date" && index.fields.any { f -> f.name == "dateSortable" }) "dateSortable" else it
+            }, sortOrder),
             query = buildMainQuery(),
             highlight = query.text?.let { queryText ->
                 HighlightTerm(
