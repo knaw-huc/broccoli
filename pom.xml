@@ -31,7 +31,7 @@
 
         <annorepo-client.version>0.7.10</annorepo-client.version>
 
-        <assertj-core.version>3.27.3</assertj-core.version>
+        <assertj-core.version>3.27.4</assertj-core.version>
         <dropwizard-swagger-ui.version>4.19.1</dropwizard-swagger-ui.version>
         <dropwizard-swagger.version>4.0.5-1</dropwizard-swagger.version>
         <dropwizard.version>4.0.1</dropwizard.version>
