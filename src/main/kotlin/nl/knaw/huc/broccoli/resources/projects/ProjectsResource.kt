@@ -8,7 +8,6 @@ import jakarta.validation.constraints.Min
 import jakarta.ws.rs.*
 import jakarta.ws.rs.client.Client
 import jakarta.ws.rs.client.Entity
-import jakarta.ws.rs.core.GenericType
 import jakarta.ws.rs.core.HttpHeaders
 import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
@@ -18,7 +17,6 @@ import nl.knaw.huc.broccoli.api.Constants.isIn
 import nl.knaw.huc.broccoli.api.ElasticQuery
 import nl.knaw.huc.broccoli.api.IndexQuery
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
-import nl.knaw.huc.broccoli.api.TextMarker
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.config.NamedViewConfiguration
 import nl.knaw.huc.broccoli.core.ElasticQueryBuilder
@@ -34,6 +32,7 @@ import nl.knaw.huc.broccoli.service.extractAggregations
 import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
 import org.slf4j.MarkerFactory
+
 
 @Path(PROJECTS)
 @Produces(MediaType.APPLICATION_JSON)
@@ -193,7 +192,7 @@ class ProjectsResource(
             .request()
             .post(Entity.json(baseQuery))
         validateElasticResult(baseResult, queryString)
-        return baseResult.readEntityAsJsonString()
+        return baseResult.readEntityAsString()
     }
 
     private fun validateElasticResult(result: Response, queryString: IndexQuery) {
@@ -201,7 +200,7 @@ class ProjectsResource(
             logger.atWarn()
                 .addKeyValue("status", result.status)
                 .addKeyValue("query", queryString)
-                .addKeyValue("result", result.readEntityAsJsonString())
+                .addKeyValue("result", result.readEntityAsString())
                 .log("ElasticSearch failed")
             throw BadRequestException("Query not understood: $queryString")
         }
@@ -246,7 +245,7 @@ class ProjectsResource(
         override fun toString() = name.lowercase()
     }
 
-    private fun Response.readEntityAsJsonString(): String = readEntity(String::class.java) ?: ""
+    private fun Response.readEntityAsString(): String = readEntity(String::class.java) ?: ""
 
     data class ParamsAsKey(
         val projectId: String,
@@ -362,7 +361,7 @@ class ProjectsResource(
                     val findWithin = viewConf.findWithin
                     if (findWithin == null) {
                         // fetch matching view anno's text based on project textType (meaning: do use LogicalText if needed)
-                        viewResult["lines"] = fetchTextLines(
+                        viewResult[FETCHED_TEXT] = fetchText(
                             project.textRepo,
                             AnnoSearchResultInterpreter(viewAnno, project.textType).findTextSource()
                         )
@@ -377,14 +376,11 @@ class ProjectsResource(
                                 .forEach { anno ->
                                     val interpreter = AnnoSearchResultInterpreter(anno, project.textType)
                                     val selector = interpreter.findSelector()
-                                    val annoStart = TextMarker(selector.start(), selector.beginCharOffset())
-                                    val annoEnd = TextMarker(selector.end(), selector.endCharOffset())
-                                    val annoMarkers = TextMarkers(annoStart, annoEnd).relativeTo(baseSelector.start())
                                     relocatedAnnotations.add(
                                         mapOf(
                                             "bodyId" to anno.bodyId(),
-                                            "start" to annoMarkers.start,
-                                            "end" to annoMarkers.end
+                                            "begin" to selector.start() - baseSelector.start(),
+                                            "end" to selector.end() - baseSelector.start(),
                                         )
                                     )
                                 }
@@ -405,7 +401,7 @@ class ProjectsResource(
                                 .forEach { innerNote ->
                                     val noteResult: MutableMap<String, Any> = mutableMapOf()
                                     val noteGroup = innerNote.read(findWithin.groupBy).toString()
-                                    noteResult["lines"] = fetchTextLines(
+                                    noteResult[FETCHED_TEXT] = fetchText(
                                         project.textRepo,
                                         AnnoSearchResultInterpreter(innerNote, project.textType).findTextSource()
                                     )
@@ -420,14 +416,11 @@ class ProjectsResource(
                                             .forEach { a ->
                                                 val interpreter = AnnoSearchResultInterpreter(a, project.textType)
                                                 val selector = interpreter.findSelector()
-                                                val aStart = TextMarker(selector.start(), selector.beginCharOffset())
-                                                val aEnd = TextMarker(selector.end(), selector.endCharOffset())
-                                                val aMarkers = TextMarkers(aStart, aEnd).relativeTo(base.start())
                                                 relocated.add(
                                                     mapOf(
                                                         "bodyId" to a.bodyId(),
-                                                        "start" to aMarkers.start,
-                                                        "end" to aMarkers.end
+                                                        "begin" to selector.start() - base.start(),
+                                                        "end" to selector.end() - base.start()
                                                     )
                                                 )
                                             }
@@ -463,10 +456,10 @@ class ProjectsResource(
         if (wanted.contains("text") && requestedViews.contains("self")) {
             val interpreter = AnnoSearchResultInterpreter(searchResult, project.textType)
             val textLines = timeExecution(
-                { fetchTextLines(textRepo, interpreter.findTextSource()) },
+                { fetchText(textRepo, interpreter.findTextSource()) },
                 { timeSpent -> textTimings["fetchTextLines"] = timeSpent }
             )
-            val textResult = mutableMapOf<String, Any>("lines" to textLines)
+            val textResult = mutableMapOf<String, Any>(FETCHED_TEXT to textLines)
 
             if (wanted.contains("anno")) {
                 val offset = when (relativeTo) {
@@ -489,14 +482,11 @@ class ProjectsResource(
                         val annoSelector = extractTextSelector(project.textType, anno)
 
                         if (annoBodyId != null && annoSelector != null) {
-                            val start = TextMarker(annoSelector.start(), annoSelector.beginCharOffset())
-                            val end = TextMarker(annoSelector.end(), annoSelector.endCharOffset())
-                            val markers = TextMarkers(start, end).relativeTo(offset.value)
                             relocatedAnnotations.add(
                                 mapOf(
                                     "bodyId" to annoBodyId,
-                                    "start" to markers.start,
-                                    "end" to markers.end
+                                    "begin" to annoSelector.start() - offset.value,
+                                    "end" to annoSelector.end() - offset.value
                                 )
                             )
                         }
@@ -625,7 +615,7 @@ class ProjectsResource(
                 .toSet()
         }
 
-    private fun fetchTextLines(textRepo: TextRepo, textSourceUrl: String): List<String> {
+    private fun fetchText(textRepo: TextRepo, textSourceUrl: String): String {
         logger.info("GET {}", textSourceUrl)
 
         var builder = client.target(textSourceUrl).request()
@@ -644,17 +634,12 @@ class ProjectsResource(
             throw ClientErrorException("Need credentials for $textSourceUrl", Response.Status.UNAUTHORIZED)
         }
 
-        return resp.readEntity(object : GenericType<List<String>>() {})
-    }
-
-    data class TextMarkers(val start: TextMarker, val end: TextMarker) {
-        fun relativeTo(offset: Int): TextMarkers {
-            return TextMarkers(start.relativeTo(offset), end.relativeTo(offset))
-        }
+        return resp.readEntityAsString()
     }
 
     companion object {
-        const val ORIGIN = "Origin"
+        private const val ORIGIN = "Origin"
+        private const val FETCHED_TEXT = "body"
         private val logger = LoggerFactory.getLogger(ProjectsResource::class.java)
         private val queryMarker = MarkerFactory.getMarker("QRY")
     }
