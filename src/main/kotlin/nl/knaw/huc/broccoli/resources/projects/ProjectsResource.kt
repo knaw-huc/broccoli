@@ -86,13 +86,7 @@ class ProjectsResource(
         val project = getProject(projectId)
         val index = getIndex(indexParam, project)
 
-        index.fields.map { it.name }
-            .plus("_doc")
-            .plus("_score")
-            .apply {
-                find { it == sortBy }
-                    ?: throw BadRequestException("query param sortBy must be one of ${sorted()}")
-            }
+        validateSortByParam(index, sortBy)
 
         logQuery(queryString, from, size)
 
@@ -171,6 +165,17 @@ class ProjectsResource(
         }
 
         return Response.ok(result).build()
+    }
+
+    private fun validateSortByParam(index: IndexConfiguration, sortBy: String) {
+        // sortBy must be one of the explicitly configured fields, or implicit '_doc' / '_score'
+        index.fields.map { it.name }
+            .plus("_doc")
+            .plus("_score")
+            .apply {
+                find { it == sortBy }
+                    ?: throw BadRequestException("query param sortBy must be one of ${sorted()}")
+            }
     }
 
     @GET
