@@ -4,17 +4,15 @@ import com.jayway.jsonpath.PathNotFoundException
 import jakarta.ws.rs.*
 import jakarta.ws.rs.client.Client
 import jakarta.ws.rs.client.Entity
-import jakarta.ws.rs.core.GenericType
-import jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION
 import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
-import jakarta.ws.rs.core.Response.Status.OK
 import jakarta.ws.rs.core.Response.Status.UNAUTHORIZED
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.ResourcePaths.BRINTA
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.service.anno.AnnoRepoSearchResult
+import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
 import nl.knaw.huc.broccoli.service.readEntityAsJsonString
 import nl.knaw.huc.broccoli.service.toJsonString
 import org.slf4j.LoggerFactory
@@ -137,7 +135,6 @@ class BrintaResource(
         @QueryParam("take") take: Int? = null,          // testing param, only index first 'take' items
     ): Response {
         val project = getProject(projectId)
-        val joinSeparator = project.brinta.joinSeparator ?: ""
 
         logger.atInfo()
             .setMessage("Filling index")
@@ -173,9 +170,6 @@ class BrintaResource(
         todo.forEachIndexed { i, cur ->
             logger.atInfo().log("Indexing #{} -> {}: {}", i, cur.bodyType(), cur.bodyId())
 
-            // fetch all text lines for current item
-            val textLines = fetchTextLines(project, cur)
-
             // find annotations with body.type corresponding to this index, overlapping with current item's text range
             val target = cur.withField<Any>("Text", "source").first()
             val selector = target["selector"] as Map<*, *>
@@ -199,34 +193,18 @@ class BrintaResource(
                     // build index payload for current anno
                     val payload = mutableMapOf<String, Any>()
 
-                    // First: core payload for index: fetch "full text" from (remote) URL
-                    anno.withoutField<String>(project.textType, "selector")
-                        .also { if (it.size > 1) logger.warn("multiple Text targets without selector: $it") }
-                        .first() // more than one text target without selector? -> arbitrarily choose the first
-                        .let { textTarget ->
-                            val textURL = textTarget["source"] as String
-                            val fetchedSegments = fetchTextSegmentsLocal(textLines, textURL)
-                            if (fetchedSegments.isNotEmpty()) {
-                                payload["text"] = fetchedSegments.joinToString(joinSeparator)
-                            } else {
-                                logger.atWarn().log("Failed to fetch text for {} from {}", docId, textURL)
-                                err.add(
-                                    mapOf(
-                                        "bodyId" to docId,
-                                        "annoURL" to anno.read("$.id"),
-                                        "textURL" to textURL
-                                    )
-                                )
-                            }
-                        }
+                    // First, core payload for index: fetch "full text" from (remote) URL
+                    payload["text"] = project.textFetcher.fetchText(
+                        AnnoSearchResultInterpreter(anno, project.textType).findTextSource()
+                    )
 
-                    // Then: optional extra payload: fields from config
+                    // Then, optional extra payload: fields from config
                     index.fields.forEach { field ->
                         field.path?.let { path ->
                             try {
                                 anno.read(path)?.let { payload[field.name] = it }
                                 logger.atTrace().log("payload[{}] -> {}", field.name, payload[field.name])
-                            } catch (e: PathNotFoundException) {
+                            } catch (_: PathNotFoundException) {
                                 // Must catch PNF, even though DEFAULT_PATH_LEAF_TO_NULL is set, because intermediate
                                 //   nodes can also be null, i.e., they don't exist, which still yields a PNF Exception.
                                 // Ignore this, just means the annotation doesn't have a value for this field
@@ -262,40 +240,6 @@ class BrintaResource(
         return Response.ok(result).build()
     }
 
-    private fun fetchTextLines(project: Project, anno: AnnoRepoSearchResult): List<String> =
-        anno.withoutField<String>(project.textType, "selector")
-            .also { if (it.size > 1) logger.warn("multiple Text targets without selector: $it") }
-            .first() // more than one text target without selector? -> arbitrarily choose the first
-            .let { textTarget ->
-                val textURL = textTarget["source"] as String
-                var builder = client.target(textURL).request()
-
-                with(project.textRepo) {
-                    if (apiKey != null && canResolve(textURL)) {
-                        logger.atDebug().log("with apiKey {}", apiKey)
-                        builder = builder.header(AUTHORIZATION, "Basic $apiKey")
-                    }
-                }
-
-                val resp = builder.get()
-
-                return when (resp.status) {
-                    OK.statusCode -> {
-                        resp.readEntity(object : GenericType<ArrayList<String>>() {})
-                    }
-
-                    UNAUTHORIZED.statusCode -> {
-                        logger.atWarn().log("Auth failed fetching {}", textURL)
-                        throw ClientErrorException("Need credentials for $textURL", UNAUTHORIZED)
-                    }
-
-                    else -> {
-                        logger.atWarn().log("Failed to fetch {} (status: {})", textURL, resp.status)
-                        emptyList()
-                    }
-                }
-            }
-
     private fun getProject(projectId: String): Project {
         return projects[projectId]
             ?: throw NotFoundException("Unknown project: $projectId. See /projects for known projects")
@@ -311,56 +255,5 @@ class BrintaResource(
 
     companion object {
         private val logger = LoggerFactory.getLogger(BrintaResource::class.java)
-
-        @JvmStatic
-        fun fetchTextSegmentsLocal(textLines: List<String>, textURL: String): List<String> {
-            val coords = textURL.indexOf("segments/index/") + "segments/index/".length
-            val parts = textURL.substring(coords).split('/')
-            return when (parts.size) {
-                2 -> {
-                    val from = parts[0].toInt()
-                    val to = parts[1].toInt()
-
-                    logger.atDebug().setMessage("2 coords")
-                        .addKeyValue("from", from)
-                        .addKeyValue("to", to)
-                        .addKeyValue("textLines.size", textLines.size)
-                        .log()
-
-                    textLines.subList(from, to + 1)
-                }
-
-                4 -> {
-                    val from = parts[0].toInt()
-                    val startIndex = parts[1].toInt()
-                    val to = parts[2].toInt()
-                    val endIndex = parts[3].toInt()
-
-                    logger.atDebug().setMessage("4 coords")
-                        .addKeyValue("from", from)
-                        .addKeyValue("startIndex", startIndex)
-                        .addKeyValue("to", to)
-                        .addKeyValue("endIndex", endIndex)
-                        .log()
-
-                    // start out with correct sublist from all segments
-                    val result = textLines.subList(from, to + 1).toMutableList()
-
-                    // adjust first and last segments according to start-/endIndex
-                    result[0] = result.first().substring(startIndex)
-                    if (result.lastIndex == 0) {
-                        result[result.lastIndex] = result.last().substring(0, endIndex - startIndex + 1)
-                    } else {
-                        result[result.lastIndex] = result.last().substring(0, endIndex + 1)
-                    }
-                    result
-                }
-
-                else -> {
-                    logger.atWarn().log("Failed to extract coordinates from {}", coords)
-                    emptyList()
-                }
-            }
-        }
     }
 }

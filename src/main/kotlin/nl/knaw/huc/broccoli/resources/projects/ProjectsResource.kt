@@ -8,7 +8,6 @@ import jakarta.validation.constraints.Min
 import jakarta.ws.rs.*
 import jakarta.ws.rs.client.Client
 import jakarta.ws.rs.client.Entity
-import jakarta.ws.rs.core.HttpHeaders
 import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
 import nl.knaw.huc.broccoli.api.Constants.AR_BODY_TYPE
@@ -29,7 +28,6 @@ import nl.knaw.huc.broccoli.service.anno.AnnoSearchResultInterpreter
 import nl.knaw.huc.broccoli.service.anno.TextSelector
 import nl.knaw.huc.broccoli.service.cache.LRUCache
 import nl.knaw.huc.broccoli.service.extractAggregations
-import nl.knaw.huc.broccoli.service.text.TextRepo
 import org.slf4j.LoggerFactory
 import org.slf4j.MarkerFactory
 
@@ -292,7 +290,7 @@ class ProjectsResource(
 
         val project = getProject(projectId)
         val annoRepo = project.annoRepo
-        val textRepo = project.textRepo
+        val textFetcher = project.textFetcher
         val allViews = project.views.keys.plus("self")
         val allIncludes = setOf("anno", "text", "iiif")
 
@@ -361,8 +359,7 @@ class ProjectsResource(
                     val findWithin = viewConf.findWithin
                     if (findWithin == null) {
                         // fetch matching view anno's text based on project textType (meaning: do use LogicalText if needed)
-                        viewResult[FETCHED_TEXT] = fetchText(
-                            project.textRepo,
+                        viewResult[BODY] = textFetcher.fetchText(
                             AnnoSearchResultInterpreter(viewAnno, project.textType).findTextSource()
                         )
 
@@ -401,8 +398,7 @@ class ProjectsResource(
                                 .forEach { innerNote ->
                                     val noteResult: MutableMap<String, Any> = mutableMapOf()
                                     val noteGroup = innerNote.read(findWithin.groupBy).toString()
-                                    noteResult[FETCHED_TEXT] = fetchText(
-                                        project.textRepo,
+                                    noteResult[BODY] = textFetcher.fetchText(
                                         AnnoSearchResultInterpreter(innerNote, project.textType).findTextSource()
                                     )
 
@@ -456,10 +452,10 @@ class ProjectsResource(
         if (wanted.contains("text") && requestedViews.contains("self")) {
             val interpreter = AnnoSearchResultInterpreter(searchResult, project.textType)
             val textLines = timeExecution(
-                { fetchText(textRepo, interpreter.findTextSource()) },
+                { textFetcher.fetchText(interpreter.findTextSource()) },
                 { timeSpent -> textTimings["fetchTextLines"] = timeSpent }
             )
-            val textResult = mutableMapOf<String, Any>(FETCHED_TEXT to textLines)
+            val textResult = mutableMapOf<String, Any>(BODY to textLines)
 
             if (wanted.contains("anno")) {
                 val offset = when (relativeTo) {
@@ -615,31 +611,9 @@ class ProjectsResource(
                 .toSet()
         }
 
-    private fun fetchText(textRepo: TextRepo, textSourceUrl: String): String {
-        logger.info("GET {}", textSourceUrl)
-
-        var builder = client.target(textSourceUrl).request()
-
-        with(textRepo) {
-            if (apiKey != null && canResolve(textSourceUrl)) {
-                logger.info("with apiKey {}", apiKey)
-                builder = builder.header(HttpHeaders.AUTHORIZATION, "Basic $apiKey")
-            }
-        }
-
-        val resp = builder.get()
-
-        if (resp.status == Response.Status.UNAUTHORIZED.statusCode) {
-            logger.warn("Auth failed fetching $textSourceUrl")
-            throw ClientErrorException("Need credentials for $textSourceUrl", Response.Status.UNAUTHORIZED)
-        }
-
-        return resp.readEntityAsString()
-    }
-
     companion object {
         private const val ORIGIN = "Origin"
-        private const val FETCHED_TEXT = "body"
+        private const val BODY = "body"
         private val logger = LoggerFactory.getLogger(ProjectsResource::class.java)
         private val queryMarker = MarkerFactory.getMarker("QRY")
     }

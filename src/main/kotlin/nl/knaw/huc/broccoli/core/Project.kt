@@ -3,7 +3,7 @@ package nl.knaw.huc.broccoli.core
 import nl.knaw.huc.broccoli.config.BrintaConfiguration
 import nl.knaw.huc.broccoli.config.NamedViewConfiguration
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
-import nl.knaw.huc.broccoli.service.text.TextRepo
+import nl.knaw.huc.broccoli.service.text.TextFetcher
 
 data class Project(
     val name: String,
@@ -11,6 +11,6 @@ data class Project(
     val topTierBodyType: String,
     val views: Map<String, NamedViewConfiguration>,
     val brinta: BrintaConfiguration,
-    val textRepo: TextRepo,
+    val textFetcher: TextFetcher,
     val annoRepo: AnnoRepo,
 )

@@ -22,7 +22,10 @@ import jakarta.ws.rs.client.Client
 import nl.knaw.huc.annorepo.client.AnnoRepoClient
 import nl.knaw.huc.broccoli.api.Constants
 import nl.knaw.huc.broccoli.api.Constants.APP_NAME
-import nl.knaw.huc.broccoli.config.*
+import nl.knaw.huc.broccoli.config.AnnoRepoConfiguration
+import nl.knaw.huc.broccoli.config.BroccoliConfiguration
+import nl.knaw.huc.broccoli.config.ProjectConfiguration
+import nl.knaw.huc.broccoli.config.TextRepoConfiguration
 import nl.knaw.huc.broccoli.core.Project
 import nl.knaw.huc.broccoli.log.RequestTraceLogFilter
 import nl.knaw.huc.broccoli.resources.AboutResource
@@ -31,7 +34,7 @@ import nl.knaw.huc.broccoli.resources.brinta.BrintaResource
 import nl.knaw.huc.broccoli.resources.projects.ProjectsResource
 import nl.knaw.huc.broccoli.service.anno.AnnoRepo
 import nl.knaw.huc.broccoli.service.cache.LRUCache
-import nl.knaw.huc.broccoli.service.text.TextRepo
+import nl.knaw.huc.broccoli.service.text.TextFetcher
 import org.eclipse.jetty.servlets.CrossOriginFilter
 import org.eclipse.jetty.servlets.CrossOriginFilter.*
 import org.slf4j.LoggerFactory
@@ -72,14 +75,10 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
                     "\n"
         )
 
-        val projects = configureProjects(configuration.projects)
-
         val client = createClient(configuration.jerseyClient, environment)
-
+        val projects = configureProjects(configuration.projects, client)
         val jsonParser = createJsonParser()
-
         val objectMapper = createJsonMapper()
-
         val globalCache = configuration.globalCache?.let { LRUCache<Any, Any>(capacity = it.capacity) }
 
         with(environment.jersey()) {
@@ -106,7 +105,10 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             .build(name)
     }
 
-    private fun configureProjects(projectConfigurations: List<ProjectConfiguration>): Map<String, Project> {
+    private fun configureProjects(
+        projectConfigurations: List<ProjectConfiguration>,
+        client: Client
+    ): Map<String, Project> {
         return projectConfigurations.associate { config ->
             log.info("configuring project: ${config.name}:")
             config.name to Project(
@@ -115,15 +117,15 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
                 topTierBodyType = config.topTierBodyType,
                 views = config.views.associateBy { view -> view.name },
                 brinta = config.brinta,
-                textRepo = createTextRepo(config.textRepo),
+                textFetcher = createTextRepo(config.textRepo, client),
                 annoRepo = createAnnoRepo(config.annoRepo, config.textType)
             )
         }
     }
 
-    private fun createTextRepo(textRepoConfig: TextRepoConfiguration) =
+    private fun createTextRepo(textRepoConfig: TextRepoConfiguration, client: Client) =
         with(textRepoConfig) {
-            TextRepo(uri, apiKey)
+            TextFetcher(client, uri, apiKey)
         }
 
     fun createAnnoRepo(annoRepoConfig: AnnoRepoConfiguration, textType: String) =
