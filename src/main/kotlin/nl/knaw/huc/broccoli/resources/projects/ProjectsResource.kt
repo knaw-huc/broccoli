@@ -90,7 +90,8 @@ class ProjectsResource(
             .plus("_doc")
             .plus("_score")
             .apply {
-                find { it == sortBy } ?: throw BadRequestException("query param sortBy must be one of ${this.sorted()}")
+                find { it == sortBy }
+                    ?: throw BadRequestException("query param sortBy must be one of ${sorted()}")
             }
 
         logQuery(queryString, from, size)
