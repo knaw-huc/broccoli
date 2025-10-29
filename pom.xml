@@ -21,7 +21,7 @@
         <kotlin.code.style>official</kotlin.code.style>
         <aspectj.version>1.9.24</aspectj.version>
         <aspectj.plugin.version>1.15.0</aspectj.plugin.version>
-        <kotlin.version>2.2.10</kotlin.version>
+        <kotlin.version>2.2.20</kotlin.version>
         <java.version>23</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
