@@ -91,7 +91,7 @@ class ProjectConfiguration {
 
     @Valid
     @JsonProperty
-    var textType: String = "Text"  // e.g., "Text" or "LogicalText"
+    var textType: String = "NormalText"
 
     @Valid
     @NotNull

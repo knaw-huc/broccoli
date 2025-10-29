@@ -28,7 +28,7 @@ class AnnoRepoSearchResult(val context: DocumentContext) {
         context.read("$.target[?(@.type == '$type')][?(@.$field == null)]")
 
     fun liesWithin(region: IntRange) =
-        target<Any>("Text")
+        target<Any>("NormalText")
             .any { target ->
                 getValueAtPath<Int>(target, "selector.start")?.let { start ->
                     getValueAtPath<Int>(target, "selector.end")?.let { end ->
