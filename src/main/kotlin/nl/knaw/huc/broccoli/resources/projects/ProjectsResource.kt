@@ -330,7 +330,7 @@ class ProjectsResource(
             { timeSpent -> annoTimings["findByBodyId"] = timeSpent }
         )
 
-        val textInterpreter = AnnoSearchResultInterpreter(searchResult, "Text")
+        val textInterpreter = AnnoSearchResultInterpreter(searchResult, TEXT_TYPE)
         val textSource = textInterpreter.findSegmentsSource()
         val textSelector = textInterpreter.findSelector()
 
@@ -372,7 +372,7 @@ class ProjectsResource(
                         val relocatedAnnotations: MutableList<Map<String, Any>> = mutableListOf()
 
                         // now find included annos; must be based on 'Text' location (meaning: ignore LogicalText)
-                        with(AnnoSearchResultInterpreter(viewAnno, "Text").findSelector()) {
+                        with(AnnoSearchResultInterpreter(viewAnno, TEXT_TYPE).findSelector()) {
                             // but: relocate anno's relative to the view's base anno (meaning: DO use LogicalText)
                             val baseSelector = AnnoSearchResultInterpreter(viewAnno, project.textType).findSelector()
                             annos.filter { it.bodyId() != viewAnno.bodyId() && it.liesWithin(start()..end()) }
@@ -397,7 +397,7 @@ class ProjectsResource(
                             "annotations" to relocatedAnnotations
                         )
                     } else {
-                        with(AnnoSearchResultInterpreter(viewAnno, "Text").findSelector()) {
+                        with(AnnoSearchResultInterpreter(viewAnno, TEXT_TYPE).findSelector()) {
                             annos
                                 .filter { it.read("$.${findWithin.path}") == findWithin.value }
                                 .filter { it.liesWithin(start()..end()) }
@@ -409,7 +409,7 @@ class ProjectsResource(
                                     )
 
                                     val relocated: MutableList<Map<String, Any>> = mutableListOf()
-                                    with(AnnoSearchResultInterpreter(innerNote, "Text").findSelector()) {
+                                    with(AnnoSearchResultInterpreter(innerNote, TEXT_TYPE).findSelector()) {
                                         val base = AnnoSearchResultInterpreter(innerNote, project.textType)
                                             .findSelector()
                                         annos
@@ -618,6 +618,7 @@ class ProjectsResource(
         }
 
     companion object {
+        private const val TEXT_TYPE = "NormalText"
         private const val ORIGIN = "Origin"
         private const val BODY = "body"
         private val logger = LoggerFactory.getLogger(ProjectsResource::class.java)

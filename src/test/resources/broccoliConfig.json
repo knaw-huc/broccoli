@@ -11,7 +11,7 @@
   "projects": [
     {
       "name": "dummy",
-      "textType": "Text",
+      "textType": "NormalText",
       "topTierBodyType": "tf:File",
       "views": [],
       "brinta": {

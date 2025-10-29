@@ -171,7 +171,7 @@ class BrintaResource(
             logger.atInfo().log("Indexing #{} -> {}: {}", i, cur.bodyType(), cur.bodyId())
 
             // find annotations with body.type corresponding to this index, overlapping with current item's text range
-            val target = cur.withField<Any>("Text", "source").first()
+            val target = cur.withField<Any>("NormalText", "source").first()
             val selector = target["selector"] as Map<*, *>
             project.annoRepo.streamOverlap(
                 bodyTypes = Constants.isIn(index.bodyTypes.toSet()),
