@@ -539,11 +539,8 @@ class ProjectsResource(
     private fun extractManifest(anno: Map<*, *>): String? {
         if (anno.containsKey("body")) {
             val body = anno["body"]
-            if (body is Map<*, *> && body.containsKey("metadata")) {
-                val metadata = body["metadata"]
-                if (metadata is Map<*, *> && metadata.containsKey("manifest")) {
-                    return metadata["manifest"] as String
-                }
+            if (body is Map<*, *> && body.containsKey("manifest")) {
+                return body["manifest"] as String
             }
         }
         return null
