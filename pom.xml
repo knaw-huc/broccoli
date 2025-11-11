@@ -36,7 +36,7 @@
         <dropwizard-swagger.version>4.0.5-1</dropwizard-swagger.version>
         <dropwizard.version>4.0.1</dropwizard.version>
         <jackson-bom.version>2.19.0</jackson-bom.version>
-        <json-path.version>2.9.0</json-path.version>
+        <json-path.version>2.10.0</json-path.version>
         <mockito-kotlin.version>5.1.0</mockito-kotlin.version>
         <mockito.version>5.5.0</mockito.version>
         <mockserver.version>5.15.0</mockserver.version>
