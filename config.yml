@@ -6,9 +6,12 @@ jerseyClient:
   connectionTimeout: 1m
 
 server:
+  adminConnectors:
+    - type: http
+      port: 8092
   applicationConnectors:
     - type: http
-      port: ${BR_SERVER_PORT:-8080}
+      port: 8082
 
 logging:
   level: INFO
@@ -18,65 +21,65 @@ logging:
       target: stderr
       discardingThreshold: 0
   loggers:
-    nl.knaw.huc: DEBUG
-    AnnoRepoSearchResult: DEBUG
-    RequestTraceLog: TRACE
+    nl.knaw.huc: INFO
     org: WARN
     org.glassfish: ERROR
     com.jayway: ERROR
 
-externalBaseUrl: ${BR_EXTERNAL_BASE_URL:-http://localhost:8080}
+externalBaseUrl: ${BASE_URL}:${BROCCOLI_PORT}
 
 projects:
-  - name: "suriano"
-    topTierBodyType: tf:Folder
-    textType: LogicalText
-    views:
-      - name: appendix
-        anno:
-          - path: body.type
-            values: [tei:Div]
-          - path: body.metadata.type
-            values: [appendix]
-      - name: original
-        anno:
-          - path: body.type
-            values: [tei:Div]
-          - path: body.metadata.type
-            values: [original]
-      - name: secretarial
-        anno:
-          - path: body.type
-            values: [tei:Div]
-          - path: body.metadata.type
-            values: [secretarial]
-      - name: text
-        anno:
-          - path: body.type
-            values: [tei:Div]
-          - path: body.metadata.type
-            values: [text]
+  - name: ${PROJECT}
+    topTierBodyType: "Document"
+    textType: NormalText
+    annoRepo:
+      containerName: ${PROJECT}
+      uri: http://localhost:8080
+      cacheCapacity: 1000
+      cacheThreshold: 500
     brinta:
       uri: http://localhost:9200
-      deleteKey: suriano-acc-mag-weg
       indices:
-        - name: "surind-029"
-          bodyTypes: [LetterBody]
+        - name: ${PROJECT}
+          bodyTypes: ["Letter"]
           fields:
-            - name: date
-              path: "$.body.metadata.date"
+            - name: type
+              type: keyword
+            - name: identifier
+              type: keyword
+            - name: title
+              type: keyword
+            - name: subtitle
+              type: keyword
+            - name: author
+              type: keyword
+            - name: editor
+              type: keyword
+            - name: datePublished
               type: date
-            - name: recipient
-              path: "$.body.metadata.recipient"
-            - name: sender
-              path: "$.body.metadata.sender"
-            - name: summary
-              path: "$.body.metadata.summary"
-              type: text
-            - name: entityNames
-              path: "$.body.metadata.entities"
-    annoRepo:
-      containerName: "suriano-1.0.1e-029"
-      uri: https://annorepo.suriano.huygens.knaw.nl/
-    textRepo:
-      uri: https://suriano.tt.di.huc.knaw.nl
+    views:
+      - name: text
+        anno:
+          - path: "body.type"
+            values: ["Division"]
+          - path: "body.tei:type"
+            values: [original, translation, "intro-nl", "intro-en"]
+        groupBy: "body.language"
+      - name: textNotes
+        anno:
+          - path: "body.type"
+            values: ["Dataset"]
+          - path: "body.tei:type"
+            values: [notes, langnotes, "intro-notes"]
+        groupBy: "body.language"
+        findWithin:
+          path: "body.type"
+          value: "Note"
+          groupBy: "body.n"
+      - name: typedNotes
+        anno:
+          - path: "body.type"
+            values: ["Dataset"]
+          - path: "body.tei:type"
+            values: [typednotes]
+        groupBy: "body.language"
