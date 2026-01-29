@@ -14,5 +14,6 @@ WORKDIR /app/broccoli
 COPY --from=builder /build/target/broccoli-*.jar broccoli.jar
 COPY ./k8s/broccoli-server/entrypoint.sh entrypoint.sh
 COPY ./config.yml config.yml
+ENV BR_CONFIG_FILE=config.yml
 EXPOSE 8080
 CMD ["./entrypoint.sh"]
