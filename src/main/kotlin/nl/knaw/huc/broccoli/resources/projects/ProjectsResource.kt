@@ -237,7 +237,9 @@ class ProjectsResource(
             }
 
             // store all configured index fields with their search result, if any
-            index.fields.forEach { field ->
+            index.fields
+                .filter { field -> field.type != "text" } // exclude text fields, can be very large, e.g. Translatin
+                .forEach { field ->
                 source[field.name]?.let { put(field.name, it) }
             }
         }
