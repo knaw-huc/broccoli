@@ -377,7 +377,7 @@ class ProjectsResource(
                         with(AnnoSearchResultInterpreter(viewAnno, TEXT_TYPE).findSelector()) {
                             // but: relocate anno's relative to the view's base anno (meaning: DO use LogicalText)
                             val baseSelector = AnnoSearchResultInterpreter(viewAnno, project.textType).findSelector()
-                            annos.filter { it.bodyId() != viewAnno.bodyId() && it.liesWithin(start()..end()) }
+                            annos.filter { it.bodyId() != viewAnno.bodyId() && it.overlaps(start()..end()) }
                                 .forEach { anno ->
                                     val interpreter = AnnoSearchResultInterpreter(anno, project.textType)
                                     val selector = interpreter.findSelector()
@@ -402,7 +402,7 @@ class ProjectsResource(
                         with(AnnoSearchResultInterpreter(viewAnno, TEXT_TYPE).findSelector()) {
                             annos
                                 .filter { it.read("$.${findWithin.path}") == findWithin.value }
-                                .filter { it.liesWithin(start()..end()) }
+                                .filter { it.overlaps(start()..end()) }
                                 .forEach { innerNote ->
                                     val noteResult: MutableMap<String, Any> = mutableMapOf()
                                     val noteGroup = innerNote.read(findWithin.groupBy).toString()
@@ -416,7 +416,7 @@ class ProjectsResource(
                                             .findSelector()
                                         annos
                                             .filter { it.bodyId() != innerNote.bodyId() }
-                                            .filter { it.liesWithin(start()..end()) }
+                                            .filter { it.overlaps(start()..end()) }
                                             .forEach { a ->
                                                 val interpreter = AnnoSearchResultInterpreter(a, project.textType)
                                                 val selector = interpreter.findSelector()

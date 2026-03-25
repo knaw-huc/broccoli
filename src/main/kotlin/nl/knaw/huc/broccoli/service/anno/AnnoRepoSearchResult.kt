@@ -37,6 +37,16 @@ class AnnoRepoSearchResult(val context: DocumentContext) {
                 } ?: false
             }
 
+    fun overlaps(region: IntRange) =
+        target<Any>("NormalText")
+            .any { target ->
+                getValueAtPath<Int>(target, "selector.start")?.let { start ->
+                    getValueAtPath<Int>(target, "selector.end")?.let { end ->
+                        !(start > region.last || end < region.first)
+                    } ?: false
+                } ?: false
+            }
+
     fun satisfies(constraints: Map<String, List<String>>) =
         constraints.all { (path, allowedValues) -> allowedValues.contains(read("$.$path")) }
 }
