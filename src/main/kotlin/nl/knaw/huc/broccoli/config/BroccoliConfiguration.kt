@@ -19,6 +19,8 @@ class BroccoliConfiguration : Configuration() {
         resourcePackage = AboutResource::class.java.getPackage().name
         version = javaClass.getPackage().implementationVersion
         title = Constants.APP_NAME
+        license = "MIT"
+        licenseUrl = "https://github.com/knaw-huc/broccoli/blob/main/LICENSE"
     }
 
     @Valid
