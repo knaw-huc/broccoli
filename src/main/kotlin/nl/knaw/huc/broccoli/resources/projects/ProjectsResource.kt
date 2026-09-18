@@ -406,7 +406,7 @@ class ProjectsResource(
 
                         // now find included annos; must be based on 'Text' location (meaning: ignore LogicalText)
                         with(AnnoSearchResultInterpreter(viewAnno, TEXT_TYPE).findSelector()) {
-                            // but: relocate anno's relative to the view's base anno (meaning: DO use LogicalText)
+                            // but: relocate annos relative to the view's base anno (meaning: DO use LogicalText)
                             val baseSelector = AnnoSearchResultInterpreter(viewAnno, project.textType).findSelector()
                             annos.filter { it.bodyId() != viewAnno.bodyId() && it.liesWithin(start()..end()) }
                                 .forEach { anno ->
