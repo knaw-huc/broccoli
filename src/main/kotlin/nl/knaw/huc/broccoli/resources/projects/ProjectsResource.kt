@@ -3,7 +3,12 @@ package nl.knaw.huc.broccoli.resources.projects
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.jayway.jsonpath.ParseContext
+import io.dropwizard.jersey.errors.ErrorMessage
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.parameters.RequestBody
+import io.swagger.v3.oas.annotations.responses.ApiResponse
 import jakarta.validation.constraints.Min
 import jakarta.ws.rs.*
 import jakarta.ws.rs.client.Client
@@ -16,6 +21,7 @@ import nl.knaw.huc.broccoli.api.Constants.isIn
 import nl.knaw.huc.broccoli.api.ElasticQuery
 import nl.knaw.huc.broccoli.api.IndexQuery
 import nl.knaw.huc.broccoli.api.ResourcePaths.PROJECTS
+import nl.knaw.huc.broccoli.api.SearchResult
 import nl.knaw.huc.broccoli.config.IndexConfiguration
 import nl.knaw.huc.broccoli.config.NamedViewConfiguration
 import nl.knaw.huc.broccoli.core.ElasticQueryBuilder
@@ -73,6 +79,31 @@ class ProjectsResource(
     @Path("{projectId}/search")
     @RequestTraceLog
     @Consumes(MediaType.APPLICATION_JSON)
+    @Operation(
+        summary = "Search a project's index",
+        description = "Runs a full-text, term, date, and/or range query against a project's configured " +
+                "Elasticsearch index, and returns matching hits plus aggregations."
+    )
+    @RequestBody(
+        required = true,
+        content = [Content(schema = Schema(implementation = IndexQuery::class))]
+    )
+    @ApiResponse(
+        responseCode = "200",
+        description = "Search results",
+        content = [Content(schema = Schema(implementation = SearchResult::class))]
+    )
+    @ApiResponse(
+        responseCode = "400",
+        description = "The query could not be understood, e.g. an unknown field name or a malformed " +
+                "aggregation spec",
+        content = [Content(schema = Schema(implementation = ErrorMessage::class))]
+    )
+    @ApiResponse(
+        responseCode = "404",
+        description = "Unknown project or index",
+        content = [Content(schema = Schema(implementation = ErrorMessage::class))]
+    )
     fun searchIndex(
         queryString: IndexQuery,
         @PathParam("projectId") projectId: String,
