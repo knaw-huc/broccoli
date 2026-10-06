@@ -82,7 +82,10 @@ class ProjectsResource(
     @Operation(
         summary = "Search a project's index",
         description = "Runs a full-text, term, date, and/or range query against a project's configured " +
-                "Elasticsearch index, and returns matching hits plus aggregations."
+                "Elasticsearch index, and returns matching hits plus aggregations. All clauses of the " +
+                "query body are combined with AND. Field names for 'terms', 'range' and 'aggs', and the " +
+                "valid 'textViews', are listed by GET /brinta/{projectId}/indices (fields of type 'text' " +
+                "are the valid textViews)."
     )
     @RequestBody(
         required = true,
@@ -212,6 +215,7 @@ class ProjectsResource(
     @GET
     @Path("{projectId}/views")
     fun getViews(@PathParam("projectId") projectId: String) = getProject(projectId).views
+
 
     @TraceLog
     private fun runQuery(
