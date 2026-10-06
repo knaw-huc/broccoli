@@ -1,5 +1,7 @@
 package nl.knaw.huc.broccoli.config
 
+
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import io.dropwizard.client.JerseyClientConfiguration
 import io.dropwizard.core.Configuration
@@ -121,6 +123,8 @@ class ProjectConfiguration {
     val textRepo = TextRepoConfiguration()
 }
 
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
 class NamedViewConfiguration {
     @Valid
     @NotNull
@@ -134,12 +138,10 @@ class NamedViewConfiguration {
 
     @Valid
     @JsonProperty
-    @Schema(nullable = true)
     val groupBy: String? = null
 
     @Valid
     @JsonProperty
-    @Schema(nullable = true)
     val findWithin: ViewFindWithinConfiguration? = null
 }
 
