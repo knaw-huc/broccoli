@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import io.dropwizard.client.JerseyClientConfiguration
 import io.dropwizard.core.Configuration
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration
+import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotNull
 import nl.knaw.huc.broccoli.api.Constants
@@ -133,10 +134,12 @@ class NamedViewConfiguration {
 
     @Valid
     @JsonProperty
+    @Schema(nullable = true)
     val groupBy: String? = null
 
     @Valid
     @JsonProperty
+    @Schema(nullable = true)
     val findWithin: ViewFindWithinConfiguration? = null
 }
 

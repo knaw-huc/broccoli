@@ -1,5 +1,6 @@
 package nl.knaw.huc.broccoli.api
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import io.swagger.v3.oas.annotations.media.Schema
 
 @Schema(description = "Search results for a project's index query.")
@@ -26,12 +27,14 @@ data class TotalHits(
     additionalProperties = Schema.AdditionalPropertiesValue.TRUE
 )
 data class SearchHit(
+    @get:JsonProperty("_id")
     @Schema(description = "Identifier of the matching annotation.")
-    val _id: String,
+    val id: String,
 
+    @get:JsonProperty("_hits")
     @Schema(description = "Highlighted text fragments, keyed by text view name. Only present when the " +
             "query included a 'text' search term.")
-    val _hits: Map<String, List<String>>? = null,
+    val hits: Map<String, List<String>>? = null,
 
     @Schema(description = "The hit's configured body type, e.g. 'letter'.")
     val type: String? = null,
