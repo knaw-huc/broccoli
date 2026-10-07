@@ -30,7 +30,7 @@ externalBaseUrl: ${BASE_URL}:${BROCCOLI_PORT}
 
 projects:
   - name: ${PROJECT}
-    topTierBodyType: "Document"
+    topTierBodyTypes: ["Document"]
     textType: NormalText
     annoRepo:
       containerName: ${PROJECT}

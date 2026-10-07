@@ -8,7 +8,7 @@ import nl.knaw.huc.broccoli.service.text.TextFetcher
 data class Project(
     val name: String,
     val textType: String,
-    val topTierBodyType: String,
+    val topTierBodyTypes: Set<String>,
     val views: Map<String, NamedViewConfiguration>,
     val brinta: BrintaConfiguration,
     val textFetcher: TextFetcher,

@@ -96,9 +96,8 @@ class ProjectConfiguration {
     var textType: String = "NormalText"
 
     @Valid
-    @NotNull
     @JsonProperty
-    val topTierBodyType: String = "tf:File"
+    val topTierBodyTypes: Set<String> = emptySet()
 
     @Valid
     @JsonProperty

@@ -114,7 +114,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             config.name to Project(
                 name = config.name,
                 textType = config.textType,
-                topTierBodyType = config.topTierBodyType,
+                topTierBodyTypes = config.topTierBodyTypes,
                 views = config.views.associateBy { view -> view.name },
                 brinta = config.brinta,
                 textFetcher = createTextRepo(config.textRepo, client),

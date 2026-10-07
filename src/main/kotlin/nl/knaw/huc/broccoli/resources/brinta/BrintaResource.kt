@@ -147,7 +147,10 @@ class BrintaResource(
         // assume AnnoRepo may just have had new data uploaded, so invalidate query cache
         project.annoRepo.invalidateCache()
 
-        val metadataKey = metaAnno ?: project.topTierBodyType
+        /* The 'fix' in BrintaResource for 'topTierBodyTypes' to just take the first is tentative.
+         * As we don't index via :broccoli: anymore, this code can be refactored and thrown away,
+         * but is left for now as legacy. */
+        val metadataKey = metaAnno ?: project.topTierBodyTypes.first()
         val requestedMetadataPairs = metaValues
             ?.split(',')
             ?.map { metadataValue -> Pair(metadataKey, metadataValue) }
@@ -155,7 +158,7 @@ class BrintaResource(
             ?: emptyList()
 
         val todo = project.annoRepo.findByMetadata(
-            bodyType = project.topTierBodyType,
+            bodyType = project.topTierBodyTypes.first(),
             metadata = requestedMetadataPairs
         )
         logger.atInfo().log("Indexing {} items: ", todo.size)

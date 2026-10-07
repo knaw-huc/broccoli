@@ -12,7 +12,7 @@
     {
       "name": "dummy",
       "textType": "NormalText",
-      "topTierBodyType": "tf:File",
+      "topTierBodyTypes": ["tf:File"],
       "views": [],
       "brinta": {
         "uri": "http://localhost:9292",
