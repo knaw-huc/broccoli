@@ -18,7 +18,13 @@ constructor(
             "project's index configuration.")
     val terms: IndexTerms?,
 
-    @Schema(description = "Free-text query, run against the project's full-text field.")
+    @Schema(description = "Query-string search over the project's full-text fields, using Elasticsearch " +
+            "query-string syntax. Supported: single words, several words separated by spaces (any may " +
+            "match), 'word~1' to also match spellings that differ by one character ('~2' for two), " +
+            "wildcards such as 'goe*' and boolean operators (AND, OR, NOT)." +
+            "A query that " +
+            "starts with a field prefix ('field:term') is rejected.",
+        example = "goed~1")
     val text: String?,
 
     @Schema(description = "Restrict full-text search to these text views. Valid values are project-specific " +
