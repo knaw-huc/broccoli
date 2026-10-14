@@ -199,10 +199,6 @@ class BrintaConfiguration {
     @NotNull
     @JsonProperty
     val indices: List<IndexConfiguration> = ArrayList()
-
-    @Valid
-    @JsonProperty
-    val deleteKey: String = "confirm-deletion-c6451546-ee86-45af-ac62-7cb1a3a405ed"
 }
 
 class IndexConfiguration {
