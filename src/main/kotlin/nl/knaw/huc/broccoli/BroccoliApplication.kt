@@ -85,7 +85,7 @@ class BroccoliApplication : Application<BroccoliConfiguration>() {
             register(AboutResource(configuration, name, appVersion))
             register(HomePageResource())
             register(ProjectsResource(projects, client, jsonParser, objectMapper, globalCache))
-            register(BrintaResource(projects, client))
+            register(BrintaResource(projects))
             register(RequestTraceLogFilter())
         }
 
