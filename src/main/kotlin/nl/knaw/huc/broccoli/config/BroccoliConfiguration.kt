@@ -1,9 +1,12 @@
 package nl.knaw.huc.broccoli.config
 
+
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import io.dropwizard.client.JerseyClientConfiguration
 import io.dropwizard.core.Configuration
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration
+import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotNull
 import nl.knaw.huc.broccoli.api.Constants
@@ -119,6 +122,8 @@ class ProjectConfiguration {
     val textRepo = TextRepoConfiguration()
 }
 
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
 class NamedViewConfiguration {
     @Valid
     @NotNull
