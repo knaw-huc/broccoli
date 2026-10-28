@@ -1,5 +1,9 @@
 NAME := broccoli
-VER  := $(shell mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+
+VER  := $(shell grep -m 1 '<version>' pom.xml | sed 's/.*<version>\(.*\)<\/version>.*/\1/')
+# this is better in the sense that it has mvn fidelity, but takes 'forever':
+#VER  := $(shell mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+
 JAR  := target/$(NAME)-$(VER).jar
 TAG  := $(NAME):$(VER)
 
