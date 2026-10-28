@@ -1,5 +1,5 @@
 # Stage 1: Build the application
-FROM maven:3.10.0-amazoncorretto-25-alpine AS builder
+FROM maven:3.10-amazoncorretto-25-alpine AS builder
 
 WORKDIR /build
 COPY ./src /build/src
