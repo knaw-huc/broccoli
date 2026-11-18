@@ -37,7 +37,7 @@ version-update:
 	mkdir -p .make
 
 .make/.push: .make $(JAR) k8s/broccoli-server/Dockerfile
-	docker build --tag $(TAG) --platform=linux/amd64 --file k8s/broccoli-server/Dockerfile .
+	docker build --no-cache --tag $(TAG) --platform=linux/amd64 --file k8s/broccoli-server/Dockerfile .
 	docker tag $(TAG) registry.diginfra.net/tt/$(TAG)
 #	docker push registry.diginfra.net/tt/$(TAG)
 	@touch $@

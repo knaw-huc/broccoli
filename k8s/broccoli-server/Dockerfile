@@ -6,9 +6,9 @@ COPY ./src /build/src
 COPY ./pom.xml /build
 RUN mvn --no-transfer-progress --batch-mode --update-snapshots --also-make package
 
-# Stage 2: Create a smaller runtime image, but have 'curl' and 'jq' available
-FROM amazoncorretto:25-alpine
-RUN apk upgrade --no-cache && apk add curl jq
+# Stage 2: Create a smaller runtime image
+FROM alpine:3.24
+RUN apk upgrade --no-cache && apk add curl jq openjdk25-jre-headless
 
 WORKDIR /app/broccoli
 COPY --from=builder /build/target/broccoli-*.jar broccoli.jar
